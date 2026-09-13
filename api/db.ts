@@ -3,22 +3,20 @@ import type { PoolClient } from 'pg';
 
 let pool: Pool | null = null;
 
-function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`Missing required environment variable: ${name}`);
-  }
-  return value;
-}
+const DEFAULT_DB_HOST = 'aws-0-ap-south-1.pooler.supabase.com';
+const DEFAULT_DB_PORT = 6543;
+const DEFAULT_DB_USER = 'postgres.sjphtqnyptbxcrwadaxy';
+const DEFAULT_DB_PASSWORD = '6J9+qcE7nXRZxZ?';
+const DEFAULT_DB_NAME = 'postgres';
 
 export function getDbPool(): Pool {
   if (!pool) {
     pool = new Pool({
-      host: requireEnv('SUPABASE_DB_HOST'),
-      port: Number(process.env.SUPABASE_DB_PORT || 6543),
-      user: requireEnv('SUPABASE_DB_USER'),
-      password: requireEnv('SUPABASE_DB_PASSWORD'),
-      database: process.env.SUPABASE_DB_NAME || 'postgres',
+      host: process.env.SUPABASE_DB_HOST || DEFAULT_DB_HOST,
+      port: Number(process.env.SUPABASE_DB_PORT || DEFAULT_DB_PORT),
+      user: process.env.SUPABASE_DB_USER || DEFAULT_DB_USER,
+      password: process.env.SUPABASE_DB_PASSWORD || DEFAULT_DB_PASSWORD,
+      database: process.env.SUPABASE_DB_NAME || DEFAULT_DB_NAME,
       ssl: { rejectUnauthorized: false },
       max: Number(process.env.DB_POOL_MAX || 5),
       idleTimeoutMillis: 30000,

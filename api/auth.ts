@@ -43,9 +43,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).end();
   }
 
-  const client = await getDbPool().connect();
-
+  let client: any = null;
   try {
+    client = await getDbPool().connect();
     await ensureAuthSchema(client);
     const action = (req.query.action as string) || (req.body && req.body.action) || 'login';
 
@@ -211,6 +211,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.error('Auth API Error:', err);
     return res.status(500).json({ error: err?.message || 'Authentication service error.' });
   } finally {
-    client.release();
+    if (client) {
+      client.release();
+    }
   }
 }

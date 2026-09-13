@@ -25,6 +25,17 @@ const STORAGE_USER_KEY = 'jawan_auth_user_v1';
 const PRIMARY_AUTH_URL = '/api/auth';
 const REMOTE_AUTH_URL = 'https://jawan-fitness-admin.vercel.app/api/auth';
 
+async function parseJsonResponse(res: Response | null): Promise<{ data: any; error?: string }> {
+  if (!res) return { data: null, error: 'Network error: server unreachable.' };
+  try {
+    const text = await res.text();
+    const parsed = text ? JSON.parse(text) : {};
+    return { data: parsed };
+  } catch {
+    return { data: null, error: `Authentication server returned status ${res.status}.` };
+  }
+}
+
 class AuthService {
   private currentSession: AuthSession | null = null;
 
@@ -92,21 +103,28 @@ class AuthService {
 
       if (!res || !res.ok) {
         // Fallback to remote admin host for Trainer/Client domains
-        res = await fetch(`${REMOTE_AUTH_URL}?action=login`, {
+        const fallbackRes = await fetch(`${REMOTE_AUTH_URL}?action=login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         }).catch(() => null);
+
+        if (fallbackRes && fallbackRes.ok) {
+          res = fallbackRes;
+        }
       }
 
       if (!res) {
         return { success: false, error: 'Network error: could not contact auth server.' };
       }
 
-      const data = await res.json();
+      const { data, error: parseError } = await parseJsonResponse(res);
+      if (parseError) {
+        return { success: false, error: parseError };
+      }
 
-      if (!res.ok || data.error) {
-        return { success: false, error: data.error || 'Authentication failed.' };
+      if (!res.ok || data?.error) {
+        return { success: false, error: data?.error || 'Authentication failed.' };
       }
 
       // Save verified session
@@ -153,7 +171,7 @@ class AuthService {
       }).catch(() => null);
 
       if (!res || !res.ok) {
-        res = await fetch(`${REMOTE_AUTH_URL}?action=create-user`, {
+        const fallbackRes = await fetch(`${REMOTE_AUTH_URL}?action=create-user`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -161,15 +179,23 @@ class AuthService {
           },
           body: JSON.stringify(input)
         }).catch(() => null);
+
+        if (fallbackRes && fallbackRes.ok) {
+          res = fallbackRes;
+        }
       }
 
       if (!res) {
         return { success: false, error: 'Network error: could not contact auth server.' };
       }
 
-      const data = await res.json();
-      if (!res.ok || data.error) {
-        return { success: false, error: data.error || 'Could not create portal user.' };
+      const { data, error: parseError } = await parseJsonResponse(res);
+      if (parseError) {
+        return { success: false, error: parseError };
+      }
+
+      if (!res.ok || data?.error) {
+        return { success: false, error: data?.error || 'Could not create portal user.' };
       }
 
       return { success: true };
@@ -196,7 +222,7 @@ class AuthService {
       }).catch(() => null);
 
       if (!res || !res.ok) {
-        res = await fetch(`${REMOTE_AUTH_URL}?action=verify`, {
+        const fallbackRes = await fetch(`${REMOTE_AUTH_URL}?action=verify`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -204,11 +230,15 @@ class AuthService {
           },
           body: JSON.stringify({ token })
         }).catch(() => null);
+
+        if (fallbackRes && fallbackRes.ok) {
+          res = fallbackRes;
+        }
       }
 
       if (res && res.ok) {
-        const data = await res.json();
-        if (data.valid && data.user) {
+        const { data } = await parseJsonResponse(res);
+        if (data && data.valid && data.user) {
           this.currentSession = {
             token,
             expiresAt: data.expiresAt,

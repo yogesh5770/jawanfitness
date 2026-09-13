@@ -33,9 +33,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  const client = await getDbPool().connect();
-
+  let client: any = null;
   try {
+    client = await getDbPool().connect();
     await client.query(`
       CREATE TABLE IF NOT EXISTS gym_sync_state (
         id TEXT PRIMARY KEY DEFAULT 'master',
@@ -96,6 +96,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.error('Supabase PostgreSQL API Error:', err);
     return res.status(500).json({ error: err?.message || 'Database query error' });
   } finally {
-    client.release();
+    if (client) {
+      client.release();
+    }
   }
 }
