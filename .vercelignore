@@ -1,0 +1,16 @@
+# Native Mobile & Build Artifacts
+android/
+*.apk
+*.aab
+dist/
+node_modules/
+.git/
+
+# Dev & Python scripts
+build_exercises.py
+integrate_vital_mp4s.py
+process_exercises.py
+readme_dump.txt
+test_sample.gif
+test_smooth.mp4
+graphify-out/
