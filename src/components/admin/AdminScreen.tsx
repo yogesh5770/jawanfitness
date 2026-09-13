@@ -54,15 +54,15 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
   const [syncState, setSyncState] = useState<AppSyncState>(() => syncedStore.getState());
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
 
-  // Add Client Modal State
+  // Add Client Modal State (Starting from scratch)
   const [isAddClientOpen, setIsAddClientOpen] = useState(false);
-  const [newClientName, setNewClientName] = useState('Arun');
-  const [newClientEmail, setNewClientEmail] = useState('arun.fitness@gmail.com');
-  const [newClientPhone, setNewClientPhone] = useState('+91 98427 12345');
+  const [newClientName, setNewClientName] = useState('');
+  const [newClientEmail, setNewClientEmail] = useState('');
+  const [newClientPhone, setNewClientPhone] = useState('');
   const [newClientHeight, setNewClientHeight] = useState(170);
-  const [newClientStartWeight, setNewClientStartWeight] = useState(108);
-  const [newClientGoal, setNewClientGoal] = useState('Weight Loss');
-  const [newClientGoalWeight, setNewClientGoalWeight] = useState(80);
+  const [newClientStartWeight, setNewClientStartWeight] = useState(75);
+  const [newClientGoal, setNewClientGoal] = useState('Weight Loss & Hypertrophy');
+  const [newClientGoalWeight, setNewClientGoalWeight] = useState(70);
   const [newClientTrainer, setNewClientTrainer] = useState('trainer-ravi');
   const [actionNotice, setActionNotice] = useState<string | null>(null);
 
@@ -110,6 +110,9 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
     });
 
     setIsAddClientOpen(false);
+    setNewClientName('');
+    setNewClientEmail('');
+    setNewClientPhone('');
     setActionNotice(`Client ${newClientName} enrolled! Assigned to ${selectedTrainer.name}.`);
     setTimeout(() => setActionNotice(null), 4000);
   };
@@ -472,8 +475,31 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                 />
               </div>
 
-              {/* Responsive Client Cards for Mobile & Tablet */}
-              <div className="grid grid-cols-1 md:hidden gap-3">
+              {/* Empty State when starting from scratch */}
+              {syncState.clients.length === 0 ? (
+                <div className="p-8 text-center bg-[#0b0f1a] border border-white/10 rounded-2xl space-y-3 my-2">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto text-xl shadow-lg shadow-amber-500/10">
+                    👥
+                  </div>
+                  <h3 className="text-sm font-bold text-white font-display">No Clients Enrolled Yet</h3>
+                  <p className="text-xs text-slate-400 max-w-sm mx-auto leading-relaxed">
+                    Start from scratch by enrolling your first gym client. You can assign them to a coach, define starting metrics, and mission goals.
+                  </p>
+                  <button
+                    onClick={() => {
+                      hapticTap();
+                      setIsAddClientOpen(true);
+                    }}
+                    className="py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-display font-black text-xs inline-flex items-center space-x-1.5 shadow-[0_0_20px_rgba(245,158,11,0.3)] transition-all"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>+ Enroll First Client</span>
+                  </button>
+                </div>
+              ) : (
+                <>
+                  {/* Responsive Client Cards for Mobile & Tablet */}
+                  <div className="grid grid-cols-1 md:hidden gap-3">
                 {syncState.clients
                   .filter((c) => c.name.toLowerCase().includes(clientSearch.toLowerCase()))
                   .map((client) => (
@@ -586,8 +612,10 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                   </tbody>
                 </table>
               </div>
-            </div>
+            </>
           )}
+        </div>
+      )}
 
           {/* TAB 3: 10,000+ COMPREHENSIVE ENGLISH FOOD DATABASE */}
           {activeTab === 'foods' && (

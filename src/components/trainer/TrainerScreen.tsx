@@ -145,10 +145,30 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
   const [foodQuery, setFoodQuery] = useState('');
   const [trainerFoodCategory, setTrainerFoodCategory] = useState('All');
 
-  // Selected client
-  const activeClient = syncState.clients.find((c) => c.id === selectedClientId) || syncState.clients[0];
-  const assignedWorkout = syncState.assignedWorkouts[activeClient.id];
-  const assignedDiet = syncState.assignedDietPlans[activeClient.id];
+  // Selected client with scratch fallback
+  const defaultClientFallback = {
+    id: 'client-none',
+    name: 'No Clients Assigned',
+    email: 'No client enrolled yet',
+    phone: '',
+    heightCm: 0,
+    startingWeightKg: 0,
+    currentWeightKg: 0,
+    goal: 'None',
+    goalWeightKg: 0,
+    trainerId: 'trainer-ravi',
+    trainerName: 'Coach Ravi',
+    status: 'Inactive' as const,
+    firstLoginCompleted: false,
+    gymId: '',
+    workoutAdherence: 0,
+    dietAdherence: 0,
+    lastWorkout: 'Never'
+  };
+
+  const activeClient = syncState.clients.find((c) => c.id === selectedClientId) || syncState.clients[0] || defaultClientFallback;
+  const assignedWorkout = syncState.assignedWorkouts[activeClient.id] || null;
+  const assignedDiet = syncState.assignedDietPlans[activeClient.id] || null;
 
   // Listen to syncedStore
   useEffect(() => {
@@ -161,6 +181,12 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
   // Handle assign workout (Specification Step 5)
   const handleAssignWorkoutToClient = () => {
     hapticTap();
+    if (!activeClient || activeClient.id === 'client-none') {
+      setActionNotice('Please enroll a client first in the Admin console before assigning workouts.');
+      setTimeout(() => setActionNotice(null), 4000);
+      return;
+    }
+
     const newAssigned: AssignedWorkout = {
       id: `asg-${Date.now()}`,
       title: workoutTitle,
@@ -179,6 +205,12 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
   // Handle assign diet (Specification Step 19)
   const handleAssignDietToClient = () => {
     hapticTap();
+    if (!activeClient || activeClient.id === 'client-none') {
+      setActionNotice('Please enroll a client first in the Admin console before assigning diet plans.');
+      setTimeout(() => setActionNotice(null), 4000);
+      return;
+    }
+
     const newPlan: AssignedMealPlan = {
       id: `plan-${Date.now()}`,
       title: dietTitle,

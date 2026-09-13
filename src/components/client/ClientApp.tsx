@@ -29,9 +29,29 @@ export const ClientApp: React.FC = () => {
     return unsub;
   }, []);
 
-  const activeClient = syncState.clients.find((c) => c.id === syncState.activeClientId) || syncState.clients[0];
-  const assignedWorkout = syncState.assignedWorkouts[activeClient.id];
-  const assignedDiet = syncState.assignedDietPlans[activeClient.id];
+  const defaultCadet = {
+    id: 'client-guest',
+    name: 'Cadet',
+    email: 'cadet@jawan.fit',
+    phone: '',
+    heightCm: 170,
+    startingWeightKg: 75.0,
+    currentWeightKg: 75.0,
+    goal: 'General Fitness',
+    goalWeightKg: 70.0,
+    trainerId: 'trainer-ravi',
+    trainerName: 'Coach Ravi',
+    status: 'Active' as const,
+    firstLoginCompleted: false,
+    gymId: 'JAWAN-01',
+    workoutAdherence: 0,
+    dietAdherence: 0,
+    lastWorkout: 'Never'
+  };
+
+  const activeClient = syncState.clients.find((c) => c.id === syncState.activeClientId) || syncState.clients[0] || defaultCadet;
+  const assignedWorkout = syncState.assignedWorkouts[activeClient.id] || null;
+  const assignedDiet = syncState.assignedDietPlans[activeClient.id] || null;
 
   const handleStartAssignedWorkout = () => {
     if (!assignedWorkout) return;
