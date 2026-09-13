@@ -122,8 +122,30 @@ export const RestTimerModal: React.FC<RestTimerModalProps> = ({
           </div>
         </div>
 
+        {/* Quick Interval Presets */}
+        <div className="flex items-center justify-center space-x-1.5 mb-3">
+          {[45, 60, 90, 120, 180].map((secs) => (
+            <button
+              key={secs}
+              onClick={() => {
+                hapticTap();
+                setTotalSeconds(secs);
+                setSecondsRemaining(secs);
+                setIsPaused(false);
+              }}
+              className={`px-2 py-1 rounded-lg text-[10px] font-tech font-bold transition-all ${
+                secondsRemaining === secs
+                  ? 'bg-amber-500 text-black'
+                  : 'bg-slate-800/80 text-slate-300 hover:text-white border border-white/5'
+              }`}
+            >
+              {secs}s
+            </button>
+          ))}
+        </div>
+
         {/* Control Buttons: +30s, Pause/Resume, Skip */}
-        <div className="grid grid-cols-3 gap-2 mt-4">
+        <div className="grid grid-cols-3 gap-2 mt-2">
           <button
             onClick={() => {
               hapticTap();

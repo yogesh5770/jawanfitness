@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Exercise, WorkoutSession, ActiveWorkoutExercise, WorkoutSet } from '../../types';
 import { RestTimerModal } from './RestTimerModal';
 import { WorkoutCompleteModal } from './WorkoutCompleteModal';
+import { PlateCalculatorModal } from './PlateCalculatorModal';
 import { CalorieCalculator } from '../../utils/calorieCalculator';
 import {
   X,
@@ -15,7 +16,8 @@ import {
   Flame,
   Clock,
   Dumbbell,
-  Play
+  Play,
+  Sparkles
 } from 'lucide-react';
 import { hapticTap } from '../../utils/audioHaptics';
 
@@ -46,6 +48,8 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
 
   // Active set index tracking for sequential execution
   const [activeSetIndex, setActiveSetIndex] = useState(0);
+  const [isPlateCalcOpen, setIsPlateCalcOpen] = useState(false);
+  const [activePlateCalcSetIdx, setActivePlateCalcSetIdx] = useState(0);
 
   // Timer counter
   useEffect(() => {
@@ -468,6 +472,34 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
                     </button>
                   </div>
                 </div>
+
+                {/* Live 1RM & Barbell Plate Calculator Button */}
+                <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/5 text-[11px] font-tech">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-slate-400">
+                      Est. 1RM: <strong className="text-amber-400">{Math.round(set.weightKg * (1 + set.reps / 30) * 10) / 10} kg</strong>
+                    </span>
+                    <button
+                      onClick={() => {
+                        hapticTap();
+                        setActivePlateCalcSetIdx(idx);
+                        setIsPlateCalcOpen(true);
+                      }}
+                      className="px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold border border-amber-500/30 flex items-center space-x-1 active:scale-95"
+                      title="Open Olympic Barbell Plate Calculator"
+                    >
+                      <Dumbbell className="w-3 h-3 text-amber-400" />
+                      <span>Plates</span>
+                    </button>
+                  </div>
+
+                  {set.completed && set.reps >= 10 && (
+                    <span className="text-emerald-400 font-bold flex items-center space-x-1 animate-pulse">
+                      <Sparkles className="w-3 h-3" />
+                      <span>+2.5kg Overload Ready</span>
+                    </span>
+                  )}
+                </div>
               </div>
             );
           })}
@@ -531,6 +563,23 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
         <WorkoutCompleteModal
           session={session}
           onFinish={handleFinish}
+        />
+      )}
+
+      {/* 7. Olympic Barbell Plate Calculator Modal */}
+      {isPlateCalcOpen && (
+        <PlateCalculatorModal
+          isOpen={isPlateCalcOpen}
+          initialWeightKg={currentActiveExercise.sets[activePlateCalcSetIdx]?.weightKg || 60}
+          exerciseName={currentExercise.name}
+          onClose={() => setIsPlateCalcOpen(false)}
+          onSelectWeight={(newWeight) => {
+            const targetSet = currentActiveExercise.sets[activePlateCalcSetIdx];
+            if (targetSet) {
+              handleAdjustWeight(activePlateCalcSetIdx, newWeight - targetSet.weightKg);
+            }
+            setIsPlateCalcOpen(false);
+          }}
         />
       )}
     </div>

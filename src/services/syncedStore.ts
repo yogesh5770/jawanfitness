@@ -67,46 +67,13 @@ export interface AppSyncState {
   events: SyncEvent[];
 }
 
-const STORAGE_KEY = 'jawan_fitness_scratch_clean_v1';
+const STORAGE_KEY = 'jawan_fitness_clean_slate_v3';
 
 const DEFAULT_STATE: AppSyncState = {
   clients: [],
   activeClientId: '',
-  trainers: [
-    {
-      id: 'trainer-ravi',
-      name: 'Coach Ravi',
-      email: 'ravi.strength@jawan.fit',
-      phone: '+91 98940 11223',
-      role: 'Senior Strength & Conditioning Specialist',
-      status: 'Active',
-      clientsCount: 0,
-      avgAdherence: 0,
-      avatarUrl: 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?w=200&auto=format&fit=crop&q=80'
-    },
-    {
-      id: 'trainer-vignesh',
-      name: 'Coach Vignesh',
-      email: 'vignesh.head@jawan.fit',
-      phone: '+91 98421 99887',
-      role: 'Head Performance Coach',
-      status: 'Active',
-      clientsCount: 0,
-      avgAdherence: 0,
-      avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80'
-    },
-    {
-      id: 'trainer-suresh',
-      name: 'Coach Suresh',
-      email: 'suresh.conditioning@jawan.fit',
-      phone: '+91 99420 33445',
-      role: 'Conditioning & Mobility Specialist',
-      status: 'Active',
-      clientsCount: 0,
-      avgAdherence: 0
-    }
-  ],
-  activeTrainerId: 'trainer-ravi',
+  trainers: [],
+  activeTrainerId: '',
   assignedWorkouts: {},
   assignedDietPlans: {},
   activeWorkoutSession: null,
@@ -138,8 +105,8 @@ class SyncedStore {
         return {
           ...DEFAULT_STATE,
           ...parsed,
-          clients: parsed.clients || DEFAULT_STATE.clients,
-          trainers: parsed.trainers || DEFAULT_STATE.trainers
+          clients: Array.isArray(parsed.clients) ? parsed.clients : [],
+          trainers: Array.isArray(parsed.trainers) ? parsed.trainers : []
         };
       }
     } catch {
@@ -198,7 +165,109 @@ class SyncedStore {
     this.notify();
   }
 
-  // 1. ADMIN ACTIONS
+  // 1. ADMIN ACTIONS - TRAINER MANAGEMENT
+  public createTrainer(trainerData: Omit<TrainerData, 'id' | 'clientsCount' | 'avgAdherence'>) {
+    const newTrainer: TrainerData = {
+      ...trainerData,
+      id: `trainer-${Date.now()}`,
+      clientsCount: 0,
+      avgAdherence: 0
+    };
+
+    this.state = {
+      ...this.state,
+      trainers: [...this.state.trainers, newTrainer],
+      activeTrainerId: this.state.activeTrainerId || newTrainer.id
+    };
+
+    this.logEvent(
+      'ADMIN',
+      'Trainer Appointed',
+      `Admin added trainer ${newTrainer.name} (${newTrainer.role}, ${newTrainer.email})`,
+      'Admin'
+    );
+    return newTrainer;
+  }
+
+  public deleteTrainer(trainerId: string) {
+    const trainer = this.state.trainers.find((t) => t.id === trainerId);
+    this.state = {
+      ...this.state,
+      trainers: this.state.trainers.filter((t) => t.id !== trainerId),
+      activeTrainerId: this.state.activeTrainerId === trainerId ? (this.state.trainers[0]?.id || '') : this.state.activeTrainerId,
+      // Unassign any clients assigned to this deleted trainer
+      clients: this.state.clients.map((c) =>
+        c.trainerId === trainerId ? { ...c, trainerId: '', trainerName: 'Unassigned' } : c
+      )
+    };
+
+    this.logEvent(
+      'ADMIN',
+      'Trainer Removed',
+      `Admin removed trainer ${trainer?.name || trainerId} from gym staff`,
+      'Admin'
+    );
+  }
+
+  public setActiveTrainer(trainerId: string) {
+    if (this.state.trainers.some((t) => t.id === trainerId) || trainerId === '') {
+      this.state = {
+        ...this.state,
+        activeTrainerId: trainerId
+      };
+      this.notify();
+    }
+  }
+
+  public assignClientToTrainer(clientId: string, trainerId: string) {
+    const trainer = this.state.trainers.find((t) => t.id === trainerId);
+    const client = this.state.clients.find((c) => c.id === clientId);
+
+    this.state = {
+      ...this.state,
+      clients: this.state.clients.map((c) =>
+        c.id === clientId
+          ? {
+              ...c,
+              trainerId: trainer ? trainer.id : '',
+              trainerName: trainer ? trainer.name : 'Unassigned'
+            }
+          : c
+      )
+    };
+
+    this.logEvent(
+      'ADMIN',
+      'Client Assigned to Trainer',
+      `Admin assigned cadet ${client?.name || clientId} to coach ${trainer?.name || 'Unassigned'}`,
+      'Admin'
+    );
+  }
+
+  public deleteClient(clientId: string) {
+    const client = this.state.clients.find((c) => c.id === clientId);
+    const updatedAssignedWorkouts = { ...this.state.assignedWorkouts };
+    delete updatedAssignedWorkouts[clientId];
+    const updatedAssignedDiets = { ...this.state.assignedDietPlans };
+    delete updatedAssignedDiets[clientId];
+
+    this.state = {
+      ...this.state,
+      clients: this.state.clients.filter((c) => c.id !== clientId),
+      activeClientId: this.state.activeClientId === clientId ? (this.state.clients[0]?.id || '') : this.state.activeClientId,
+      assignedWorkouts: updatedAssignedWorkouts,
+      assignedDietPlans: updatedAssignedDiets
+    };
+
+    this.logEvent(
+      'ADMIN',
+      'Client Enrolled Terminated',
+      `Admin removed client ${client?.name || clientId}`,
+      'Admin'
+    );
+  }
+
+  // 1. ADMIN ACTIONS - CLIENT ENROLLMENT
   public createClient(clientData: Omit<ClientData, 'id' | 'workoutAdherence' | 'dietAdherence' | 'lastWorkout' | 'status' | 'firstLoginCompleted'>) {
     const newClient: ClientData = {
       ...clientData,
@@ -227,7 +296,7 @@ class SyncedStore {
     this.logEvent(
       'ADMIN',
       'Client Enrolled',
-      `Admin created client ${newClient.name} (Height: ${newClient.heightCm}cm, Start: ${newClient.startingWeightKg}kg, Goal: ${newClient.goalWeightKg}kg) assigned to ${newClient.trainerName}`,
+      `Admin created client ${newClient.name} (Height: ${newClient.heightCm}cm, Start: ${newClient.startingWeightKg}kg, Goal: ${newClient.goalWeightKg}kg) assigned to ${newClient.trainerName || 'Unassigned'}`,
       'Client'
     );
   }
