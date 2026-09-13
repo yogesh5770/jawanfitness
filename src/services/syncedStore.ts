@@ -567,11 +567,41 @@ class SyncedStore {
     );
   }
 
-  // Reset demo state back to standard Arun baseline
-  public resetToSpecBaseline() {
-    this.state = DEFAULT_STATE;
+  // Complete Wipe to pure scratch (0 trainers, 0 clients, 0 history)
+  public wipeAllDataToScratch() {
+    this.state = {
+      clients: [],
+      activeClientId: '',
+      trainers: [],
+      activeTrainerId: '',
+      assignedWorkouts: {},
+      assignedDietPlans: {},
+      activeWorkoutSession: null,
+      workoutHistory: [],
+      loggedMeals: [],
+      waterMl: 0,
+      isGoogleFitConnected: false,
+      googleFitSteps: 0,
+      weightHistory: [],
+      messages: [],
+      events: []
+    };
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem('jawan_fitness_scratch_clean_v1');
+      localStorage.removeItem('jawan_fitness_spec_v10');
+      localStorage.removeItem('jawan_active_client_id_v1');
+      localStorage.removeItem('jawan_trainer_session_id_v1');
+    } catch {
+      // fallback
+    }
     this.persist();
     this.notify();
+  }
+
+  // Reset demo state back to baseline
+  public resetToSpecBaseline() {
+    this.wipeAllDataToScratch();
   }
 }
 

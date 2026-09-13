@@ -140,6 +140,19 @@ export const AdminApp: React.FC = () => {
               <span>Unlock Admin Console</span>
               <ArrowRight className="w-4 h-4" />
             </button>
+
+            <div className="pt-2 text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  syncedStore.wipeAllDataToScratch();
+                  alert('All local cache wiped to 100% clean scratch state (0 trainers, 0 clients).');
+                }}
+                className="text-[11px] text-slate-500 hover:text-amber-400 underline transition-colors"
+              >
+                Clear all cached data & reset to scratch
+              </button>
+            </div>
           </form>
 
           <div className="mt-6 pt-4 border-t border-white/5 text-center text-xs text-neutral-500">
@@ -211,6 +224,18 @@ export const AdminApp: React.FC = () => {
               <div className="text-[10px] text-neutral-400">Super Admin</div>
             </div>
           </div>
+
+          <button
+            onClick={() => {
+              if (window.confirm('Wipe all gym data to 100% clean scratch state (0 trainers, 0 clients)?')) {
+                syncedStore.wipeAllDataToScratch();
+              }
+            }}
+            title="Reset Gym to Pure Scratch (0 trainers, 0 clients)"
+            className="px-2.5 py-1.5 rounded-lg bg-rose-950/30 border border-rose-500/30 hover:bg-rose-900/40 text-rose-300 text-xs font-bold transition-colors ml-1 hidden sm:flex items-center space-x-1"
+          >
+            <span>Wipe to Scratch</span>
+          </button>
 
           <button
             onClick={handleLogout}
