@@ -227,7 +227,7 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
       <div className="bg-[#0c101a] border-b border-white/10 px-4 py-3 flex items-center justify-between flex-shrink-0 pt-safe">
         <div>
           <span className="text-[10px] font-tech uppercase tracking-wider text-amber-500 font-bold block">
-            LIVE CADET WORKOUT
+            LIVE WORKOUT
           </span>
           <h2 className="text-sm sm:text-base font-black text-white font-display truncate max-w-[200px] sm:max-w-xs">
             {session.routineName}
@@ -536,14 +536,20 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
           </button>
         ) : (
           <button
+            disabled={!allExercisesCompleted}
             onClick={() => {
+              if (!allExercisesCompleted) return;
               hapticTap();
               setShowCompletionModal(true);
             }}
-            className="flex-1 py-3.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 text-black font-display font-black text-xs uppercase tracking-wider flex items-center justify-center space-x-2 shadow-[0_0_20px_rgba(16,185,129,0.4)] active:scale-95 transition-all"
+            className={`flex-1 py-3.5 px-4 rounded-xl font-display font-black text-xs uppercase tracking-wider flex items-center justify-center space-x-2 transition-all ${
+              allExercisesCompleted
+                ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 text-black shadow-[0_0_20px_rgba(16,185,129,0.4)] active:scale-95'
+                : 'bg-slate-800 text-slate-500 cursor-not-allowed border border-white/10'
+            }`}
           >
             <Check className="w-4 h-4 stroke-[3]" />
-            <span>Complete Session 🎉</span>
+            <span>{allExercisesCompleted ? 'Complete Session' : 'Finish All Sets'}</span>
           </button>
         )}
       </div>

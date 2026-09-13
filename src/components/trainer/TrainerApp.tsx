@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { TrainerScreen } from './TrainerScreen';
 import {
-  Dumbbell,
   Users,
   Award,
   CalendarCheck,
@@ -10,12 +9,11 @@ import {
   Smartphone,
   ExternalLink,
   ShieldCheck,
-  ArrowRight,
-  LogOut,
-  UserCheck
+  LogOut
 } from 'lucide-react';
 import { navigateToRole } from '../../services/appRouter';
-import { syncedStore, AppSyncState, TrainerData } from '../../services/syncedStore';
+import { syncedStore, AppSyncState } from '../../services/syncedStore';
+import { authService } from '../../services/authService';
 import { hapticTap } from '../../utils/audioHaptics';
 
 export const TrainerApp: React.FC = () => {
@@ -23,6 +21,13 @@ export const TrainerApp: React.FC = () => {
   const [activeTrainerId, setActiveTrainerId] = useState<string>(() => {
     return localStorage.getItem('jawan_trainer_session_id_v1') || '';
   });
+
+  const [loginIdentifier, setLoginIdentifier] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [showQuickList, setShowQuickList] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const unsub = syncedStore.subscribe((newState) => {
@@ -43,8 +48,51 @@ export const TrainerApp: React.FC = () => {
     syncedStore.setActiveTrainer(id);
   };
 
+  const handleTrainerLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError(null);
+    const identifier = loginIdentifier.trim();
+    const password = loginPassword;
+
+    if (!identifier || !password) {
+      setLoginError('Please enter both your User ID / Email and Password.');
+      return;
+    }
+
+    setIsLoading(true);
+    const result = await authService.login(identifier, password, 'TRAINER', true);
+    setIsLoading(false);
+
+    if (!result.success || !result.user) {
+      setLoginError(result.error || 'Trainer login failed. Please verify the credentials sent on WhatsApp.');
+      return;
+    }
+
+    const verifiedUser = result.user;
+    const latestState = await syncedStore.syncFromCloud();
+    const state = latestState || syncedStore.getState();
+    const cleanDigits = identifier.replace(/\D/g, '');
+    const matched = state.trainers.find((t) => {
+      const matchId = t.loginId && verifiedUser.loginId && t.loginId.toLowerCase() === verifiedUser.loginId.toLowerCase();
+      const matchEmail = t.email && t.email.toLowerCase() === verifiedUser.email.toLowerCase();
+      const matchPhone = cleanDigits && t.phone && t.phone.replace(/\D/g, '').endsWith(cleanDigits);
+      return matchId || matchEmail || matchPhone;
+    });
+
+    if (!matched) {
+      setLoginError('Login succeeded, but no trainer profile is assigned to this account yet.');
+      return;
+    }
+
+    hapticTap();
+    setActiveTrainerId(matched.id);
+    localStorage.setItem('jawan_trainer_session_id_v1', matched.id);
+    syncedStore.setActiveTrainer(matched.id);
+  };
+
   const handleLogout = () => {
     hapticTap();
+    authService.logout();
     setActiveTrainerId('');
     localStorage.removeItem('jawan_trainer_session_id_v1');
   };
@@ -54,12 +102,12 @@ export const TrainerApp: React.FC = () => {
     return (
       <div className="min-h-screen bg-[#05070d] text-white flex flex-col justify-center items-center p-4 relative overflow-hidden font-sans selection:bg-amber-500 selection:text-black">
         {/* Ambient glow */}
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-orange-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="relative w-full max-w-md bg-[#0a0e1a]/90 border border-amber-500/30 rounded-3xl p-6 sm:p-8 backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.8)] text-left animate-in fade-in zoom-in-95 duration-200">
+        <div className="relative w-full max-w-md bg-[#0a0e1a]/95 border border-amber-500/30 rounded-3xl p-6 sm:p-8 backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.85)] text-left animate-in fade-in zoom-in-95 duration-200">
           <div className="flex items-center space-x-3 mb-6">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/20 text-black font-black text-2xl">
-              🏋️
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 p-2 flex items-center justify-center shadow-lg shadow-amber-500/20 flex-shrink-0">
+              <img src="/logo-3d-tight.png" alt="Jawan Fitness" className="w-full h-full object-contain drop-shadow" />
             </div>
             <div>
               <div className="flex items-center space-x-2">
@@ -74,13 +122,13 @@ export const TrainerApp: React.FC = () => {
             </div>
           </div>
 
-          <div className="mb-6 bg-slate-900/60 border border-white/5 p-3.5 rounded-2xl text-xs text-slate-300 space-y-1">
-            <div className="flex items-center space-x-2 text-amber-400 font-bold font-tech uppercase text-[11px]">
+          <div className="mb-5 bg-slate-900/60 border border-white/5 p-3 rounded-2xl text-xs text-slate-300 space-y-1">
+            <div className="flex items-center space-x-1.5 text-amber-400 font-bold font-tech uppercase text-[10px]">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Coach Identification</span>
+              <span>Coach Secure Access</span>
             </div>
-            <p className="text-[11px] text-slate-400">
-              Only appointed staff trainers can access coaching routines and assigned cadets. Once chosen, your session will stay permanently logged in on this device.
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Enter your official Trainer ID or Email and Password provided by the Gym Director via WhatsApp.
             </p>
           </div>
 
@@ -99,45 +147,97 @@ export const TrainerApp: React.FC = () => {
               </button>
             </div>
           ) : (
-            <div className="space-y-3">
-              <label className="text-[11px] font-tech uppercase text-slate-400 font-bold block">
-                Select Your Coach Profile
-              </label>
-              <div className="space-y-2">
-                {syncState.trainers.map((t) => {
-                  const cadetCount = syncState.clients.filter((c) => c.trainerId === t.id).length;
-                  return (
-                    <button
-                      key={t.id}
-                      onClick={() => handleSelectTrainer(t.id)}
-                      className="w-full p-3 bg-slate-900/80 hover:bg-slate-850 border border-white/10 hover:border-amber-500/50 rounded-2xl flex items-center justify-between text-left transition-all group"
-                    >
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 font-bold flex items-center justify-center text-sm">
-                          {t.name.slice(0, 2).toUpperCase()}
-                        </div>
-                        <div>
-                          <div className="font-bold text-white text-sm group-hover:text-amber-400 transition-colors">
-                            {t.name}
-                          </div>
-                          <div className="text-[11px] text-slate-400">{t.role}</div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-[10px] font-tech text-amber-400 font-bold bg-amber-500/10 px-2 py-0.5 rounded">
-                          {cadetCount} Cadets
-                        </span>
-                        <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-amber-400 ml-auto mt-1 transition-transform group-hover:translate-x-0.5" />
-                      </div>
-                    </button>
-                  );
-                })}
+            <form onSubmit={handleTrainerLogin} className="space-y-3.5">
+              {loginError && (
+                <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-300 text-xs flex items-start space-x-2">
+                  <span className="font-bold">Error:</span>
+                  <span>{loginError}</span>
+                </div>
+              )}
+
+              <div>
+                <label className="text-[10px] font-tech uppercase tracking-wider text-slate-400 font-bold block mb-1">
+                  Trainer User ID / Email / Phone
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={loginIdentifier}
+                  onChange={(e) => setLoginIdentifier(e.target.value)}
+                  placeholder="e.g. JWT-1024 or coach.ravi@jawan.fit"
+                  className="w-full bg-slate-900 border border-white/10 focus:border-amber-500 rounded-xl px-3.5 py-2.5 text-white text-xs outline-none transition-colors"
+                />
               </div>
-            </div>
+
+              <div>
+                <label className="text-[10px] font-tech uppercase tracking-wider text-slate-400 font-bold block mb-1">
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    placeholder="Enter password received on WhatsApp"
+                    className="w-full bg-slate-900 border border-white/10 focus:border-amber-500 rounded-xl px-3.5 py-2.5 pr-10 text-white text-xs outline-none transition-colors"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs p-1"
+                  >
+                    {showPassword ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-black font-display font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg shadow-amber-500/20 active:scale-[0.99] mt-2"
+              >
+                {isLoading ? 'Verifying Coach...' : 'Sign In to Coach Portal'}
+              </button>
+
+              {/* Quick Select Accordion for testing */}
+              <div className="pt-3 border-t border-white/5">
+                {import.meta.env.DEV && (
+                  <button
+                    type="button"
+                    onClick={() => setShowQuickList(!showQuickList)}
+                    className="w-full text-center text-[11px] text-slate-400 hover:text-amber-400 transition-colors flex items-center justify-center space-x-1"
+                  >
+                    <span>{showQuickList ? '▲ Hide Registered Coaches' : '▼ Quick One-Tap Sign In (Testing)'}</span>
+                  </button>
+                )}
+
+                {import.meta.env.DEV && showQuickList && (
+                  <div className="mt-2 space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                    {syncState.trainers.map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => handleSelectTrainer(t.id)}
+                        className="w-full p-2.5 bg-slate-900/90 hover:bg-slate-800 border border-white/10 hover:border-amber-500/40 rounded-xl flex items-center justify-between text-left transition-all"
+                      >
+                        <div>
+                          <div className="text-white text-xs font-bold">{t.name}</div>
+                          <div className="text-[10px] text-slate-400 font-tech">ID: {t.loginId || t.phone}</div>
+                        </div>
+                        <span className="text-[10px] font-tech text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded">
+                          Enter &rarr;
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </form>
           )}
 
-          <div className="mt-6 pt-4 border-t border-white/5 text-center text-xs text-neutral-500">
-            Jawan Fitness Platform &copy; 2026 • Persistent Coach Session
+          <div className="mt-5 pt-3 border-t border-white/5 text-center text-[10px] text-neutral-500">
+            Jawan Fitness Platform &copy; 2026 • Verified Coach Session
           </div>
         </div>
       </div>
@@ -149,8 +249,8 @@ export const TrainerApp: React.FC = () => {
       {/* Top Trainer Workspace Header */}
       <header className="h-16 border-b border-neutral-800 bg-neutral-900/90 backdrop-blur-md px-4 sm:px-8 flex items-center justify-between sticky top-0 z-50">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/20 text-black font-black text-xl">
-            🏋️
+          <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 p-1.5 flex items-center justify-center shadow-lg shadow-amber-500/20 flex-shrink-0">
+            <img src="/logo-3d-tight.png" alt="Jawan Fitness" className="w-full h-full object-contain drop-shadow" />
           </div>
           <div>
             <div className="flex items-center space-x-2">
@@ -170,7 +270,7 @@ export const TrainerApp: React.FC = () => {
         <div className="hidden md:flex items-center space-x-6 text-xs text-neutral-300">
           <div className="flex items-center space-x-2">
             <Users className="w-3.5 h-3.5 text-amber-500" />
-            <span className="text-neutral-400">Assigned Cadets:</span>
+            <span className="text-neutral-400">Assigned Clients:</span>
             <span className="font-bold text-white">{myClients.length}</span>
           </div>
           <div className="flex items-center space-x-2 border-l border-neutral-800 pl-6">

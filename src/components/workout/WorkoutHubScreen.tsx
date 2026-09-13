@@ -105,7 +105,7 @@ export const WorkoutHubScreen: React.FC<WorkoutHubScreenProps> = ({
             <span className="text-[10px] font-tech uppercase tracking-widest text-slate-400 font-bold">
               PROGRAMS & SPLITS
             </span>
-            <h3 className="text-base font-black text-white font-display">Cadet Training Splits</h3>
+            <h3 className="text-base font-black text-white font-display">Training Splits</h3>
           </div>
 
           <button

@@ -26,16 +26,16 @@ export const HealthConnectService = {
     };
   },
 
-  async connectGoogleFit(email: string = 'cadet.yogesh@gmail.com'): Promise<GoogleFitState> {
+  async connectGoogleFit(email: string = ''): Promise<GoogleFitState> {
     // Check if device supports Google Fit / Health Connect API or Web Health
     const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     
     // In live phone with Google Fit, pulls actual step sensor / API data
     const newState: GoogleFitState = {
       isConnected: true,
-      steps: 8420, // Synchronized sensor data from connected account
+      steps: 0,
       lastSyncedAt: now,
-      accountEmail: email
+      accountEmail: email || null
     };
 
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));

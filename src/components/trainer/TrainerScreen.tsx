@@ -155,7 +155,7 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
   // Selected client with scratch fallback
   const defaultClientFallback = {
     id: 'client-none',
-    name: 'No Cadet Assigned',
+    name: 'No Client Assigned',
     email: 'Awaiting Admin assignment',
     phone: '',
     heightCm: 0,
@@ -196,7 +196,7 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
   const handleAssignWorkoutToClient = () => {
     hapticTap();
     if (!activeClient || activeClient.id === 'client-none') {
-      setActionNotice('Please wait for Admin to assign cadets to your roster before assigning workouts.');
+      setActionNotice('Please wait for the Gym Director to assign clients to your roster before assigning workouts.');
       setTimeout(() => setActionNotice(null), 4000);
       return;
     }
@@ -220,7 +220,7 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
   const handleAssignDietToClient = () => {
     hapticTap();
     if (!activeClient || activeClient.id === 'client-none') {
-      setActionNotice('Please wait for Admin to assign cadets to your roster before assigning diet plans.');
+      setActionNotice('Please wait for the Gym Director to assign clients to your roster before assigning diet plans.');
       setTimeout(() => setActionNotice(null), 4000);
       return;
     }
@@ -266,7 +266,7 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
               </span>
             </div>
             <p className="text-[10px] sm:text-xs text-slate-400 font-tech truncate">
-              {currentTrainer ? currentTrainer.name : 'Staff Coach'} • {myAssignedClients.length} Assigned Cadets • Live Sync
+              {currentTrainer ? currentTrainer.name : 'Staff Coach'} • {myAssignedClients.length} Assigned Clients • Live Sync
             </p>
           </div>
         </div>
@@ -363,7 +363,7 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
             {/* Active Client Selector Dropdown */}
             <div className="bg-slate-900/80 p-3 rounded-2xl border border-white/10 space-y-1.5">
               <span className="text-[10px] font-tech uppercase text-slate-400 font-bold block">
-                Selected Cadet
+                Selected Client
               </span>
               <select
                 value={selectedClientId}
@@ -371,7 +371,7 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
                 className="w-full bg-[#151a24] text-white font-bold text-xs rounded-xl p-2 border border-white/10 outline-none"
               >
                 {myAssignedClients.length === 0 ? (
-                  <option value="">No Cadets Assigned</option>
+                  <option value="">No Clients Assigned</option>
                 ) : (
                   myAssignedClients.map((c) => (
                     <option key={c.id} value={c.id}>
@@ -437,18 +437,18 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
                   Welcome, {currentTrainer ? currentTrainer.name : 'Coach'} 👋
                 </h2>
                 <p className="text-xs text-slate-400 font-tech">
-                  {currentTrainer ? currentTrainer.role : 'Staff Coach'} • Assigned Cadet Squad Telemetry
+                  {currentTrainer ? currentTrainer.role : 'Staff Coach'} • Assigned Client Roster
                 </p>
               </div>
 
               {/* 3 Metric Cards (100% Real Live State) */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="bg-[#0b0f1a] border border-white/10 rounded-2xl p-5 shadow-lg">
-                  <div className="text-xs text-slate-400 font-tech uppercase">My Assigned Cadets</div>
+                  <div className="text-xs text-slate-400 font-tech uppercase">My Assigned Clients</div>
                   <div className="text-3xl font-black text-white font-display mt-1">{myAssignedClients.length}</div>
                   <div className="text-xs text-emerald-400 font-tech mt-1 truncate">
                     {myAssignedClients.length === 0
-                      ? 'No cadets assigned yet by Admin'
+                      ? 'No clients assigned yet'
                       : myAssignedClients.map((c) => c.name).join(', ')}
                   </div>
                 </div>
@@ -462,7 +462,7 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
                 </div>
 
                 <div className="bg-[#0b0f1a] border border-amber-500/30 rounded-2xl p-5 shadow-lg">
-                  <div className="text-xs text-amber-400 font-tech uppercase">Squad Adherence</div>
+                  <div className="text-xs text-amber-400 font-tech uppercase">Client Adherence</div>
                   <div className="text-3xl font-black text-amber-400 font-display mt-1">
                     {myAssignedClients.length > 0
                       ? Math.round(myAssignedClients.reduce((sum, c) => sum + (c.workoutAdherence || 0), 0) / myAssignedClients.length)
@@ -472,32 +472,32 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
                 </div>
               </div>
 
-              {/* Cadet Follow-up Queue */}
+              {/* Client Follow-up Queue */}
               <div className="bg-[#0b0f1a] border border-white/10 rounded-2xl p-5 shadow-lg space-y-3">
                 <h3 className="text-sm font-bold text-white font-display uppercase tracking-wider">
-                  Assigned Cadet Squad ({myAssignedClients.length})
+                  Assigned Clients ({myAssignedClients.length})
                 </h3>
 
                 {myAssignedClients.length === 0 ? (
                   <div className="py-8 text-center space-y-2">
                     <Users className="w-10 h-10 text-slate-600 mx-auto" />
-                    <h4 className="text-sm font-bold text-white">No Cadets Assigned to Your Roster</h4>
+                    <h4 className="text-sm font-bold text-white">No Clients Assigned to Your Roster</h4>
                     <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                      The Gym Director enrolls and assigns cadets from the Admin Console. Once assigned to you, their profiles, workout plans, and diets will appear here.
+                      The Gym Director enrolls and assigns clients from the Admin Console. Once assigned to you, their profiles, workout plans, and diets will appear here.
                     </p>
                   </div>
                 ) : (
                   <div className="divide-y divide-white/5">
-                    {myAssignedClients.map((cadet) => {
-                      const clientWorkout = syncState.assignedWorkouts[cadet.id];
+                    {myAssignedClients.map((client) => {
+                      const clientWorkout = syncState.assignedWorkouts[client.id];
                       return (
-                        <div key={cadet.id} className="py-3 flex items-center justify-between text-xs">
+                        <div key={client.id} className="py-3 flex items-center justify-between text-xs">
                           <div className="flex items-center space-x-3">
                             <div className="w-8 h-8 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold">
-                              {cadet.name.slice(0, 2).toUpperCase()}
+                              {client.name.slice(0, 2).toUpperCase()}
                             </div>
                             <div>
-                              <span className="font-bold text-white text-sm">{cadet.name}</span>
+                              <span className="font-bold text-white text-sm">{client.name}</span>
                               <div className="text-slate-400 text-xs">
                                 {clientWorkout ? `Assigned: ${clientWorkout.title}` : 'Workout pending assignment'}
                               </div>
@@ -505,12 +505,12 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
                           </div>
                           <div className="flex items-center space-x-3">
                             <span className="text-emerald-400 font-tech font-bold">
-                              {cadet.workoutAdherence || 0}% Adherence
+                              {client.workoutAdherence || 0}% Adherence
                             </span>
                             <button
                               onClick={() => {
                                 hapticTap();
-                                setSelectedClientId(cadet.id);
+                                setSelectedClientId(client.id);
                                 setActiveTab('builder_workout');
                               }}
                               className="px-3 py-1.5 rounded-lg bg-amber-500 text-black font-bold text-xs"
@@ -527,17 +527,17 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
             </div>
           )}
 
-          {/* SUB-VIEW 2: CLIENT PROFILE (Specification Step 27 overview) */}
+          {/* SUB-VIEW 2: CLIENT PROFILE */}
           {activeTab === 'clients' && (
             <div className="space-y-6 animate-fadeIn">
               <div className="bg-[#0b0f1a] border border-amber-500/30 rounded-2xl p-5 shadow-lg space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-xl font-black text-white font-display">{activeClient.name} (Cadet)</h2>
+                    <h2 className="text-xl font-black text-white font-display">{activeClient.name}</h2>
                     <p className="text-xs text-slate-400">{activeClient.email} • {activeClient.phone}</p>
                   </div>
                   <span className="text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full font-tech font-bold">
-                    {activeClient.status} Mission
+                    {activeClient.status} Member
                   </span>
                 </div>
 
@@ -588,16 +588,16 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
             </div>
           )}
 
-          {/* SUB-VIEW 3: WORKOUT BUILDER (Specification Step 5) */}
+          {/* SUB-VIEW 3: WORKOUT BUILDER */}
           {activeTab === 'builder_workout' && (
             <div className="space-y-5 animate-fadeIn">
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-lg font-black text-white font-display">
-                    Prescribe Workout Routine (Specification Step 5)
+                    Prescribe Workout Routine
                   </h2>
                   <p className="text-xs text-slate-400">
-                    Target Cadet: <span className="text-white font-bold">{activeClient.name}</span>
+                    Client: <span className="text-white font-bold">{activeClient.name}</span>
                   </p>
                 </div>
 
@@ -699,16 +699,16 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
             </div>
           )}
 
-          {/* SUB-VIEW 4: DIET BUILDER (Specification Step 19) */}
+          {/* SUB-VIEW 4: DIET BUILDER */}
           {activeTab === 'builder_diet' && (
             <div className="space-y-5 animate-fadeIn">
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-lg font-black text-white font-display">
-                    Prescribe Tamil Nadu Nutrition (Specification Step 19)
+                    Prescribe Nutrition Plan
                   </h2>
                   <p className="text-xs text-slate-400">
-                    Target Cadet: <span className="text-white font-bold">{activeClient.name}</span>
+                    Client: <span className="text-white font-bold">{activeClient.name}</span>
                   </p>
                 </div>
 
@@ -812,16 +812,16 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
             </div>
           )}
 
-          {/* SUB-VIEW 5: COMPLETED WORKOUT INSPECTOR (Specification Steps 17 & 18) */}
+          {/* SUB-VIEW 5: COMPLETED WORKOUT INSPECTOR */}
           {activeTab === 'history' && (
             <div className="space-y-5 animate-fadeIn">
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-lg font-black text-white font-display">
-                    Workout Execution Review & Adherence (Specification Steps 17–18)
+                    Workout Execution & Adherence Review
                   </h2>
                   <p className="text-xs text-slate-400">
-                    Cadet Arun performed set-by-set telemetry.
+                    Live member telemetry, recorded reps, weights and set logs.
                   </p>
                 </div>
               </div>

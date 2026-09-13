@@ -6,8 +6,6 @@ import {
   ChatMessage,
   WeightRecord
 } from '../types';
-import { ExerciseService } from './exerciseService';
-
 export interface ClientData {
   id: string;
   name: string;
@@ -26,6 +24,8 @@ export interface ClientData {
   workoutAdherence: number;
   dietAdherence: number;
   lastWorkout: string;
+  loginId?: string;
+  temporaryPassword?: string;
 }
 
 export interface TrainerData {
@@ -38,6 +38,8 @@ export interface TrainerData {
   clientsCount: number;
   avgAdherence: number;
   avatarUrl?: string;
+  loginId?: string;
+  temporaryPassword?: string;
 }
 
 export interface SyncEvent {
@@ -67,7 +69,9 @@ export interface AppSyncState {
   events: SyncEvent[];
 }
 
-const STORAGE_KEY = 'jawan_fitness_clean_slate_v3';
+import { cloudDbService } from './cloudDatabaseService';
+
+const STORAGE_KEY = 'jawan_fitness_clean_slate_v4';
 
 const DEFAULT_STATE: AppSyncState = {
   clients: [],
@@ -92,9 +96,49 @@ type Listener = (state: AppSyncState) => void;
 class SyncedStore {
   private state: AppSyncState;
   private listeners: Set<Listener> = new Set();
+  private cloudPushTimeout: any = null;
 
   constructor() {
+    this.purgeLegacyKeys();
     this.state = this.loadInitialState();
+    this.syncFromCloud();
+  }
+
+  private purgeLegacyKeys() {
+    try {
+      localStorage.removeItem('jawan_fitness_spec_v10');
+      localStorage.removeItem('jawan_fitness_scratch_clean_v1');
+      localStorage.removeItem('jawan_fitness_clean_slate_v2');
+      localStorage.removeItem('jawan_fitness_clean_slate_v3');
+    } catch {
+      // fallback
+    }
+  }
+
+  public async syncFromCloud(): Promise<AppSyncState | null> {
+    try {
+      const cloudData = await cloudDbService.fetchStateFromCloud();
+      if (cloudData) {
+        this.state = {
+          ...this.state,
+          ...cloudData,
+          clients: Array.isArray(cloudData.clients) ? cloudData.clients : [],
+          trainers: Array.isArray(cloudData.trainers) ? cloudData.trainers : []
+        };
+        this.persist();
+        this.listeners.forEach((listener) => {
+          try {
+            listener(this.state);
+          } catch (err) {
+            console.error('Listener error in SyncedStore:', err);
+          }
+        });
+        return this.state;
+      }
+    } catch (err) {
+      console.warn('Cloud sync on init skipped:', err);
+    }
+    return null;
   }
 
   private loadInitialState(): AppSyncState {
@@ -123,8 +167,16 @@ class SyncedStore {
     }
   }
 
+  private pushToCloudDebounced() {
+    if (this.cloudPushTimeout) clearTimeout(this.cloudPushTimeout);
+    this.cloudPushTimeout = setTimeout(() => {
+      cloudDbService.pushStateToCloud(this.state);
+    }, 400);
+  }
+
   private notify() {
     this.persist();
+    this.pushToCloudDebounced();
     this.listeners.forEach((listener) => {
       try {
         listener(this.state);
@@ -167,9 +219,12 @@ class SyncedStore {
 
   // 1. ADMIN ACTIONS - TRAINER MANAGEMENT
   public createTrainer(trainerData: Omit<TrainerData, 'id' | 'clientsCount' | 'avgAdherence'>) {
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
     const newTrainer: TrainerData = {
       ...trainerData,
       id: `trainer-${Date.now()}`,
+      loginId: trainerData.loginId || `JWT-${randomSuffix}`,
+      temporaryPassword: trainerData.temporaryPassword || `Coach@${randomSuffix}`,
       clientsCount: 0,
       avgAdherence: 0
     };
@@ -239,7 +294,7 @@ class SyncedStore {
     this.logEvent(
       'ADMIN',
       'Client Assigned to Trainer',
-      `Admin assigned cadet ${client?.name || clientId} to coach ${trainer?.name || 'Unassigned'}`,
+      `Admin assigned member ${client?.name || clientId} to coach ${trainer?.name || 'Unassigned'}`,
       'Admin'
     );
   }
@@ -269,9 +324,12 @@ class SyncedStore {
 
   // 1. ADMIN ACTIONS - CLIENT ENROLLMENT
   public createClient(clientData: Omit<ClientData, 'id' | 'workoutAdherence' | 'dietAdherence' | 'lastWorkout' | 'status' | 'firstLoginCompleted'>) {
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
     const newClient: ClientData = {
       ...clientData,
       id: `client-${Date.now()}`,
+      loginId: clientData.loginId || `JWM-${randomSuffix}`,
+      temporaryPassword: clientData.temporaryPassword || `Fit@${randomSuffix}`,
       status: 'Active',
       workoutAdherence: 0,
       dietAdherence: 0,
@@ -296,9 +354,30 @@ class SyncedStore {
     this.logEvent(
       'ADMIN',
       'Client Enrolled',
-      `Admin created client ${newClient.name} (Height: ${newClient.heightCm}cm, Start: ${newClient.startingWeightKg}kg, Goal: ${newClient.goalWeightKg}kg) assigned to ${newClient.trainerName || 'Unassigned'}`,
+      `Admin created client ${newClient.name} (ID: ${newClient.loginId}) assigned to ${newClient.trainerName || 'Unassigned'}`,
       'Client'
     );
+    return newClient;
+  }
+
+  public updateTrainerCredentials(trainerId: string, loginId: string, temporaryPassword: string) {
+    this.state = {
+      ...this.state,
+      trainers: this.state.trainers.map((t) =>
+        t.id === trainerId ? { ...t, loginId, temporaryPassword } : t
+      )
+    };
+    this.notify();
+  }
+
+  public updateClientCredentials(clientId: string, loginId: string, temporaryPassword: string) {
+    this.state = {
+      ...this.state,
+      clients: this.state.clients.map((c) =>
+        c.id === clientId ? { ...c, loginId, temporaryPassword } : c
+      )
+    };
+    this.notify();
   }
 
   public setActiveClient(clientId: string) {
@@ -495,7 +574,7 @@ class SyncedStore {
     this.notify();
   }
 
-  public toggleGoogleFit(connected: boolean, steps: number = 8420) {
+  public toggleGoogleFit(connected: boolean, steps: number = 0) {
     this.state = {
       ...this.state,
       isGoogleFitConnected: connected,
@@ -507,7 +586,7 @@ class SyncedStore {
       'CLIENT',
       connected ? 'Google Fit Connected' : 'Google Fit Disconnected',
       connected
-        ? `${client?.name || 'Client'} synced live pedometer steps: ${steps.toLocaleString()} steps`
+        ? `${client?.name || 'Client'} connected Google Fit. Steps will stay 0 until a live Health Connect integration provides data.`
         : `${client?.name || 'Client'} disconnected Google Fit. Steps reset strictly to 0 (zero fabrication)`,
       'Activity'
     );

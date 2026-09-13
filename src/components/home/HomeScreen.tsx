@@ -408,7 +408,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
             <p className="text-[10px] text-slate-400 mt-1 leading-tight">
               {isGoogleFitConnected
-                ? 'Synced live from Google Fit • cadet.yogesh@gmail.com'
+                ? 'Connected. Waiting for live Health Connect steps.'
                 : 'Zero fabrication: Connect Google Fit to show live steps'}
             </p>
 

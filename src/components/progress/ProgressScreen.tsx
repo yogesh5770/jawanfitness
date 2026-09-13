@@ -5,11 +5,17 @@ import { hapticTap } from '../../utils/audioHaptics';
 
 interface ProgressScreenProps {
   weightHistory: WeightRecord[];
+  startingWeightKg: number;
+  goalWeightKg: number;
+  currentWeightKg: number;
   onLogWeight: (weight: number) => void;
 }
 
 export const ProgressScreen: React.FC<ProgressScreenProps> = ({
   weightHistory,
+  startingWeightKg,
+  goalWeightKg,
+  currentWeightKg,
   onLogWeight
 }) => {
   const [newWeightInput, setNewWeightInput] = useState('');
@@ -17,9 +23,9 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
   const [sliderPosition, setSliderPosition] = useState(50); // 0 to 100%
 
   // Current and goal metrics
-  const startingWeight = 108.0;
-  const goalWeight = 80.0;
-  const currentWeight = weightHistory.length > 0 ? weightHistory[weightHistory.length - 1].weightKg : 103.6;
+  const startingWeight = startingWeightKg;
+  const goalWeight = goalWeightKg;
+  const currentWeight = weightHistory.length > 0 ? weightHistory[weightHistory.length - 1].weightKg : currentWeightKg;
 
   const totalToLose = startingWeight - goalWeight;
   const lostSoFar = startingWeight - currentWeight;
@@ -57,7 +63,7 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
             <span className="text-[10px] font-tech uppercase tracking-widest text-amber-500 font-bold">
               WEIGHT TRANSFORMATION
             </span>
-            <h3 className="text-base font-black text-white font-display">Target: 80.0 kg</h3>
+            <h3 className="text-base font-black text-white font-display">Target: {goalWeight.toFixed(1)} kg</h3>
           </div>
           <button
             onClick={() => setIsLoggingWeight(!isLoggingWeight)}
@@ -242,7 +248,7 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
               className="absolute inset-0 w-[340px] sm:w-[500px] h-full object-cover max-w-none pointer-events-none"
             />
             <span className="absolute top-3 left-3 bg-black/80 backdrop-blur px-2.5 py-1 rounded-xl text-xs font-black text-amber-400 font-tech border border-amber-500/30">
-              DAY 1 (108 kg)
+              DAY 1 ({startingWeight.toFixed(0)} kg)
             </span>
           </div>
 

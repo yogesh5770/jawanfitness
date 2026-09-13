@@ -28,7 +28,7 @@ export const CalorieCalculator = {
     durationMinutes = 0,
     exerciseCategory = 'General',
     totalVolumeKg = 0,
-    completedSets = 0
+    completedSets: _completedSets = 0
   }: CalorieParameters): number {
     if (durationMinutes <= 0) return 0;
 

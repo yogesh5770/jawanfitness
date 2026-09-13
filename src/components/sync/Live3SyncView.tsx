@@ -139,7 +139,7 @@ export const Live3SyncView: React.FC<Live3SyncViewProps> = ({ onSelectFullView }
             <div className="bg-slate-900/80 border border-white/5 rounded-2xl p-3.5 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="font-tech uppercase text-[10px] text-slate-400 font-bold">
-                  Enrolled Cadets ({syncState.clients.length})
+                  Enrolled Members ({syncState.clients.length})
                 </span>
                 <span className="text-[10px] text-emerald-400 font-tech">Salem HQ</span>
               </div>
@@ -229,7 +229,7 @@ export const Live3SyncView: React.FC<Live3SyncViewProps> = ({ onSelectFullView }
               <span className="text-base">🧑‍🏫</span>
               <div>
                 <h3 className="text-xs font-black text-white font-display">TRAINER DASHBOARD (COACH RAVI)</h3>
-                <span className="text-[9px] text-slate-400 font-tech">Target Cadet: {activeClient.name}</span>
+                <span className="text-[9px] text-slate-400 font-tech">Selected Member: {activeClient.name}</span>
               </div>
             </div>
 
@@ -244,10 +244,10 @@ export const Live3SyncView: React.FC<Live3SyncViewProps> = ({ onSelectFullView }
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
-            {/* Active Cadet Telemetry Card */}
+            {/* Active Member Telemetry Card */}
             <div className="bg-[#0e1422] border border-amber-500/30 rounded-2xl p-4 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="font-bold text-white text-sm">{activeClient.name} (Cadet #01)</span>
+                <span className="font-bold text-white text-sm">{activeClient.name} (Member)</span>
                 <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded font-tech font-bold">
                   {activeClient.status}
                 </span>

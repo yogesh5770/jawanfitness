@@ -4,7 +4,7 @@ import {
   Exercise,
   ActiveWorkoutExercise
 } from '../../types';
-import { syncedStore, AppSyncState, ClientData } from '../../services/syncedStore';
+import { syncedStore, AppSyncState } from '../../services/syncedStore';
 import { ExerciseService } from '../../services/exerciseService';
 import { HomeScreen } from '../home/HomeScreen';
 import { WorkoutHubScreen } from '../workout/WorkoutHubScreen';
@@ -16,8 +16,9 @@ import { ActiveWorkoutModal } from '../workout/ActiveWorkoutModal';
 import { FirstLoginModal } from '../onboarding/FirstLoginModal';
 import { IOSInstallBanner } from '../common/IOSInstallBanner';
 import { hapticTap } from '../../utils/audioHaptics';
-import { Users, ArrowRight, Sparkles, LogOut, Smartphone } from 'lucide-react';
+import { Users, Sparkles, LogOut } from 'lucide-react';
 import { navigateToRole } from '../../services/appRouter';
+import { authService } from '../../services/authService';
 
 export const ClientApp: React.FC = () => {
   const [clientTab, setClientTab] = useState<TabType>('home');
@@ -27,6 +28,13 @@ export const ClientApp: React.FC = () => {
   const [persistedClientId, setPersistedClientId] = useState<string>(() => {
     return localStorage.getItem('jawan_active_client_id_v1') || '';
   });
+
+  const [loginIdentifier, setLoginIdentifier] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [showQuickList, setShowQuickList] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const unsub = syncedStore.subscribe((newState) => {
@@ -44,13 +52,56 @@ export const ClientApp: React.FC = () => {
     syncedStore.setActiveClient(clientId);
   };
 
+  const handleClientLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError(null);
+    const identifier = loginIdentifier.trim();
+    const password = loginPassword;
+
+    if (!identifier || !password) {
+      setLoginError('Please enter your Member ID (or Phone) and Password.');
+      return;
+    }
+
+    setIsLoading(true);
+    const result = await authService.login(identifier, password, 'CLIENT', true);
+    setIsLoading(false);
+
+    if (!result.success || !result.user) {
+      setLoginError(result.error || 'Member login failed. Please verify the credentials received on WhatsApp.');
+      return;
+    }
+
+    const verifiedUser = result.user;
+    const latestState = await syncedStore.syncFromCloud();
+    const state = latestState || syncedStore.getState();
+    const cleanDigits = identifier.replace(/\D/g, '');
+    const matched = state.clients.find((c) => {
+      const matchId = c.loginId && verifiedUser.loginId && c.loginId.toLowerCase() === verifiedUser.loginId.toLowerCase();
+      const matchEmail = c.email && c.email.toLowerCase() === verifiedUser.email.toLowerCase();
+      const matchPhone = cleanDigits && c.phone && c.phone.replace(/\D/g, '').endsWith(cleanDigits);
+      return matchId || matchEmail || matchPhone;
+    });
+
+    if (!matched) {
+      setLoginError('Login succeeded, but no member profile is assigned to this account yet.');
+      return;
+    }
+
+    hapticTap();
+    setPersistedClientId(matched.id);
+    localStorage.setItem('jawan_active_client_id_v1', matched.id);
+    syncedStore.setActiveClient(matched.id);
+  };
+
   const handleLogoutClient = () => {
     hapticTap();
+    authService.logout();
     setPersistedClientId('');
     localStorage.removeItem('jawan_active_client_id_v1');
   };
 
-  // If no cadet logged in or no profile chosen, show Cadet Access Gate
+  // If no member logged in or no profile chosen, show Member Access Gate
   if (!activeClient) {
     return (
       <div className="min-h-screen bg-[#04060a] text-white flex flex-col justify-center items-center p-4 relative overflow-hidden font-sans selection:bg-amber-500 selection:text-black">
@@ -58,33 +109,33 @@ export const ClientApp: React.FC = () => {
 
         <div className="relative w-full max-w-sm bg-[#090d16]/95 border border-amber-500/30 rounded-3xl p-6 backdrop-blur-xl shadow-2xl text-left animate-in fade-in duration-200">
           <div className="flex items-center space-x-3 mb-5">
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/20 text-black font-black text-xl">
-              ⚔️
+            <div className="w-11 h-11 rounded-2xl bg-amber-500/20 border border-amber-500/40 p-1.5 flex items-center justify-center shadow-lg shadow-amber-500/20 flex-shrink-0">
+              <img src="/logo-3d-tight.png" alt="Jawan Fitness" className="w-full h-full object-contain drop-shadow" />
             </div>
             <div>
               <h1 className="font-display font-black text-lg tracking-wider text-white uppercase">
                 JAWAN <span className="text-amber-500">FITNESS</span>
               </h1>
-              <p className="text-[11px] text-neutral-400">Cadet Portal (Mobile & APK)</p>
+              <p className="text-[11px] text-neutral-400">Member Portal (Mobile & Web)</p>
             </div>
           </div>
 
           <div className="mb-5 bg-slate-900/60 border border-white/5 p-3 rounded-2xl text-xs text-slate-300 space-y-1">
             <div className="flex items-center space-x-1.5 text-amber-400 font-bold font-tech uppercase text-[10px]">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Cadet Identification</span>
+              <span>Member Secure Login</span>
             </div>
-            <p className="text-[11px] text-slate-400">
-              Select your cadet profile to access your custom workouts, diet programs, and coach telemetry. You will stay permanently logged in on this device.
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Enter the User ID or Phone Number and Password received via WhatsApp from the Gym Director.
             </p>
           </div>
 
           {syncState.clients.length === 0 ? (
             <div className="p-5 bg-black/40 border border-dashed border-amber-500/30 rounded-2xl text-center space-y-3">
               <Users className="w-10 h-10 text-amber-400 mx-auto opacity-70" />
-              <h3 className="font-bold text-white text-sm">No Cadets Enrolled Yet</h3>
+              <h3 className="font-bold text-white text-sm">No Members Enrolled Yet</h3>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Your Gym Director must enroll your cadet profile in the Admin Console before you can log in.
+                Your Gym Director must enroll your member profile in the Admin Console before you can log in.
               </p>
               <button
                 onClick={() => navigateToRole('admin')}
@@ -94,37 +145,97 @@ export const ClientApp: React.FC = () => {
               </button>
             </div>
           ) : (
-            <div className="space-y-3">
-              <label className="text-[11px] font-tech uppercase text-slate-400 font-bold block">
-                Select Your Cadet Profile
-              </label>
-              <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-                {syncState.clients.map((client) => (
-                  <button
-                    key={client.id}
-                    onClick={() => handleSelectClient(client.id)}
-                    className="w-full p-3 bg-slate-900/80 hover:bg-slate-800 border border-white/10 hover:border-amber-500/50 rounded-2xl flex items-center justify-between text-left transition-all group"
-                  >
-                    <div>
-                      <div className="font-bold text-white text-sm group-hover:text-amber-400 transition-colors">
-                        {client.name}
-                      </div>
-                      <div className="text-[11px] text-slate-400">
-                        Coach: <span className="text-slate-200">{client.trainerName || 'Unassigned'}</span>
-                      </div>
-                      <div className="text-[10px] text-amber-400 font-tech mt-0.5">
-                        {client.currentWeightKg} kg • Target: {client.goalWeightKg} kg
-                      </div>
-                    </div>
-                    <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-amber-400 transition-transform group-hover:translate-x-0.5" />
-                  </button>
-                ))}
+            <form onSubmit={handleClientLogin} className="space-y-3.5">
+              {loginError && (
+                <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-300 text-xs flex items-start space-x-2">
+                  <span className="font-bold">Error:</span>
+                  <span>{loginError}</span>
+                </div>
+              )}
+
+              <div>
+                <label className="text-[10px] font-tech uppercase tracking-wider text-slate-400 font-bold block mb-1">
+                  Member ID / Phone / Email
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={loginIdentifier}
+                  onChange={(e) => setLoginIdentifier(e.target.value)}
+                  placeholder="e.g. JWM-1024 or 9842012345"
+                  className="w-full bg-slate-900 border border-white/10 focus:border-amber-500 rounded-xl px-3.5 py-2.5 text-white text-xs outline-none transition-colors"
+                />
               </div>
-            </div>
+
+              <div>
+                <label className="text-[10px] font-tech uppercase tracking-wider text-slate-400 font-bold block mb-1">
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    placeholder="Enter password from WhatsApp"
+                    className="w-full bg-slate-900 border border-white/10 focus:border-amber-500 rounded-xl px-3.5 py-2.5 pr-10 text-white text-xs outline-none transition-colors"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs p-1"
+                  >
+                    {showPassword ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-black font-display font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg shadow-amber-500/20 active:scale-[0.99] mt-2"
+              >
+                {isLoading ? 'Verifying Member...' : 'Log In to Jawan Fitness'}
+              </button>
+
+              {/* Quick Select Accordion for testing */}
+              <div className="pt-3 border-t border-white/5">
+                {import.meta.env.DEV && (
+                  <button
+                    type="button"
+                    onClick={() => setShowQuickList(!showQuickList)}
+                    className="w-full text-center text-[11px] text-slate-400 hover:text-amber-400 transition-colors flex items-center justify-center space-x-1"
+                  >
+                    <span>{showQuickList ? '▲ Hide Enrolled Members' : '▼ Quick One-Tap Log In (Testing)'}</span>
+                  </button>
+                )}
+
+                {import.meta.env.DEV && showQuickList && (
+                  <div className="mt-2 space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                    {syncState.clients.map((client) => (
+                      <button
+                        key={client.id}
+                        type="button"
+                        onClick={() => handleSelectClient(client.id)}
+                        className="w-full p-2.5 bg-slate-900/90 hover:bg-slate-800 border border-white/10 hover:border-amber-500/40 rounded-xl flex items-center justify-between text-left transition-all"
+                      >
+                        <div>
+                          <div className="text-white text-xs font-bold">{client.name}</div>
+                          <div className="text-[10px] text-slate-400 font-tech">ID: {client.loginId || client.phone}</div>
+                        </div>
+                        <span className="text-[10px] font-tech text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded">
+                          Enter &rarr;
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </form>
           )}
 
-          <div className="mt-5 pt-3 border-t border-white/5 text-center text-[11px] text-neutral-500">
-            Jawan Fitness Platform &copy; 2026 • Persistent Cadet Session
+          <div className="mt-5 pt-3 border-t border-white/5 text-center text-[10px] text-neutral-500">
+            Jawan Fitness &copy; 2026 • Verified Member Session
           </div>
         </div>
       </div>
@@ -192,7 +303,7 @@ export const ClientApp: React.FC = () => {
     <div className="min-h-screen bg-[#04060a] text-slate-100 flex flex-col items-center justify-center p-0 sm:p-4 font-sans select-none">
       {/* Mobile viewport frame for Desktop / 100% full screen on Mobile & APK */}
       <div className="w-full sm:max-w-md h-screen sm:h-[880px] bg-[#07090e] text-slate-100 flex flex-col sm:rounded-[44px] sm:border-4 sm:border-slate-800 relative overflow-hidden shadow-[0_25px_70px_rgba(0,0,0,0.9)] text-left">
-        {/* Top Status Bar with Cadet Name, Assigned Coach, and Logout */}
+        {/* Top Status Bar with Member Name, Assigned Coach, and Logout */}
         <header className="px-4 pt-3 pb-2.5 flex items-center justify-between bg-[#0c101a] border-b border-white/5 sticky top-0 z-40">
           <div className="flex items-center space-x-2.5">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center text-black font-black text-xs shadow-md shadow-amber-500/20">
@@ -200,7 +311,7 @@ export const ClientApp: React.FC = () => {
             </div>
             <div>
               <h3 className="text-xs font-black text-white tracking-wider uppercase font-display">
-                JAWAN <span className="text-amber-500">CADET</span>
+                JAWAN <span className="text-amber-500">MEMBER</span>
               </h3>
               <span className="text-[10px] text-neutral-400 font-medium block truncate max-w-[170px]">
                 {activeClient.name} • Coach: {activeClient.trainerName || 'None'}
@@ -216,7 +327,7 @@ export const ClientApp: React.FC = () => {
 
             <button
               onClick={handleLogoutClient}
-              title="Switch Cadet Profile"
+              title="Switch Member Profile"
               className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
             >
               <LogOut className="w-3.5 h-3.5" />
@@ -298,6 +409,9 @@ export const ClientApp: React.FC = () => {
           {clientTab === 'progress' && (
             <ProgressScreen
               weightHistory={syncState.weightHistory}
+              startingWeightKg={activeClient.startingWeightKg}
+              goalWeightKg={activeClient.goalWeightKg}
+              currentWeightKg={activeClient.currentWeightKg}
               onLogWeight={(w) => syncedStore.logWeight(w)}
             />
           )}

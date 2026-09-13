@@ -57,7 +57,7 @@ export const FirstLoginModal: React.FC<FirstLoginModalProps> = ({
           <div className="space-y-4">
             <div className="flex items-center space-x-2 text-xs font-tech font-bold uppercase tracking-wider text-amber-400">
               <Sparkles className="w-4 h-4" />
-              <span>Cadet First-Time Onboarding</span>
+              <span>Member Onboarding</span>
             </div>
 
             <div>

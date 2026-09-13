@@ -40,7 +40,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
                 PRO
               </span>
             </div>
-            <p className="text-[10px] text-slate-400 font-medium">Salem Cadet Training OS</p>
+            <p className="text-[10px] text-slate-400 font-medium">Salem Training Headquarters</p>
           </div>
         </div>
 
@@ -55,7 +55,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
           <span className="text-[10px] font-tech font-bold uppercase px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-slate-300">
             {activeRole === 'client' && 'Client'}
             {activeRole === 'trainer' && 'Trainer'}
-            {activeRole === 'admin' && '👑 Admin'}
+            {activeRole === 'admin' && 'Admin'}
           </span>
         </div>
       </div>

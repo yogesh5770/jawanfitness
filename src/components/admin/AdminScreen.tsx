@@ -17,12 +17,20 @@ import {
   UserCheck,
   UserPlus,
   RefreshCw,
-  Award
+  Award,
+  LogOut,
+  Database,
+  MessageCircle,
+  Key,
+  Lock
 } from 'lucide-react';
 import { ExerciseService } from '../../services/exerciseService';
 import { FoodService } from '../../data/foodDatabase';
 import { syncedStore, AppSyncState, ClientData, TrainerData } from '../../services/syncedStore';
+import { authService } from '../../services/authService';
 import { hapticTap } from '../../utils/audioHaptics';
+import { CredentialShareModal } from './CredentialShareModal';
+import { CredentialInfo } from '../../utils/credentialUtils';
 
 type AdminTab =
   | 'dashboard'
@@ -37,21 +45,28 @@ interface AdminScreenProps {
   onSwitchToClient?: () => void;
   onSwitchToTrainer?: () => void;
   onSwitchToSyncView?: () => void;
+  onLogout?: () => void;
 }
 
 export const AdminScreen: React.FC<AdminScreenProps> = ({
   onSwitchToClient,
   onSwitchToTrainer,
-  onSwitchToSyncView
+  onSwitchToSyncView,
+  onLogout
 }) => {
   const [syncState, setSyncState] = useState<AppSyncState>(() => syncedStore.getState());
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
+
+  // Active WhatsApp / Credential Dispatch Modal State
+  const [activeCredentialModal, setActiveCredentialModal] = useState<CredentialInfo | null>(null);
 
   // Add Client Modal State
   const [isAddClientOpen, setIsAddClientOpen] = useState(false);
   const [newClientName, setNewClientName] = useState('');
   const [newClientEmail, setNewClientEmail] = useState('');
   const [newClientPhone, setNewClientPhone] = useState('');
+  const [newClientLoginId, setNewClientLoginId] = useState('');
+  const [newClientPassword, setNewClientPassword] = useState('');
   const [newClientHeight, setNewClientHeight] = useState(170);
   const [newClientStartWeight, setNewClientStartWeight] = useState(75);
   const [newClientGoal, setNewClientGoal] = useState('Weight Loss & Hypertrophy');
@@ -63,7 +78,8 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
   const [newTrainerName, setNewTrainerName] = useState('');
   const [newTrainerEmail, setNewTrainerEmail] = useState('');
   const [newTrainerPhone, setNewTrainerPhone] = useState('');
-  const [newTrainerRole, setNewTrainerRole] = useState('Senior Strength & Conditioning Coach');
+  const [newTrainerLoginId, setNewTrainerLoginId] = useState('');
+  const [newTrainerPassword, setNewTrainerPassword] = useState('');
 
   // Reassign Client Modal State
   const [reassigningClient, setReassigningClient] = useState<ClientData | null>(null);
@@ -106,25 +122,73 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
     setTimeout(() => setActionNotice(null), 4000);
   };
 
+  const openAddTrainerModal = () => {
+    hapticTap();
+    const suffix = Math.floor(1000 + Math.random() * 9000);
+    setNewTrainerLoginId(`JWT-${suffix}`);
+    setNewTrainerPassword(`Coach@${suffix}`);
+    setIsAddTrainerOpen(true);
+  };
+
+  const openAddClientModal = () => {
+    hapticTap();
+    const suffix = Math.floor(1000 + Math.random() * 9000);
+    setNewClientLoginId(`JWM-${suffix}`);
+    setNewClientPassword(`Fit@${suffix}`);
+    setIsAddClientOpen(true);
+  };
+
   // ADMIN ACTION: Appoint New Trainer
-  const handleCreateTrainer = (e: React.FormEvent) => {
+  const handleCreateTrainer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTrainerName.trim()) return;
     hapticTap();
+
+    const fallbackSuffix = Math.floor(1000 + Math.random() * 9000);
+    const assignedLoginId = newTrainerLoginId.trim() || `JWT-${fallbackSuffix}`;
+    const assignedPassword = newTrainerPassword.trim() || `Coach@${fallbackSuffix}`;
 
     const created = syncedStore.createTrainer({
       name: newTrainerName.trim(),
       email: newTrainerEmail.trim() || `${newTrainerName.toLowerCase().replace(/\s+/g, '')}@jawan.fit`,
       phone: newTrainerPhone.trim() || '+91 98765 43210',
-      role: newTrainerRole.trim(),
-      status: 'Active'
+      role: 'Staff Trainer',
+      status: 'Active',
+      loginId: assignedLoginId,
+      temporaryPassword: assignedPassword
+    });
+
+    const portalUser = await authService.createPortalUser({
+      email: created.email,
+      password: assignedPassword,
+      name: created.name,
+      role: 'TRAINER',
+      phone: created.phone,
+      loginId: assignedLoginId
     });
 
     setIsAddTrainerOpen(false);
     setNewTrainerName('');
     setNewTrainerEmail('');
     setNewTrainerPhone('');
-    showNotification(`Trainer ${created.name} successfully appointed to coaching staff!`);
+    setNewTrainerLoginId('');
+    setNewTrainerPassword('');
+    showNotification(
+      portalUser.success
+        ? `Trainer ${created.name} appointed! Official credentials ready.`
+        : `Trainer saved locally, but backend login failed: ${portalUser.error}`
+    );
+
+    // Automatically open WhatsApp & Credential dispatch modal!
+    setActiveCredentialModal({
+      name: created.name,
+      phone: created.phone,
+      email: created.email,
+      role: 'TRAINER',
+      loginId: created.loginId || assignedLoginId,
+      temporaryPassword: created.temporaryPassword || assignedPassword,
+      portalUrl: 'https://jawan-fitness-trainer.vercel.app'
+    });
   };
 
   // ADMIN ACTION: Remove Trainer
@@ -137,14 +201,17 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
   };
 
   // ADMIN ACTION: Enroll Client
-  const handleCreateClient = (e: React.FormEvent) => {
+  const handleCreateClient = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newClientName.trim()) return;
     hapticTap();
 
     const selectedTrainer = syncState.trainers.find((t) => t.id === newClientTrainer);
+    const fallbackSuffix = Math.floor(1000 + Math.random() * 9000);
+    const assignedLoginId = newClientLoginId.trim() || `JWM-${fallbackSuffix}`;
+    const assignedPassword = newClientPassword.trim() || `Fit@${fallbackSuffix}`;
 
-    syncedStore.createClient({
+    const created = syncedStore.createClient({
       name: newClientName.trim(),
       email: newClientEmail.trim() || `${newClientName.toLowerCase().replace(/\s+/g, '')}@gmail.com`,
       phone: newClientPhone.trim() || '+91 98420 12345',
@@ -155,16 +222,43 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
       goalWeightKg: newClientGoalWeight,
       trainerId: selectedTrainer ? selectedTrainer.id : '',
       trainerName: selectedTrainer ? selectedTrainer.name : 'Unassigned',
-      gymId: 'JAWAN-SALEM-01'
+      gymId: 'JAWAN-SALEM-01',
+      loginId: assignedLoginId,
+      temporaryPassword: assignedPassword
+    });
+
+    const portalUser = await authService.createPortalUser({
+      email: created.email,
+      password: assignedPassword,
+      name: created.name,
+      role: 'CLIENT',
+      phone: created.phone,
+      loginId: assignedLoginId
     });
 
     setIsAddClientOpen(false);
     setNewClientName('');
     setNewClientEmail('');
     setNewClientPhone('');
+    setNewClientLoginId('');
+    setNewClientPassword('');
     showNotification(
-      `Client ${newClientName} enrolled! ${selectedTrainer ? `Assigned to ${selectedTrainer.name}.` : 'No trainer assigned yet.'}`
+      portalUser.success
+        ? `Member ${created.name} enrolled! Official credentials ready.`
+        : `Member saved locally, but backend login failed: ${portalUser.error}`
     );
+
+    // Automatically open WhatsApp & Credential dispatch modal!
+    setActiveCredentialModal({
+      name: created.name,
+      phone: created.phone,
+      email: created.email,
+      role: 'CLIENT',
+      loginId: created.loginId || assignedLoginId,
+      temporaryPassword: created.temporaryPassword || assignedPassword,
+      portalUrl: 'https://jawan-fitness-app.vercel.app',
+      assignedCoach: created.trainerName
+    });
   };
 
   // ADMIN ACTION: Remove Client
@@ -184,7 +278,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
 
     syncedStore.assignClientToTrainer(reassigningClient.id, selectedTrainerForReassign);
     const trainer = syncState.trainers.find((t) => t.id === selectedTrainerForReassign);
-    showNotification(`Cadet ${reassigningClient.name} assigned to ${trainer ? trainer.name : 'Unassigned'}.`);
+    showNotification(`Member ${reassigningClient.name} assigned to ${trainer ? trainer.name : 'Unassigned'}.`);
     setReassigningClient(null);
   };
 
@@ -224,8 +318,8 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
       {/* 1. TOP RESPONSIVE ADMIN HEADER */}
       <header className="w-full bg-[#0a0e18] border-b border-white/10 px-3 sm:px-6 py-2.5 sm:py-3.5 flex flex-wrap items-center justify-between sticky top-0 z-40 backdrop-blur-xl gap-2">
         <div className="flex items-center space-x-2.5 sm:space-x-4">
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 font-black text-base sm:text-lg shadow">
-            👑
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-amber-500/20 border border-amber-500/40 p-1.5 flex items-center justify-center shadow flex-shrink-0">
+            <img src="/logo-3d-tight.png" alt="Jawan Fitness" className="w-full h-full object-contain drop-shadow" />
           </div>
           <div>
             <div className="flex items-center space-x-1.5 sm:space-x-2">
@@ -235,40 +329,51 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
               <span className="text-[9px] sm:text-[10px] bg-amber-500 text-black px-1.5 py-0.5 rounded font-tech font-extrabold uppercase">
                 HQ
               </span>
-              <span className="hidden sm:inline-flex text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded font-tech font-bold items-center space-x-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span>Zero Billing Platform</span>
+              <span className="hidden sm:inline-flex text-[10px] bg-amber-500/10 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded font-tech font-bold items-center space-x-1">
+                <span>Enterprise OS</span>
               </span>
             </div>
             <p className="text-[10px] sm:text-xs text-slate-400 font-tech truncate">
-              Director Master Console • Admin-Only Authority
+              Headquarters Management Console
             </p>
           </div>
         </div>
 
         {/* Global Action Switchers & Actions */}
         <div className="flex items-center space-x-2">
+          {/* Live Cloud DB indicator */}
+          <div className="hidden md:flex items-center space-x-1.5 px-2.5 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[11px] font-tech font-bold">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <Database className="w-3 h-3" />
+            <span>Cloud DB: Synced</span>
+          </div>
+
           <button
-            onClick={() => {
-              hapticTap();
-              setIsAddTrainerOpen(true);
-            }}
+            onClick={openAddTrainerModal}
             className="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border border-amber-500/40 text-xs font-bold font-tech flex items-center space-x-1.5 transition-all"
           >
             <ShieldCheck className="w-3.5 h-3.5" />
-            <span>+ Add Trainer</span>
+            <span>+ Appoint Trainer</span>
           </button>
 
           <button
-            onClick={() => {
-              hapticTap();
-              setIsAddClientOpen(true);
-            }}
+            onClick={openAddClientModal}
             className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-black font-tech flex items-center space-x-1.5 transition-all shadow"
           >
             <UserPlus className="w-3.5 h-3.5" />
-            <span>+ Enroll Client</span>
+            <span>+ Enroll Member</span>
           </button>
+
+          {/* Logout button */}
+          {onLogout && (
+            <button
+              onClick={onLogout}
+              title="Lock Console (Logout)"
+              className="p-1.5 rounded-xl bg-slate-800 hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 border border-white/5 transition-all"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          )}
 
           {/* Mobile Menu Hamburger */}
           <button
@@ -342,10 +447,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
 
           <div className="pt-4 border-t border-white/5 space-y-2">
             <button
-              onClick={() => {
-                hapticTap();
-                setIsAddTrainerOpen(true);
-              }}
+              onClick={openAddTrainerModal}
               className="w-full py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-amber-500/30 text-amber-400 font-tech font-bold text-xs uppercase tracking-wider flex items-center justify-center space-x-1.5 transition-all"
             >
               <ShieldCheck className="w-4 h-4" />
@@ -353,10 +455,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
             </button>
 
             <button
-              onClick={() => {
-                hapticTap();
-                setIsAddClientOpen(true);
-              }}
+              onClick={openAddClientModal}
               className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-black font-display font-black text-xs uppercase tracking-wider flex items-center justify-center space-x-1.5 shadow transition-all"
             >
               <Plus className="w-4 h-4 stroke-[3]" />
@@ -374,14 +473,14 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                 <div className="bg-[#0b0f1a] border border-white/10 rounded-2xl p-3.5 sm:p-5 shadow-lg">
                   <div className="flex items-center justify-between text-[10px] sm:text-xs text-slate-400 font-tech uppercase">
-                    <span>Enrolled Clients</span>
+                    <span>Total Members</span>
                     <Users className="w-4 h-4 text-amber-400" />
                   </div>
                   <div className="text-2xl sm:text-3xl font-black text-white font-display mt-1">
                     {syncState.clients.length}
                   </div>
                   <div className="text-[10px] sm:text-xs text-emerald-400 font-tech mt-0.5">
-                    {syncState.clients.length === 0 ? 'No clients enrolled yet' : `${syncState.clients.length} Active Cadets`}
+                    {syncState.clients.length === 0 ? 'No members registered' : `${syncState.clients.length} Active Members`}
                   </div>
                 </div>
 
@@ -422,43 +521,37 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                     {avgAdherence}%
                   </div>
                   <div className="text-[10px] sm:text-xs text-slate-400 font-tech mt-0.5">
-                    Overall Squad Compliance
+                    Overall Member Compliance
                   </div>
                 </div>
               </div>
 
               {/* Dynamic Gym Squad Overview */}
               {syncState.clients.length === 0 ? (
-                <div className="bg-[#0b0f1a] border border-dashed border-amber-500/30 rounded-3xl p-8 text-center space-y-4">
-                  <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-3xl mx-auto">
-                    🏋️‍♂️
+                <div className="bg-[#0b0f1a] border border-white/10 rounded-2xl p-6 sm:p-8 text-center space-y-4 shadow-xl">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 mx-auto shadow-inner">
+                    <Users className="w-6 h-6" />
                   </div>
-                  <div className="max-w-md mx-auto space-y-1">
-                    <h3 className="text-lg font-bold text-white font-display">Clean Gym Registry (0 Static Data)</h3>
+                  <div className="max-w-md mx-auto space-y-1.5">
+                    <h3 className="text-base font-bold text-white font-display">Member Directory</h3>
                     <p className="text-xs text-slate-400 leading-relaxed">
-                      All static demo profiles have been purged. As the Director, begin by appointing your trainers, then enroll clients and assign them to coaches.
+                      No members are currently enrolled. Appoint trainers and enroll members to begin assigning workouts, nutrition plans, and tracking attendance.
                     </p>
                   </div>
-                  <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                  <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
                     <button
-                      onClick={() => {
-                        hapticTap();
-                        setIsAddTrainerOpen(true);
-                      }}
-                      className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-amber-500/40 text-amber-400 font-bold text-xs flex items-center space-x-2"
+                      onClick={openAddTrainerModal}
+                      className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-amber-500/30 text-amber-400 font-bold text-xs flex items-center space-x-2 transition-all shadow"
                     >
                       <ShieldCheck className="w-4 h-4" />
-                      <span>Step 1: Appoint Staff Trainer</span>
+                      <span>Appoint Trainer</span>
                     </button>
                     <button
-                      onClick={() => {
-                        hapticTap();
-                        setIsAddClientOpen(true);
-                      }}
-                      className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs flex items-center space-x-2"
+                      onClick={openAddClientModal}
+                      className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs flex items-center space-x-2 transition-all shadow"
                     >
                       <UserPlus className="w-4 h-4" />
-                      <span>Step 2: Enroll Client</span>
+                      <span>Enroll Member</span>
                     </button>
                   </div>
                 </div>
@@ -467,29 +560,29 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2 text-xs font-tech font-bold uppercase text-amber-400">
                       <Sparkles className="w-4 h-4" />
-                      <span>Active Cadets Quick Telemetry</span>
+                      <span>Active Members Quick Overview</span>
                     </div>
                     <span className="text-[10px] sm:text-xs font-tech bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full font-bold">
-                      {syncState.clients.length} Total Enrolled
+                      {syncState.clients.length} Enrolled
                     </span>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {syncState.clients.slice(0, 6).map((cadet) => (
-                      <div key={cadet.id} className="bg-slate-900/60 p-3.5 rounded-xl border border-white/5 space-y-2">
+                    {syncState.clients.slice(0, 6).map((member) => (
+                      <div key={member.id} className="bg-slate-900/60 p-3.5 rounded-xl border border-white/5 space-y-2">
                         <div className="flex items-center justify-between">
-                          <h4 className="font-bold text-white text-sm">{cadet.name}</h4>
+                          <h4 className="font-bold text-white text-sm">{member.name}</h4>
                           <span className="text-[10px] font-tech text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded">
-                            {cadet.currentWeightKg} kg
+                            {member.currentWeightKg} kg
                           </span>
                         </div>
                         <div className="text-xs text-slate-400 flex items-center justify-between">
-                          <span>Coach: <span className="text-slate-200 font-semibold">{cadet.trainerName || 'None'}</span></span>
+                          <span>Coach: <span className="text-slate-200 font-semibold">{member.trainerName || 'Unassigned'}</span></span>
                           <button
                             onClick={() => {
                               hapticTap();
-                              setReassigningClient(cadet);
-                              setSelectedTrainerForReassign(cadet.trainerId || (syncState.trainers[0]?.id || ''));
+                              setReassigningClient(member);
+                              setSelectedTrainerForReassign(member.trainerId || (syncState.trainers[0]?.id || ''));
                             }}
                             className="text-[10px] text-amber-400 hover:underline font-tech font-bold"
                           >
@@ -558,14 +651,11 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                     Staff Trainers & Coaching Roster
                   </h2>
                   <p className="text-xs text-slate-400">
-                    Admin-only authority: Appoint coaches, monitor assigned cadet volume, and manage staff credentials.
+                    Admin-only authority: Appoint coaches, monitor assigned member volume, and manage staff credentials.
                   </p>
                 </div>
                 <button
-                  onClick={() => {
-                    hapticTap();
-                    setIsAddTrainerOpen(true);
-                  }}
+                  onClick={openAddTrainerModal}
                   className="px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-black font-display font-black text-xs uppercase tracking-wider rounded-xl flex items-center space-x-1.5 shadow self-start sm:self-auto"
                 >
                   <Plus className="w-4 h-4 stroke-[3]" />
@@ -581,10 +671,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                     Appoint your first personal trainer or strength coach. They will receive credentials to build workouts and diets on the Trainer PWA.
                   </p>
                   <button
-                    onClick={() => {
-                      hapticTap();
-                      setIsAddTrainerOpen(true);
-                    }}
+                    onClick={openAddTrainerModal}
                     className="px-4 py-2 bg-amber-500 text-black font-bold text-xs rounded-xl"
                   >
                     + Appoint First Trainer
@@ -593,7 +680,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {syncState.trainers.map((trainer) => {
-                    const assignedCadets = syncState.clients.filter((c) => c.trainerId === trainer.id);
+                    const assignedMembers = syncState.clients.filter((c) => c.trainerId === trainer.id);
                     return (
                       <div
                         key={trainer.id}
@@ -633,15 +720,15 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
 
                         <div className="p-3 bg-black/40 rounded-xl border border-white/5 space-y-2">
                           <div className="flex items-center justify-between text-xs">
-                            <span className="text-slate-400 font-tech uppercase text-[10px]">Assigned Cadets</span>
-                            <span className="font-bold text-amber-400 font-tech">{assignedCadets.length} Active</span>
+                            <span className="text-slate-400 font-tech uppercase text-[10px]">Assigned Members</span>
+                            <span className="font-bold text-amber-400 font-tech">{assignedMembers.length} Active</span>
                           </div>
 
-                          {assignedCadets.length === 0 ? (
-                            <p className="text-[11px] text-slate-500 italic">No cadets assigned yet</p>
+                          {assignedMembers.length === 0 ? (
+                            <p className="text-[11px] text-slate-500 italic">No members assigned yet</p>
                           ) : (
                             <div className="flex flex-wrap gap-1">
-                              {assignedCadets.map((c) => (
+                              {assignedMembers.map((c) => (
                                 <span
                                   key={c.id}
                                   className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-md font-medium"
@@ -651,6 +738,33 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                               ))}
                             </div>
                           )}
+                        </div>
+
+                        {/* WhatsApp Credentials Dispatch Action */}
+                        <div className="pt-2 border-t border-white/5 flex items-center justify-between gap-2">
+                          <div className="text-[10px] font-tech text-slate-400">
+                            ID: <strong className="text-amber-400">{trainer.loginId || trainer.email.split('@')[0]}</strong>
+                          </div>
+                          <button
+                            onClick={() => {
+                              hapticTap();
+                              setActiveCredentialModal({
+                                name: trainer.name,
+                                phone: trainer.phone,
+                                email: trainer.email,
+                                role: 'TRAINER',
+                                loginId: trainer.loginId || trainer.email,
+                                temporaryPassword: trainer.temporaryPassword || '',
+                                portalUrl: 'https://jawan-fitness-trainer.vercel.app'
+                              });
+                            }}
+                            disabled={!trainer.temporaryPassword}
+                            className="px-2.5 py-1.5 bg-[#25D366]/15 hover:bg-[#25D366]/25 border border-[#25D366]/30 text-[#25D366] text-xs font-bold rounded-xl flex items-center space-x-1.5 transition-all"
+                            title={trainer.temporaryPassword ? 'Send login credentials via WhatsApp' : 'Temporary password is no longer available'}
+                          >
+                            <MessageCircle className="w-3.5 h-3.5 fill-current" />
+                            <span>WhatsApp Pass</span>
+                          </button>
                         </div>
                       </div>
                     );
@@ -678,7 +792,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                     <Search className="w-3.5 h-3.5 text-slate-400" />
                     <input
                       type="text"
-                      placeholder="Search cadets..."
+                      placeholder="Search members..."
                       value={clientSearch}
                       onChange={(e) => setClientSearch(e.target.value)}
                       className="bg-transparent text-xs text-white outline-none w-28 sm:w-44"
@@ -686,14 +800,11 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                   </div>
 
                   <button
-                    onClick={() => {
-                      hapticTap();
-                      setIsAddClientOpen(true);
-                    }}
+                    onClick={openAddClientModal}
                     className="px-3.5 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-black font-display font-black text-xs uppercase tracking-wider rounded-xl flex items-center space-x-1 shadow whitespace-nowrap"
                   >
                     <Plus className="w-3.5 h-3.5 stroke-[3]" />
-                    <span>Enroll Client</span>
+                    <span>Enroll Member</span>
                   </button>
                 </div>
               </div>
@@ -701,18 +812,15 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
               {syncState.clients.length === 0 ? (
                 <div className="p-8 bg-[#0b0f1a] border border-dashed border-white/10 rounded-2xl text-center space-y-3">
                   <Users className="w-12 h-12 text-amber-400 mx-auto opacity-70" />
-                  <h4 className="font-bold text-white text-sm">No Clients Enrolled Yet</h4>
+                  <h4 className="font-bold text-white text-sm">No Members Enrolled Yet</h4>
                   <p className="text-xs text-slate-400 max-w-sm mx-auto">
                     Enroll your first gym member. You can enter their starting weight, target goal, and assign them directly to a coach.
                   </p>
                   <button
-                    onClick={() => {
-                      hapticTap();
-                      setIsAddClientOpen(true);
-                    }}
+                    onClick={openAddClientModal}
                     className="px-4 py-2 bg-amber-500 text-black font-bold text-xs rounded-xl"
                   >
-                    + Enroll First Client
+                    + Enroll First Member
                   </button>
                 </div>
               ) : (
@@ -754,6 +862,31 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                             <span className="text-slate-400">{client.heightCm} cm • {client.currentWeightKg} kg</span>
                             <span className="text-amber-400 font-bold">Target: {client.goalWeightKg} kg</span>
                           </div>
+
+                          {/* WhatsApp Credentials Dispatch Action */}
+                          <div className="flex items-center justify-between text-xs pt-1.5 border-t border-white/5">
+                            <span className="text-[10px] font-tech text-slate-400">ID: <strong className="text-amber-400">{client.loginId || client.phone}</strong></span>
+                            <button
+                              onClick={() => {
+                                hapticTap();
+                                setActiveCredentialModal({
+                                  name: client.name,
+                                  phone: client.phone,
+                                  email: client.email,
+                                  role: 'CLIENT',
+                                  loginId: client.loginId || client.phone || client.email,
+                                  temporaryPassword: client.temporaryPassword || '',
+                                  portalUrl: 'https://jawan-fitness-app.vercel.app',
+                                  assignedCoach: client.trainerName
+                                });
+                              }}
+                              disabled={!client.temporaryPassword}
+                              className="px-2.5 py-1 rounded-lg bg-[#25D366]/15 hover:bg-[#25D366]/25 border border-[#25D366]/30 text-[#25D366] text-xs font-bold flex items-center space-x-1.5 transition-all"
+                            >
+                              <MessageCircle className="w-3.5 h-3.5 fill-current" />
+                              <span>WhatsApp Pass</span>
+                            </button>
+                          </div>
                         </div>
                       ))}
                   </div>
@@ -763,7 +896,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                     <table className="w-full text-left text-xs">
                       <thead className="bg-slate-900/80 border-b border-white/10 text-slate-400 font-tech uppercase text-[10px]">
                         <tr>
-                          <th className="p-4">Cadet Name</th>
+                          <th className="p-4">Member Name</th>
                           <th className="p-4">Assigned Coach</th>
                           <th className="p-4">Biometrics & Goal</th>
                           <th className="p-4">Workout Adherence</th>
@@ -778,7 +911,10 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                             <tr key={client.id} className="hover:bg-white/5 transition-all">
                               <td className="p-4">
                                 <div className="font-bold text-white text-sm">{client.name}</div>
-                                <div className="text-slate-400 text-[11px]">{client.email}</div>
+                                <div className="text-slate-400 text-[11px] flex items-center space-x-1">
+                                  <span>{client.email}</span>
+                                  <span className="text-amber-400/80 font-tech">({client.loginId || client.phone})</span>
+                                </div>
                               </td>
                               <td className="p-4">
                                 <div className="flex items-center space-x-2">
@@ -821,13 +957,36 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                                 </span>
                               </td>
                               <td className="p-4 text-right">
-                                <button
-                                  onClick={() => handleDeleteClient(client.id, client.name)}
-                                  className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"
-                                  title="Delete Client"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
+                                <div className="flex items-center justify-end space-x-1.5">
+                                  <button
+                                    onClick={() => {
+                                      hapticTap();
+                                      setActiveCredentialModal({
+                                        name: client.name,
+                                        phone: client.phone,
+                                        email: client.email,
+                                        role: 'CLIENT',
+                                        loginId: client.loginId || client.phone || client.email,
+                                        temporaryPassword: client.temporaryPassword || '',
+                                        portalUrl: 'https://jawan-fitness-app.vercel.app',
+                                        assignedCoach: client.trainerName
+                                      });
+                                    }}
+                                    disabled={!client.temporaryPassword}
+                                    className="px-2.5 py-1.5 rounded-xl bg-[#25D366]/15 hover:bg-[#25D366]/25 border border-[#25D366]/30 text-[#25D366] text-xs font-bold flex items-center space-x-1.5 transition-all"
+                                    title="Send Credentials via WhatsApp"
+                                  >
+                                    <MessageCircle className="w-3.5 h-3.5 fill-current" />
+                                    <span>WhatsApp Pass</span>
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteClient(client.id, client.name)}
+                                    className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"
+                                    title="Delete Client"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           ))}
@@ -1013,7 +1172,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                   Master Program Templates
                 </h2>
                 <p className="text-xs text-slate-400">
-                  Reusable training blocks available to trainers for 1-click assignment to cadets.
+                  Reusable training blocks available to trainers for 1-click assignment to members.
                 </p>
               </div>
 
@@ -1032,7 +1191,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                     level: 'All Levels'
                   },
                   {
-                    title: 'Full Body Cadet Conditioning',
+                    title: 'Full Body Conditioning & Core',
                     days: '3 Days / Week',
                     focus: 'Metabolic conditioning, stamina & fat burn',
                     level: 'Beginner - Intermediate'
@@ -1166,17 +1325,40 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                 />
               </div>
 
-              <div>
-                <label className="text-slate-400 font-tech uppercase text-[10px] block mb-1 font-bold">
-                  Specialization / Coaching Role
-                </label>
-                <input
-                  type="text"
-                  value={newTrainerRole}
-                  onChange={(e) => setNewTrainerRole(e.target.value)}
-                  placeholder="e.g. Senior Strength & Conditioning Coach"
-                  className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-white outline-none focus:border-amber-500 text-xs"
-                />
+              {/* Auto-generated Credentials Preview */}
+              <div className="p-3 bg-black/60 border border-amber-500/20 rounded-2xl space-y-2">
+                <div className="flex items-center space-x-1.5 text-amber-400 font-tech font-bold text-[10px] uppercase">
+                  <Key className="w-3.5 h-3.5" />
+                  <span>Auto-Generated Credentials</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[9px] text-slate-400 font-tech uppercase block mb-0.5">
+                      Trainer ID
+                    </label>
+                    <input
+                      type="text"
+                      value={newTrainerLoginId}
+                      onChange={(e) => setNewTrainerLoginId(e.target.value)}
+                      className="w-full bg-slate-900 border border-white/10 rounded-xl px-2.5 py-1.5 text-amber-300 font-tech font-bold outline-none text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[9px] text-slate-400 font-tech uppercase block mb-0.5">
+                      Temporary Password
+                    </label>
+                    <input
+                      type="text"
+                      value={newTrainerPassword}
+                      onChange={(e) => setNewTrainerPassword(e.target.value)}
+                      className="w-full bg-slate-900 border border-white/10 rounded-xl px-2.5 py-1.5 text-emerald-300 font-tech font-bold outline-none text-xs"
+                    />
+                  </div>
+                </div>
+                <p className="text-[10px] text-emerald-400/90 flex items-center space-x-1.5 pt-0.5">
+                  <MessageCircle className="w-3.5 h-3.5 text-[#25D366] flex-shrink-0" />
+                  <span>WhatsApp send button will open automatically after appointment.</span>
+                </p>
               </div>
 
               <div className="pt-2">
@@ -1184,7 +1366,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                   type="submit"
                   className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-black font-display font-black text-xs uppercase tracking-wider shadow-lg active:scale-95 transition-all"
                 >
-                  Appoint Trainer to Staff
+                  Appoint Staff Trainer
                 </button>
               </div>
             </form>
@@ -1192,7 +1374,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
         </div>
       )}
 
-      {/* MODAL 2: ENROLL CLIENT (ADMIN ONLY) */}
+      {/* MODAL 2: ENROLL MEMBER (ADMIN ONLY) */}
       {isAddClientOpen && (
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
           <div className="bg-[#0c101a] border border-amber-500/40 rounded-3xl p-5 sm:p-6 w-full max-w-md shadow-2xl space-y-3 sm:space-y-4 text-left max-h-[90vh] overflow-y-auto">
@@ -1200,7 +1382,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
               <div className="flex items-center space-x-2">
                 <Users className="w-5 h-5 text-amber-400" />
                 <h3 className="text-sm sm:text-base font-black text-white font-display">
-                  Enroll Client Profile
+                  Enroll Member
                 </h3>
               </div>
               <button
@@ -1214,7 +1396,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
             <form onSubmit={handleCreateClient} className="space-y-2.5 text-xs">
               <div>
                 <label className="text-slate-400 font-tech uppercase text-[10px] block mb-1 font-bold">
-                  Client Full Name *
+                  Member Full Name *
                 </label>
                 <input
                   type="text"
@@ -1281,12 +1463,13 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-slate-400 font-tech uppercase text-[10px] block mb-1">
-                    Fitness Mission
+                    Fitness Goal
                   </label>
                   <input
                     type="text"
                     value={newClientGoal}
                     onChange={(e) => setNewClientGoal(e.target.value)}
+                    placeholder="e.g. Weight Loss & Fitness"
                     className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-white outline-none focus:border-amber-500 text-xs"
                   />
                 </div>
@@ -1305,13 +1488,13 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
 
               <div>
                 <label className="text-slate-400 font-tech uppercase text-[10px] block mb-1 font-bold">
-                  Assign Staff Coach
+                  Assign Coach
                 </label>
                 {syncState.trainers.length === 0 ? (
-                  <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-400 text-[11px] space-y-1">
-                    <p className="font-bold">No trainers appointed yet.</p>
-                    <p className="text-slate-400">
-                      You can enroll this client now and assign a trainer later, or appoint a trainer first.
+                  <div className="p-3 bg-slate-900 border border-white/10 rounded-xl text-slate-300 text-xs space-y-1">
+                    <p className="font-bold text-amber-400">No coaches appointed yet</p>
+                    <p className="text-slate-400 text-[11px]">
+                      You can enroll this member now and assign a coach anytime from the member directory.
                     </p>
                   </div>
                 ) : (
@@ -1320,14 +1503,50 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                     onChange={(e) => setNewClientTrainer(e.target.value)}
                     className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-white outline-none focus:border-amber-500 font-bold text-xs"
                   >
-                    <option value="">-- Select Coach --</option>
+                    <option value="">-- Select Coach (Optional) --</option>
                     {syncState.trainers.map((t) => (
                       <option key={t.id} value={t.id}>
-                        {t.name} ({t.role})
+                        {t.name}
                       </option>
                     ))}
                   </select>
                 )}
+              </div>
+
+              {/* Auto-generated Credentials Preview */}
+              <div className="p-3 bg-black/60 border border-amber-500/20 rounded-2xl space-y-2">
+                <div className="flex items-center space-x-1.5 text-amber-400 font-tech font-bold text-[10px] uppercase">
+                  <Key className="w-3.5 h-3.5" />
+                  <span>Auto-Generated Credentials</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[9px] text-slate-400 font-tech uppercase block mb-0.5">
+                      Member ID
+                    </label>
+                    <input
+                      type="text"
+                      value={newClientLoginId}
+                      onChange={(e) => setNewClientLoginId(e.target.value)}
+                      className="w-full bg-slate-900 border border-white/10 rounded-xl px-2.5 py-1.5 text-amber-300 font-tech font-bold outline-none text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[9px] text-slate-400 font-tech uppercase block mb-0.5">
+                      Temporary Password
+                    </label>
+                    <input
+                      type="text"
+                      value={newClientPassword}
+                      onChange={(e) => setNewClientPassword(e.target.value)}
+                      className="w-full bg-slate-900 border border-white/10 rounded-xl px-2.5 py-1.5 text-emerald-300 font-tech font-bold outline-none text-xs"
+                    />
+                  </div>
+                </div>
+                <p className="text-[10px] text-emerald-400/90 flex items-center space-x-1.5 pt-0.5">
+                  <MessageCircle className="w-3.5 h-3.5 text-[#25D366] flex-shrink-0" />
+                  <span>WhatsApp send button will open automatically after enrollment.</span>
+                </p>
               </div>
 
               <div className="pt-2">
@@ -1335,7 +1554,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                   type="submit"
                   className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-black font-display font-black text-xs uppercase tracking-wider shadow-lg active:scale-95 transition-all"
                 >
-                  Create Client Account (Status = ACTIVE)
+                  Enroll Member
                 </button>
               </div>
             </form>
@@ -1394,6 +1613,14 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
             </form>
           </div>
         </div>
+      )}
+
+      {/* MODAL 4: CREDENTIAL SHARE & WHATSAPP DISPATCH MODAL */}
+      {activeCredentialModal && (
+        <CredentialShareModal
+          info={activeCredentialModal}
+          onClose={() => setActiveCredentialModal(null)}
+        />
       )}
     </div>
   );

@@ -2,54 +2,87 @@ import React, { useState, useEffect } from 'react';
 import { AdminScreen } from './AdminScreen';
 import {
   ShieldCheck,
-  Users,
-  Dumbbell,
-  Bell,
-  LogOut,
-  ExternalLink,
   Lock,
+  Mail,
   ArrowRight,
-  Sparkles,
+  Loader2,
   CheckCircle2
 } from 'lucide-react';
-import { navigateToRole } from '../../services/appRouter';
-import { syncedStore, AppSyncState } from '../../services/syncedStore';
+import { authService, AuthUser } from '../../services/authService';
 import { hapticTap } from '../../utils/audioHaptics';
 
 export const AdminApp: React.FC = () => {
-  const [syncState, setSyncState] = useState<AppSyncState>(() => syncedStore.getState());
-  // Permanent login state: never logs out unless explicitly chosen
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return localStorage.getItem('jawan_admin_session_active_v1') === 'true';
-  });
-  const [adminEmail, setAdminEmail] = useState('admin@jawan.fit');
-  const [adminPin, setAdminPin] = useState('9999');
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => authService.getUser());
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => authService.isAuthenticated('ADMIN'));
+  const [isVerifying, setIsVerifying] = useState<boolean>(true);
+
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [keepSignedIn, setKeepSignedIn] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
 
+  // On mount: Validate session token with backend Supabase database
   useEffect(() => {
-    const unsub = syncedStore.subscribe((newState) => {
-      setSyncState(newState);
-    });
-    return unsub;
+    let isMounted = true;
+    async function checkBackendSession() {
+      try {
+        const valid = await authService.verifySession();
+        if (isMounted) {
+          setIsAuthenticated(valid && authService.isAuthenticated('ADMIN'));
+          setCurrentUser(authService.getUser());
+        }
+      } catch {
+        if (isMounted) {
+          setIsAuthenticated(authService.isAuthenticated('ADMIN'));
+        }
+      } finally {
+        if (isMounted) {
+          setIsVerifying(false);
+        }
+      }
+    }
+    checkBackendSession();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     hapticTap();
-    if (adminPin === '9999' || adminPin.length >= 4) {
-      localStorage.setItem('jawan_admin_session_active_v1', 'true');
+    setIsLoading(true);
+    setLoginError(null);
+
+    const result = await authService.login(adminEmail, adminPassword, 'ADMIN', keepSignedIn);
+
+    setIsLoading(false);
+    if (result.success && result.user) {
+      setCurrentUser(result.user);
       setIsAuthenticated(true);
-      setLoginError(null);
     } else {
-      setLoginError('Invalid Master Security PIN. (Default PIN: 9999)');
+      setLoginError(result.error || 'Authentication failed. Please check credentials.');
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     hapticTap();
-    localStorage.removeItem('jawan_admin_session_active_v1');
+    await authService.logout();
+    setCurrentUser(null);
     setIsAuthenticated(false);
   };
+
+  // Initial session verification loader
+  if (isVerifying) {
+    return (
+      <div className="min-h-screen bg-[#05070d] text-white flex flex-col justify-center items-center p-4">
+        <div className="flex items-center space-x-3">
+          <Loader2 className="w-5 h-5 text-amber-500 animate-spin" />
+          <span className="text-xs font-tech text-slate-400">Verifying secure Director session...</span>
+        </div>
+      </div>
+    );
+  }
 
   // If not logged in, render the secure Admin Login Gate
   if (!isAuthenticated) {
@@ -59,10 +92,10 @@ export const AdminApp: React.FC = () => {
         <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative w-full max-w-md bg-[#0a0e1a]/90 border border-amber-500/30 rounded-3xl p-6 sm:p-8 backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.8)] text-left animate-in fade-in zoom-in-95 duration-200">
-          {/* Badge & Crown */}
-          <div className="flex items-center space-x-3 mb-6">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/20 text-black font-black text-2xl">
-              👑
+          {/* Logo & Header */}
+          <div className="flex items-center space-x-3.5 mb-6">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 p-2 flex items-center justify-center shadow-lg shadow-amber-500/20 flex-shrink-0">
+              <img src="/logo-3d-tight.png" alt="Jawan Fitness" className="w-full h-full object-contain drop-shadow" />
             </div>
             <div>
               <div className="flex items-center space-x-2">
@@ -77,45 +110,38 @@ export const AdminApp: React.FC = () => {
             </div>
           </div>
 
-          <div className="mb-6 bg-slate-900/60 border border-white/5 p-3.5 rounded-2xl text-xs text-slate-300 space-y-1">
-            <div className="flex items-center space-x-2 text-amber-400 font-bold font-tech uppercase text-[11px]">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Director Authentication</span>
-            </div>
-            <p className="text-[11px] text-slate-400">
-              Only the Admin can appoint trainers, enroll clients, and assign clients to coaches. Your session will stay permanently logged in on this device.
-            </p>
-          </div>
-
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="block text-[11px] font-tech uppercase text-slate-400 mb-1 font-bold">
-                Admin Director Email
+                Director Email
               </label>
-              <input
-                type="email"
-                value={adminEmail}
-                onChange={(e) => setAdminEmail(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-black/50 border border-white/10 focus:border-amber-500 rounded-xl text-white text-sm outline-none transition-all"
-                placeholder="admin@jawan.fit"
-                required
-              />
+              <div className="relative">
+                <input
+                  type="email"
+                  value={adminEmail}
+                  onChange={(e) => setAdminEmail(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-black/50 border border-white/10 focus:border-amber-500 rounded-xl text-white text-sm outline-none transition-all pl-9"
+                  placeholder="admin@jawan.fit"
+                  required
+                />
+                <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+              </div>
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[11px] font-tech uppercase text-slate-400 font-bold">
-                  Master Security PIN
+                  Director Password
                 </label>
-                <span className="text-[10px] font-tech text-amber-400">Default PIN: 9999</span>
+                <span className="text-[10px] font-tech text-slate-500">256-bit Encrypted</span>
               </div>
               <div className="relative">
                 <input
                   type="password"
-                  value={adminPin}
-                  onChange={(e) => setAdminPin(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-black/50 border border-white/10 focus:border-amber-500 rounded-xl text-white text-sm outline-none transition-all pl-9"
-                  placeholder="Enter PIN (9999)"
+                  value={adminPassword}
+                  onChange={(e) => setAdminPassword(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-black/50 border border-white/10 focus:border-amber-500 rounded-xl text-white text-sm outline-none transition-all pl-9 font-mono"
+                  placeholder="••••••••••••"
                   required
                 />
                 <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
@@ -123,40 +149,49 @@ export const AdminApp: React.FC = () => {
             </div>
 
             {loginError && (
-              <div className="p-2.5 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-xs font-medium">
+              <div className="p-2.5 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-xs font-medium animate-in fade-in duration-150">
                 {loginError}
               </div>
             )}
 
-            <div className="flex items-center space-x-2 text-[11px] text-slate-400 pt-1">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
-              <span>Keep permanently logged in on this device (No auto-logout)</span>
+            {/* Standard "Keep me signed in" checkbox */}
+            <div className="pt-1">
+              <label className="flex items-center space-x-2.5 text-xs text-slate-300 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={keepSignedIn}
+                  onChange={(e) => setKeepSignedIn(e.target.checked)}
+                  className="w-4 h-4 rounded bg-slate-900 border-white/20 text-amber-500 focus:ring-amber-500 focus:ring-offset-0 accent-amber-500 cursor-pointer"
+                />
+                <span className="text-slate-300">Keep me signed in on this device</span>
+              </label>
             </div>
 
             <button
               type="submit"
-              className="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-display font-black text-sm uppercase tracking-wider rounded-xl shadow-lg shadow-amber-500/20 flex items-center justify-center space-x-2 transition-all active:scale-98 mt-2"
+              disabled={isLoading}
+              className="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-display font-black text-sm tracking-wider uppercase rounded-xl transition-all shadow-[0_0_25px_rgba(245,158,11,0.25)] hover:shadow-[0_0_35px_rgba(245,158,11,0.45)] flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.99] mt-2"
             >
-              <span>Unlock Admin Console</span>
-              <ArrowRight className="w-4 h-4" />
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-black" />
+                  <span>Verifying Credentials...</span>
+                </>
+              ) : (
+                <>
+                  <span>Sign In to Console</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
             </button>
-
-            <div className="pt-2 text-center">
-              <button
-                type="button"
-                onClick={() => {
-                  syncedStore.wipeAllDataToScratch();
-                  alert('All local cache wiped to 100% clean scratch state (0 trainers, 0 clients).');
-                }}
-                className="text-[11px] text-slate-500 hover:text-amber-400 underline transition-colors"
-              >
-                Clear all cached data & reset to scratch
-              </button>
-            </div>
           </form>
 
-          <div className="mt-6 pt-4 border-t border-white/5 text-center text-xs text-neutral-500">
-            Jawan Fitness Platform &copy; 2026 • Certified Role Isolation
+          <div className="mt-6 pt-4 border-t border-white/5 flex items-center justify-between text-xs text-neutral-500">
+            <span>Jawan Fitness &copy; 2026</span>
+            <span className="flex items-center space-x-1 text-emerald-400 font-tech text-[10px]">
+              <CheckCircle2 className="w-3 h-3" />
+              <span>Encrypted Director Session</span>
+            </span>
           </div>
         </div>
       </div>
@@ -164,110 +199,21 @@ export const AdminApp: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-white flex flex-col font-sans selection:bg-amber-500 selection:text-black">
-      {/* Top Enterprise Admin Bar */}
-      <header className="h-16 border-b border-neutral-800 bg-neutral-900/90 backdrop-blur-md px-4 sm:px-8 flex items-center justify-between sticky top-0 z-50">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/20 text-black font-black text-xl">
-            👑
-          </div>
-          <div>
-            <div className="flex items-center space-x-2">
-              <span className="font-black text-lg tracking-wider text-white uppercase">
-                JAWAN <span className="text-amber-500">ADMIN</span>
-              </span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 font-bold border border-amber-500/20">
-                HEADQUARTERS
-              </span>
-            </div>
-            <p className="text-[11px] text-neutral-400 font-medium">Enterprise Gym Management Console</p>
-          </div>
-        </div>
-
-        {/* Global Quick Telemetry Badges - 100% Real Synchronized Data */}
-        <div className="hidden lg:flex items-center space-x-6 text-xs text-neutral-300">
-          <div className="flex items-center space-x-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span className="text-neutral-400">Database Status:</span>
-            <span className="font-semibold text-emerald-400">Live Synchronized</span>
-          </div>
-          <div className="flex items-center space-x-2 border-l border-neutral-800 pl-6">
-            <Users className="w-3.5 h-3.5 text-amber-500" />
-            <span className="text-neutral-400">Enrolled Clients:</span>
-            <span className="font-bold text-white">{syncState.clients.length}</span>
-          </div>
-          <div className="flex items-center space-x-2 border-l border-neutral-800 pl-6">
-            <Dumbbell className="w-3.5 h-3.5 text-amber-500" />
-            <span className="text-neutral-400">Staff Trainers:</span>
-            <span className="font-bold text-white">{syncState.trainers.length}</span>
-          </div>
-        </div>
-
-        {/* Admin Profile & Actions */}
-        <div className="flex items-center space-x-3">
-          <button
-            title="System Notifications"
-            className="p-2 rounded-lg bg-neutral-800/80 hover:bg-neutral-700 text-neutral-300 transition-colors relative"
-          >
-            <Bell className="w-4 h-4" />
-            {syncState.events.length > 0 && (
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-500"></span>
-            )}
-          </button>
-
-          <div className="flex items-center space-x-2.5 pl-2 border-l border-neutral-800">
-            <div className="w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 font-bold text-xs">
-              AD
-            </div>
-            <div className="hidden sm:block text-left">
-              <div className="text-xs font-bold text-neutral-200">Director Yogesh</div>
-              <div className="text-[10px] text-neutral-400">Super Admin</div>
-            </div>
-          </div>
-
-          <button
-            onClick={() => {
-              if (window.confirm('Wipe all gym data to 100% clean scratch state (0 trainers, 0 clients)?')) {
-                syncedStore.wipeAllDataToScratch();
-              }
-            }}
-            title="Reset Gym to Pure Scratch (0 trainers, 0 clients)"
-            className="px-2.5 py-1.5 rounded-lg bg-rose-950/30 border border-rose-500/30 hover:bg-rose-900/40 text-rose-300 text-xs font-bold transition-colors ml-1 hidden sm:flex items-center space-x-1"
-          >
-            <span>Wipe to Scratch</span>
-          </button>
-
-          <button
-            onClick={handleLogout}
-            title="Exit Session"
-            className="p-2 rounded-lg bg-neutral-800/80 hover:bg-rose-950/40 text-neutral-400 hover:text-rose-400 transition-colors ml-1"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
-        </div>
-      </header>
-
-      {/* Main Admin Body */}
-      <main className="flex-1 max-w-[1700px] w-full mx-auto p-3 sm:p-6 lg:p-8">
-        <AdminScreen />
-      </main>
+    <div className="min-h-screen bg-[#06080e] text-white flex flex-col font-sans selection:bg-amber-500 selection:text-black">
+      <AdminScreen onLogout={handleLogout} />
 
       {/* Enterprise Footer */}
-      <footer className="border-t border-neutral-900 bg-neutral-950 px-4 py-4 text-neutral-500 text-xs flex flex-col sm:flex-row items-center justify-between gap-3">
+      <footer className="border-t border-white/10 bg-[#0a0e18] px-4 py-3 text-neutral-500 text-xs flex flex-col sm:flex-row items-center justify-between gap-2">
         <div className="flex items-center space-x-2">
           <ShieldCheck className="w-4 h-4 text-amber-500" />
-          <span>Jawan Fitness Platform &copy; 2026. Certified Role Isolation: Admin View.</span>
+          <span>
+            Jawan Fitness Headquarters &copy; 2026. Logged in as{' '}
+            <strong className="text-slate-300">{currentUser?.name && !currentUser.name.includes('Yogesh') ? currentUser.name : 'Gym Director'}</strong> ({currentUser?.email || 'admin@jawan.fit'}).
+          </span>
         </div>
 
-        {/* Local Developer Test Bench Shortcut */}
-        <div className="flex items-center space-x-4">
-          <button
-            onClick={() => navigateToRole('dev-sync')}
-            className="text-[11px] text-neutral-400 hover:text-amber-400 flex items-center space-x-1 transition-colors"
-          >
-            <span>Launch Developer Simulator</span>
-            <ExternalLink className="w-3 h-3" />
-          </button>
+        <div className="text-[11px] text-neutral-500 font-tech">
+          <span>Enterprise Management Console • High Security</span>
         </div>
       </footer>
     </div>
