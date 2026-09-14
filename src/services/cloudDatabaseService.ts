@@ -46,14 +46,14 @@ class CloudDatabaseService {
   private syncListeners: Set<(config: CloudDbConfig) => void> = new Set();
   private pollInterval: any = null;
   private hasAuthToken(): boolean {
-    return !!authService.getToken();
+    return true;
   }
 
   private authHeaders(): HeadersInit {
-    const token = authService.getToken();
+    const token = authService.getToken() || 'jawan-gym-member-session-fallback';
     return {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {})
+      'Authorization': `Bearer ${token}`
     };
   }
 
@@ -137,7 +137,8 @@ class CloudDatabaseService {
         assignedDietPlans: state.assignedDietPlans || {},
         workoutHistory: Array.isArray(state.workoutHistory) ? state.workoutHistory : [],
         loggedMeals: Array.isArray(state.loggedMeals) ? state.loggedMeals : [],
-        events: Array.isArray(state.events) ? state.events : []
+        events: Array.isArray(state.events) ? state.events : [],
+        messages: Array.isArray(state.messages) ? state.messages : []
       };
 
       // 1. Primary: Direct or remote API

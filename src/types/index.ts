@@ -198,6 +198,8 @@ export interface ChatMessage {
   text: string;
   timestamp: number;
   read: boolean;
+  clientId?: string;
+  trainerId?: string;
 }
 
 export interface BodyMeasurements {

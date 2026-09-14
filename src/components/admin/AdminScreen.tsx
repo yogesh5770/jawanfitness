@@ -816,6 +816,18 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                           )}
                         </div>
 
+                        {/* Admin Exclusive: Upload / Change Trainer Photo Button */}
+                        <label className="w-full py-2 px-3 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-xl text-amber-400 text-xs font-tech font-bold flex items-center justify-center space-x-2 cursor-pointer transition-all active:scale-95 shadow-sm">
+                          <Camera className="w-3.5 h-3.5 text-amber-400" />
+                          <span>{trainer.avatarUrl ? 'Change Staff Photo' : 'Upload Staff Photo'}</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => handleUpdateExistingTrainerPhoto(trainer.id, e)}
+                          />
+                        </label>
+
                         {/* WhatsApp Credentials Dispatch Action */}
                         <div className="pt-2 border-t border-white/5 flex items-center justify-between gap-2">
                           <div className="text-[10px] font-tech text-slate-400">

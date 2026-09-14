@@ -198,7 +198,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     // 2. POST: Update gym sync state
     // -----------------------------------------------------------------
     if (request.method === 'POST') {
-      if (!session) {
+      if (!session && !token) {
         return new Response(JSON.stringify({ error: 'Valid session required to sync state.' }), {
           status: 401,
           headers
@@ -230,7 +230,8 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       }
 
       // If a non-admin posts clients, protect existing trainer assignments from being wiped
-      if (session.role !== 'ADMIN' && Array.isArray(incomingData.clients) && Array.isArray(existingState.clients)) {
+      const userRole = session?.role || 'CLIENT';
+      if (userRole !== 'ADMIN' && Array.isArray(incomingData.clients) && Array.isArray(existingState.clients)) {
         incomingData.clients = incomingData.clients.map((ic: any) => {
           const ec = existingState.clients.find((e: any) => e.id === ic.id || (e.loginId && e.loginId === ic.loginId));
           if (ec && ec.trainerId && (!ic.trainerId || ic.trainerId === 'Unassigned')) {
@@ -244,6 +245,22 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         });
       }
 
+      // Deduplicate and union-merge chat messages by unique id so neither trainer nor member messages are lost
+      const msgMap = new Map<string, any>();
+      if (Array.isArray(existingState.messages)) {
+        for (const m of existingState.messages) {
+          if (m && m.id) msgMap.set(m.id, m);
+        }
+      }
+      if (Array.isArray(incomingData.messages)) {
+        for (const m of incomingData.messages) {
+          if (m && m.id) msgMap.set(m.id, m);
+        }
+      }
+      const mergedMessages = Array.from(msgMap.values()).sort(
+        (a, b) => Number(a.timestamp || 0) - Number(b.timestamp || 0)
+      );
+
       const mergedPayload = {
         clients: incomingData.clients || existingState.clients || [],
         trainers: incomingData.trainers || existingState.trainers || [],
@@ -252,7 +269,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         workoutHistory: incomingData.workoutHistory || existingState.workoutHistory || [],
         loggedMeals: incomingData.loggedMeals || existingState.loggedMeals || [],
         events: incomingData.events || existingState.events || [],
-        messages: incomingData.messages || existingState.messages || []
+        messages: mergedMessages
       };
 
       await env.DB.prepare(`

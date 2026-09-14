@@ -197,6 +197,17 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
     }
   }, [myAssignedClients, selectedClientId]);
 
+  // Live 2-second cloud sync when trainer has chat open
+  useEffect(() => {
+    if (activeTab === 'chat') {
+      syncedStore.syncFromCloud(true);
+      const interval = setInterval(() => {
+        syncedStore.syncFromCloud(true);
+      }, 2000);
+      return () => clearInterval(interval);
+    }
+  }, [activeTab]);
+
   // Handle assign workout
   const handleAssignWorkoutToClient = () => {
     hapticTap();
@@ -248,25 +259,17 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
     setTimeout(() => setActionNotice(null), 4000);
   };
 
-  const handleUpdateMyPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !currentTrainer) return;
-    try {
-      hapticTap();
-      const compressed = await compressImageFile(file, 360, 0.82);
-      syncedStore.updateTrainer(currentTrainer.id, { avatarUrl: compressed });
-      await syncedStore.forcePushToCloud();
-      setActionNotice('Profile photo updated and synchronized across all portals!');
-      setTimeout(() => setActionNotice(null), 4000);
-    } catch (err) {
-      console.error('Failed to update trainer photo:', err);
-    }
-  };
 
   const handleSendMessage = () => {
-    if (!inputMessage.trim()) return;
+    if (!inputMessage.trim() || !activeClient) return;
     hapticTap();
-    syncedStore.sendMessage('trainer', inputMessage);
+    syncedStore.sendMessage(
+      'trainer',
+      inputMessage.trim(),
+      activeClient.id,
+      currentTrainer?.id || activeTrainerId,
+      currentTrainer?.name || 'Coach'
+    );
     setInputMessage('');
   };
 
@@ -283,13 +286,6 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
                 currentTrainer?.name ? currentTrainer.name.slice(0, 2).toUpperCase() : '🧑‍🏫'
               )}
             </div>
-            <label
-              className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-amber-500 hover:bg-amber-400 text-black flex items-center justify-center cursor-pointer shadow transition-transform active:scale-90"
-              title="Upload / Change Photo"
-            >
-              <Camera className="w-2.5 h-2.5" />
-              <input type="file" accept="image/*" className="hidden" onChange={handleUpdateMyPhoto} />
-            </label>
           </div>
           <div>
             <div className="flex items-center space-x-1.5 sm:space-x-2">
@@ -478,13 +474,6 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
                         currentTrainer?.name ? currentTrainer.name.slice(0, 2).toUpperCase() : 'CO'
                       )}
                     </div>
-                    <label
-                      className="absolute -bottom-1 -right-1 p-1.5 rounded-full bg-amber-500 hover:bg-amber-400 text-black cursor-pointer shadow-lg transition-transform active:scale-90"
-                      title="Upload Photo"
-                    >
-                      <Camera className="w-3.5 h-3.5" />
-                      <input type="file" accept="image/*" className="hidden" onChange={handleUpdateMyPhoto} />
-                    </label>
                   </div>
                   <div>
                     <div className="flex items-center space-x-2">
@@ -504,11 +493,10 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
                   </div>
                 </div>
 
-                <label className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/30 font-tech font-bold text-xs flex items-center space-x-1.5 cursor-pointer shadow transition-all self-start sm:self-auto">
-                  <Camera className="w-3.5 h-3.5" />
-                  <span>{currentTrainer?.avatarUrl ? 'Change Profile Photo' : 'Upload Profile Photo'}</span>
-                  <input type="file" accept="image/*" className="hidden" onChange={handleUpdateMyPhoto} />
-                </label>
+                <div className="px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/25 font-tech font-bold text-xs flex items-center space-x-1.5 self-start sm:self-auto shadow-sm">
+                  <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Official Profile Photo (Managed by Director)</span>
+                </div>
               </div>
 
               <div>
@@ -983,25 +971,44 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
               </div>
 
               <div className="flex-1 overflow-y-auto py-3 space-y-3">
-                {syncState.messages.map((msg) => {
-                  const isMe = msg.sender === 'trainer';
-                  return (
-                    <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                      <div
-                        className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-xs leading-relaxed ${
-                          isMe
-                            ? 'bg-amber-500 text-black font-medium rounded-br-none'
-                            : 'bg-slate-800 text-white rounded-bl-none'
-                        }`}
-                      >
-                        <p>{msg.text}</p>
+                {(() => {
+                  const clientMessages = syncState.messages.filter((msg) => {
+                    if (msg.clientId && msg.clientId !== activeClient.id) return false;
+                    return true;
+                  });
+
+                  if (clientMessages.length === 0) {
+                    return (
+                      <div className="h-full flex flex-col items-center justify-center text-center p-4 text-slate-500">
+                        <MessageSquare className="w-8 h-8 text-amber-500/40 mb-2" />
+                        <p className="text-xs font-bold text-slate-400">Direct Channel with {activeClient.name}</p>
+                        <p className="text-[11px] text-slate-500 mt-1 max-w-xs">
+                          Send direct advice, motivation, or technique feedback to your client.
+                        </p>
                       </div>
-                      <span className="text-[9px] text-slate-500 mt-1 font-tech">
-                        {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                  );
-                })}
+                    );
+                  }
+
+                  return clientMessages.map((msg) => {
+                    const isMe = msg.sender === 'trainer';
+                    return (
+                      <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                        <div
+                          className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-xs leading-relaxed ${
+                            isMe
+                              ? 'bg-amber-500 text-black font-medium rounded-br-none'
+                              : 'bg-slate-800 text-white rounded-bl-none'
+                          }`}
+                        >
+                          <p>{msg.text}</p>
+                        </div>
+                        <span className="text-[9px] text-slate-500 mt-1 font-tech">
+                          {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                    );
+                  });
+                })()}
               </div>
 
               <div className="pt-2 border-t border-white/10 flex items-center space-x-2">

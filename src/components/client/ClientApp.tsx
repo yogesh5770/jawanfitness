@@ -447,8 +447,16 @@ export const ClientApp: React.FC = () => {
               <h3 className="text-xs font-black text-slate-900 dark:text-white tracking-wider uppercase font-display">
                 JAWAN <span className="text-amber-500">MEMBER</span>
               </h3>
-              <span className="text-[10px] text-slate-500 dark:text-neutral-400 font-medium block truncate max-w-[180px] sm:max-w-xs">
-                {activeClient.name} • {isCoachAssigned ? `Coach: ${currentTrainerName}` : 'Coach: Unassigned'}
+              <span className="text-[10px] text-slate-500 dark:text-neutral-400 font-medium flex items-center space-x-1 truncate max-w-[200px] sm:max-w-xs">
+                <span>{activeClient.name} •</span>
+                {isCoachAssigned && currentTrainerAvatarUrl ? (
+                  <img
+                    src={currentTrainerAvatarUrl}
+                    alt={currentTrainerName}
+                    className="w-3.5 h-3.5 rounded-full object-cover border border-amber-500/40 inline-block flex-shrink-0"
+                  />
+                ) : null}
+                <span className="truncate">{isCoachAssigned ? `Coach: ${currentTrainerName}` : 'Coach: Unassigned'}</span>
               </span>
             </div>
           </div>
@@ -508,7 +516,7 @@ export const ClientApp: React.FC = () => {
               }}
               waterMl={syncState.waterMl}
               weightHistory={syncState.weightHistory}
-              latestMessage={syncState.messages[syncState.messages.length - 1] || null}
+              latestMessage={syncState.messages.filter((m) => !m.clientId || m.clientId === activeClient.id).slice(-1)[0] || null}
               onStartWorkout={handleStartAssignedWorkout}
               onResumeWorkout={() => setIsWorkoutModalOpen(true)}
               onDiscardWorkout={() => syncedStore.discardWorkoutSession()}

@@ -62,11 +62,21 @@ export const TrainerChatScreen: React.FC<TrainerChatScreenProps> = ({ client, tr
     }
   }, [syncState.messages, isAssigned]);
 
+  // Live 2-second cloud synchronization while chat is open
+  useEffect(() => {
+    if (!isAssigned) return;
+    syncedStore.syncFromCloud(true);
+    const interval = setInterval(() => {
+      syncedStore.syncFromCloud(true);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [isAssigned]);
+
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputText.trim() || !isAssigned) return;
     hapticTap();
-    syncedStore.sendMessage('client', inputText.trim());
+    syncedStore.sendMessage('client', inputText.trim(), client.id, trainer?.id || client.trainerId, client.name);
     setInputText('');
   };
 
@@ -224,23 +234,30 @@ export const TrainerChatScreen: React.FC<TrainerChatScreenProps> = ({ client, tr
         </div>
 
         {/* Message Stream */}
-        <div className="flex-1 overflow-y-auto space-y-3 p-1 scrollbar-none">
-          {syncState.messages.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center p-4 text-slate-500">
-              <Sparkles className="w-8 h-8 text-amber-500/40 mb-2" />
-              <p className="text-xs font-bold text-slate-400">Direct Coach Communication</p>
-              <p className="text-[11px] text-slate-500 mt-1 max-w-xs">
-                Ask your coach anything about exercise form, nutrition adjustments, or schedule changes.
-              </p>
-            </div>
-          ) : (
-            syncState.messages.map((msg) => {
-              const isMe = msg.sender === 'client';
-              return (
-                <div
-                  key={msg.id}
-                  className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
-                >
+        {(() => {
+          const clientMessages = syncState.messages.filter((msg) => {
+            if (msg.clientId && msg.clientId !== client.id) return false;
+            return true;
+          });
+
+          return (
+            <div className="flex-1 overflow-y-auto space-y-3 p-1 scrollbar-none">
+              {clientMessages.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-center p-4 text-slate-500">
+                  <Sparkles className="w-8 h-8 text-amber-500/40 mb-2" />
+                  <p className="text-xs font-bold text-slate-400">Direct Coach Communication</p>
+                  <p className="text-[11px] text-slate-500 mt-1 max-w-xs">
+                    Ask your coach anything about exercise form, nutrition adjustments, or schedule changes.
+                  </p>
+                </div>
+              ) : (
+                clientMessages.map((msg) => {
+                  const isMe = msg.sender === 'client';
+                  return (
+                    <div
+                      key={msg.id}
+                      className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
+                    >
                   <span className="text-[9px] font-tech text-slate-400 px-1 mb-0.5">
                     {isMe ? 'You' : msg.senderName || trainer.name}
                   </span>
@@ -260,8 +277,10 @@ export const TrainerChatScreen: React.FC<TrainerChatScreenProps> = ({ client, tr
               );
             })
           )}
-          <div ref={messagesEndRef} />
-        </div>
+            <div ref={messagesEndRef} />
+          </div>
+        );
+      })()}
 
         {/* Input Bar */}
         <form onSubmit={handleSend} className="pt-3 border-t border-white/10 flex items-center space-x-2">

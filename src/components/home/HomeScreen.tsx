@@ -456,7 +456,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
           {/* 6. REAL ASSIGNED COACH DIRECT NOTICE - 100% DB CONNECTED */}
           {(() => {
-            const isAssigned = !!trainerName && trainerName !== 'Unassigned' && trainerName !== 'Head Coach';
+            const isAssigned = Boolean(trainerName && trainerName.trim() !== '' && trainerName !== 'Unassigned');
             return (
               <div className="bg-white dark:bg-[#0e1422] rounded-2xl p-4 border border-slate-200 dark:border-white/10 shadow-sm">
                 <div className="flex items-center justify-between mb-3">

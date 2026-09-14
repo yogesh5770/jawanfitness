@@ -201,6 +201,15 @@ class SyncedStore {
 
   private applyIncomingState(incoming: AppSyncState, broadcast = true) {
     if (!incoming) return;
+
+    // Deduplicate and union-merge messages so local and incoming messages are both preserved
+    const msgMap = new Map<string, ChatMessage>();
+    (this.state.messages || []).forEach(m => { if (m?.id) msgMap.set(m.id, m); });
+    (incoming.messages || []).forEach((m: ChatMessage) => { if (m?.id) msgMap.set(m.id, m); });
+    const mergedMessages = Array.from(msgMap.values()).sort(
+      (a, b) => Number(a.timestamp || 0) - Number(b.timestamp || 0)
+    );
+
     this.state = {
       ...this.state,
       ...incoming,
@@ -211,7 +220,7 @@ class SyncedStore {
       loggedMeals: Array.isArray(incoming.loggedMeals) ? incoming.loggedMeals : this.state.loggedMeals,
       workoutHistory: Array.isArray(incoming.workoutHistory) ? incoming.workoutHistory : this.state.workoutHistory,
       events: Array.isArray(incoming.events) ? incoming.events : this.state.events,
-      messages: Array.isArray(incoming.messages) ? incoming.messages : this.state.messages
+      messages: mergedMessages
     };
     this.persist();
     this.emitState();
@@ -226,7 +235,7 @@ class SyncedStore {
     try {
       const cloudData = await cloudDbService.fetchStateFromCloud();
       if (cloudData) {
-        // Build state signature to detect real updates
+        // Build state signature to detect real updates including message updates
         const newSig = JSON.stringify({
           c: (cloudData.clients || []).map((c: any) => `${c.id}:${c.trainerId}:${c.currentWeightKg}`),
           t: (cloudData.trainers || []).map((t: any) => `${t.id}:${t.name}`),
@@ -234,7 +243,7 @@ class SyncedStore {
           d: Object.keys(cloudData.assignedDietPlans || {}).length,
           m: (cloudData.loggedMeals || []).length,
           wh: (cloudData.workoutHistory || []).length,
-          msg: (cloudData.messages || []).length,
+          msg: (cloudData.messages || []).map((m: any) => `${m.id}:${m.timestamp}`).join(','),
           ev: (cloudData.events || []).length
         });
 
@@ -255,6 +264,14 @@ class SyncedStore {
             return remoteC;
           }) : this.state.clients;
 
+          // Union-merge chat messages by unique id
+          const msgMap = new Map<string, ChatMessage>();
+          (this.state.messages || []).forEach(m => { if (m?.id) msgMap.set(m.id, m); });
+          (cloudData.messages || []).forEach((m: ChatMessage) => { if (m?.id) msgMap.set(m.id, m); });
+          const mergedMessages = Array.from(msgMap.values()).sort(
+            (a, b) => Number(a.timestamp || 0) - Number(b.timestamp || 0)
+          );
+
           this.state = {
             ...this.state,
             ...cloudData,
@@ -265,7 +282,7 @@ class SyncedStore {
             loggedMeals: Array.isArray(cloudData.loggedMeals) ? cloudData.loggedMeals : this.state.loggedMeals,
             workoutHistory: Array.isArray(cloudData.workoutHistory) ? cloudData.workoutHistory : this.state.workoutHistory,
             events: Array.isArray(cloudData.events) ? cloudData.events : this.state.events,
-            messages: Array.isArray(cloudData.messages) ? cloudData.messages : this.state.messages
+            messages: mergedMessages
           };
 
           this.persist();
@@ -848,17 +865,29 @@ class SyncedStore {
   }
 
   // 5. MESSAGING ACTIONS
-  public sendMessage(sender: 'client' | 'trainer', text: string) {
-    const client = this.state.clients.find((c) => c.id === this.state.activeClientId);
-    const trainer = this.state.trainers.find((t) => t.id === this.state.activeTrainerId);
+  public sendMessage(
+    sender: 'client' | 'trainer',
+    text: string,
+    targetClientId?: string,
+    targetTrainerId?: string,
+    explicitSenderName?: string
+  ) {
+    const activeClientId = targetClientId || this.state.activeClientId;
+    const client = this.state.clients.find((c) => c.id === activeClientId);
+    const activeTrainerId = targetTrainerId || client?.trainerId || this.state.activeTrainerId;
+    const trainer = this.state.trainers.find((t) => t.id === activeTrainerId || t.name === client?.trainerName);
+
+    const senderName = explicitSenderName || (sender === 'client' ? client?.name || 'Client' : trainer?.name || 'Coach');
 
     const newMsg: ChatMessage = {
-      id: `msg-${Date.now()}`,
+      id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       sender,
-      senderName: sender === 'client' ? client?.name || 'Client' : trainer?.name || 'Coach',
+      senderName,
       text,
       timestamp: Date.now(),
-      read: true
+      read: true,
+      clientId: activeClientId || client?.id || '',
+      trainerId: activeTrainerId || trainer?.id || ''
     };
 
     this.state = {
@@ -870,8 +899,10 @@ class SyncedStore {
       sender === 'client' ? 'CLIENT' : 'TRAINER',
       'Message Sent',
       `${newMsg.senderName}: "${text.length > 40 ? text.substring(0, 40) + '...' : text}"`,
-      'Client'
+      sender === 'client' ? 'Client' : 'Admin'
     );
+    // Force push immediately to cloud database for real-time delivery
+    this.forcePushToCloud();
   }
 
   // Complete Wipe to pure scratch (0 trainers, 0 clients, 0 history)
