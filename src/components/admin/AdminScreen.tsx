@@ -1294,7 +1294,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                   required
                   value={newTrainerName}
                   onChange={(e) => setNewTrainerName(e.target.value)}
-                  placeholder="e.g. Coach Ravi"
+                  placeholder=""
                   className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-white outline-none focus:border-amber-500 text-xs"
                 />
               </div>
@@ -1307,7 +1307,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                   type="email"
                   value={newTrainerEmail}
                   onChange={(e) => setNewTrainerEmail(e.target.value)}
-                  placeholder="coach.ravi@jawan.fit"
+                  placeholder=""
                   className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-white outline-none focus:border-amber-500 text-xs"
                 />
               </div>
@@ -1320,7 +1320,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                   type="text"
                   value={newTrainerPhone}
                   onChange={(e) => setNewTrainerPhone(e.target.value)}
-                  placeholder="+91 98940 11223"
+                  placeholder=""
                   className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-white outline-none focus:border-amber-500 text-xs"
                 />
               </div>
@@ -1403,7 +1403,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                   required
                   value={newClientName}
                   onChange={(e) => setNewClientName(e.target.value)}
-                  placeholder="e.g. Arun Kumar"
+                  placeholder=""
                   className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-white outline-none focus:border-amber-500 text-xs"
                 />
               </div>
@@ -1417,7 +1417,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                     type="email"
                     value={newClientEmail}
                     onChange={(e) => setNewClientEmail(e.target.value)}
-                    placeholder="arun@gmail.com"
+                    placeholder=""
                     className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-white outline-none focus:border-amber-500 text-xs"
                   />
                 </div>
@@ -1429,7 +1429,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                     type="text"
                     value={newClientPhone}
                     onChange={(e) => setNewClientPhone(e.target.value)}
-                    placeholder="+91 98420 12345"
+                    placeholder=""
                     className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-white outline-none focus:border-amber-500 text-xs"
                   />
                 </div>
@@ -1469,7 +1469,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                     type="text"
                     value={newClientGoal}
                     onChange={(e) => setNewClientGoal(e.target.value)}
-                    placeholder="e.g. Weight Loss & Fitness"
+                    placeholder=""
                     className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-white outline-none focus:border-amber-500 text-xs"
                   />
                 </div>

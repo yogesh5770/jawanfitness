@@ -125,7 +125,7 @@ export const AdminApp: React.FC = () => {
                   value={adminEmail}
                   onChange={(e) => setAdminEmail(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-black/50 border border-white/10 focus:border-amber-500 rounded-xl text-white text-sm outline-none transition-all pl-9"
-                  placeholder="admin@jawan.fit"
+                  placeholder=""
                   required
                 />
                 <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
@@ -145,7 +145,7 @@ export const AdminApp: React.FC = () => {
                   value={adminPassword}
                   onChange={(e) => setAdminPassword(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-black/50 border border-white/10 focus:border-amber-500 rounded-xl text-white text-sm outline-none transition-all pl-9 pr-11 font-mono"
-                  placeholder="••••••••••••"
+                  placeholder=""
                   required
                 />
                 <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-3" />

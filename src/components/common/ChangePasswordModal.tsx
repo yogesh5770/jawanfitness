@@ -146,7 +146,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
                 required
                 value={oldPassword}
                 onChange={(e) => setOldPassword(e.target.value)}
-                placeholder="Enter current password received via WhatsApp"
+                placeholder=""
                 className="w-full bg-slate-900/90 border border-white/10 focus:border-amber-500 rounded-xl px-4 py-3 pr-12 text-white text-sm outline-none transition-colors"
               />
               <button
@@ -175,7 +175,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
                 minLength={6}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Enter your new secret password"
+                placeholder=""
                 className="w-full bg-slate-900/90 border border-white/10 focus:border-amber-500 rounded-xl px-4 py-3 pr-12 text-white text-sm outline-none transition-colors"
               />
               <button
@@ -204,7 +204,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
                 minLength={6}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Re-type your new password"
+                placeholder=""
                 className="w-full bg-slate-900/90 border border-white/10 focus:border-amber-500 rounded-xl px-4 py-3 pr-12 text-white text-sm outline-none transition-colors"
               />
               <button

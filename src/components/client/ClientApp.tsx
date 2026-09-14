@@ -181,7 +181,7 @@ export const ClientApp: React.FC = () => {
                   required
                   value={loginIdentifier}
                   onChange={(e) => setLoginIdentifier(e.target.value)}
-                  placeholder="e.g. JWM-1024 or 9842012345"
+                  placeholder=""
                   className="w-full bg-slate-900 border border-white/10 focus:border-amber-500 rounded-xl px-3.5 py-2.5 text-white text-xs outline-none transition-colors"
                 />
               </div>
@@ -196,7 +196,7 @@ export const ClientApp: React.FC = () => {
                     required
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
-                    placeholder="Enter password from WhatsApp"
+                    placeholder=""
                     className="w-full bg-slate-900 border border-white/10 focus:border-amber-500 rounded-xl px-3.5 py-2.5 pr-11 text-white text-xs outline-none transition-colors"
                   />
                   <button
