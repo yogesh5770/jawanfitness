@@ -362,7 +362,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
   ];
 
   return (
-    <div className="w-full min-h-screen bg-[#06080e] text-slate-100 flex flex-col font-sans text-left">
+    <div className="w-full min-h-screen bg-[#06080e] text-slate-100 flex flex-col font-sans text-left overflow-x-hidden">
       {/* Action Notification Toast */}
       {actionNotice && (
         <div className="fixed top-20 right-4 z-50 bg-amber-500 text-black font-bold text-xs px-4 py-2.5 rounded-xl shadow-2xl animate-in slide-in-from-top duration-200 flex items-center space-x-2">

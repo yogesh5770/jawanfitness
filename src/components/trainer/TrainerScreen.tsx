@@ -274,7 +274,7 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
   };
 
   return (
-    <div className="w-full min-h-screen bg-[#07090e] text-slate-100 flex flex-col font-sans text-left">
+    <div className="w-full min-h-screen bg-[#07090e] text-slate-100 flex flex-col font-sans text-left overflow-x-hidden">
       {/* 1. TOP TRAINER WEB / PWA HEADER */}
       <header className="w-full bg-[#0b0f1a] border-b border-white/10 px-3 sm:px-6 py-2.5 sm:py-3.5 flex flex-wrap items-center justify-between sticky top-0 z-40 backdrop-blur-xl gap-2">
         <div className="flex items-center space-x-2.5 sm:space-x-4">
@@ -459,7 +459,7 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
         </aside>
 
         {/* MAIN TRAINER CONTENT WORKSPACE */}
-        <main className="flex-1 overflow-y-auto p-6 space-y-6">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-4 sm:space-y-6">
           {/* SUB-VIEW 1: TRAINER DASHBOARD */}
           {activeTab === 'dashboard' && (
             <div className="space-y-5 animate-fadeIn">
@@ -995,18 +995,39 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
 
                   return clientMessages.map((msg) => {
                     const isMe = msg.sender === 'trainer';
+                    // Resolve the member's display name for client messages
+                    const memberName = !isMe
+                      ? msg.senderName ||
+                        syncState.clients.find((c) =>
+                          c.id === msg.clientId ||
+                          (c.loginId && msg.clientId && c.loginId.toLowerCase() === msg.clientId.toLowerCase()) ||
+                          (c.email && msg.clientId && c.email.toLowerCase() === msg.clientId.toLowerCase())
+                        )?.name ||
+                        'Member'
+                      : null;
                     return (
                       <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                        {/* Sender name label */}
+                        <span className={`text-[10px] font-tech font-bold px-1 mb-0.5 ${
+                          isMe ? 'text-amber-400/70' : 'text-cyan-400/80'
+                        }`}>
+                          {isMe ? 'You' : (
+                            <span className="flex items-center space-x-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 inline-block" />
+                              <span>{memberName}</span>
+                            </span>
+                          )}
+                        </span>
                         <div
                           className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-xs leading-relaxed ${
                             isMe
-                              ? 'bg-amber-500 text-black font-medium rounded-br-none'
-                              : 'bg-slate-800 text-white rounded-bl-none'
+                              ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-black font-medium rounded-br-none'
+                              : 'bg-slate-800/90 text-white border border-white/10 rounded-bl-none'
                           }`}
                         >
                           <p>{msg.text}</p>
                         </div>
-                        <span className="text-[9px] text-slate-500 mt-1 font-tech">
+                        <span className="text-[8px] text-slate-500 mt-0.5 px-1 font-tech">
                           {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </div>
