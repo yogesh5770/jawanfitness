@@ -137,28 +137,13 @@ export const TrainerApp: React.FC = () => {
             </p>
           </div>
 
-          {syncState.trainers.length === 0 ? (
-            <div className="p-6 bg-black/40 border border-dashed border-amber-500/30 rounded-2xl text-center space-y-3">
-              <ShieldCheck className="w-10 h-10 text-amber-400 mx-auto opacity-70" />
-              <h3 className="font-bold text-white text-sm">No Trainers Appointed Yet</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                The Gym Director must appoint your trainer profile in the Admin Console before you can access this portal.
-              </p>
-              <button
-                onClick={() => navigateToRole('admin')}
-                className="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs uppercase tracking-wider rounded-xl transition-all"
-              >
-                Go to Admin Console
-              </button>
-            </div>
-          ) : (
-            <form onSubmit={handleTrainerLogin} className="space-y-3.5">
-              {loginError && (
-                <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-300 text-xs flex items-start space-x-2">
-                  <span className="font-bold">Error:</span>
-                  <span>{loginError}</span>
-                </div>
-              )}
+          <form onSubmit={handleTrainerLogin} className="space-y-3.5">
+            {loginError && (
+              <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-300 text-xs flex items-start space-x-2">
+                <span className="font-bold">Error:</span>
+                <span>{loginError}</span>
+              </div>
+            )}
 
               <div>
                 <label className="text-[10px] font-tech uppercase tracking-wider text-slate-400 font-bold block mb-1">
@@ -243,7 +228,6 @@ export const TrainerApp: React.FC = () => {
                 )}
               </div>
             </form>
-          )}
 
           <div className="mt-5 pt-3 border-t border-white/5 text-center text-[10px] text-neutral-500">
             Jawan Fitness Platform &copy; 2026 • Verified Coach Session

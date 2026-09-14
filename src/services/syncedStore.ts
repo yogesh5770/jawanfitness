@@ -360,6 +360,18 @@ class SyncedStore {
     return newClient;
   }
 
+  public enrollClient(client: ClientData) {
+    const exists = this.state.clients.some((c) => c.id === client.id);
+    this.state = {
+      ...this.state,
+      clients: exists
+        ? this.state.clients.map((c) => (c.id === client.id ? client : c))
+        : [client, ...this.state.clients],
+      activeClientId: client.id
+    };
+    this.notify();
+  }
+
   public updateTrainerCredentials(trainerId: string, loginId: string, temporaryPassword: string) {
     this.state = {
       ...this.state,

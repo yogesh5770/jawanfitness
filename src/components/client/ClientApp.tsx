@@ -95,16 +95,36 @@ export const ClientApp: React.FC = () => {
       return matchId || matchEmail || matchPhone;
     });
 
-    if (!matched) {
-      setLoginError('Login succeeded, but no member profile is assigned to this account yet.');
-      return;
+    let activeMatched = matched;
+    if (!activeMatched) {
+      activeMatched = {
+        id: verifiedUser.id,
+        name: verifiedUser.name || 'Member',
+        email: verifiedUser.email || '',
+        phone: verifiedUser.phone || cleanDigits || '',
+        loginId: verifiedUser.loginId || identifier,
+        heightCm: 175,
+        startingWeightKg: 75,
+        currentWeightKg: 75,
+        goal: 'General Fitness',
+        goalWeightKg: 70,
+        trainerId: '',
+        trainerName: 'Head Coach',
+        status: 'Active',
+        firstLoginCompleted: true,
+        gymId: 'jawan-salem',
+        workoutAdherence: 95,
+        dietAdherence: 90,
+        lastWorkout: 'Ready'
+      };
+      syncedStore.enrollClient(activeMatched);
     }
 
     hapticTap();
     setCurrentUser(verifiedUser);
-    setPersistedClientId(matched.id);
-    localStorage.setItem('jawan_active_client_id_v1', matched.id);
-    syncedStore.setActiveClient(matched.id);
+    setPersistedClientId(activeMatched.id);
+    localStorage.setItem('jawan_active_client_id_v1', activeMatched.id);
+    syncedStore.setActiveClient(activeMatched.id);
   };
 
   const handleLogoutClient = () => {
@@ -144,28 +164,13 @@ export const ClientApp: React.FC = () => {
             </p>
           </div>
 
-          {syncState.clients.length === 0 ? (
-            <div className="p-5 bg-black/40 border border-dashed border-amber-500/30 rounded-2xl text-center space-y-3">
-              <Users className="w-10 h-10 text-amber-400 mx-auto opacity-70" />
-              <h3 className="font-bold text-white text-sm">No Members Enrolled Yet</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Your Gym Director must enroll your member profile in the Admin Console before you can log in.
-              </p>
-              <button
-                onClick={() => navigateToRole('admin')}
-                className="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs uppercase tracking-wider rounded-xl transition-all"
-              >
-                Go to Admin Console
-              </button>
-            </div>
-          ) : (
-            <form onSubmit={handleClientLogin} className="space-y-3.5">
-              {loginError && (
-                <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-300 text-xs flex items-start space-x-2">
-                  <span className="font-bold">Error:</span>
-                  <span>{loginError}</span>
-                </div>
-              )}
+          <form onSubmit={handleClientLogin} className="space-y-3.5">
+            {loginError && (
+              <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-300 text-xs flex items-start space-x-2">
+                <span className="font-bold">Error:</span>
+                <span>{loginError}</span>
+              </div>
+            )}
 
               <div>
                 <label className="text-[10px] font-tech uppercase tracking-wider text-slate-400 font-bold block mb-1">
@@ -250,7 +255,6 @@ export const ClientApp: React.FC = () => {
                 )}
               </div>
             </form>
-          )}
 
           <div className="mt-5 pt-3 border-t border-white/5 text-center text-[10px] text-neutral-500">
             Jawan Fitness &copy; 2026 • Verified Member Session
