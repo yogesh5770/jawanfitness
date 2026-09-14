@@ -300,8 +300,24 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       }
 
       const body = await request.json() as any;
-      const { email, password, role, name, phone, login_id, loginId } = body || {};
+      const { 
+        id, email, password, role, name, phone, login_id, loginId,
+        startingWeightKg, starting_weight_kg,
+        currentWeightKg, current_weight_kg,
+        goalWeightKg, goal_weight_kg,
+        heightCm, height_cm,
+        goal,
+        trainerId, trainer_id,
+        trainerName, trainer_name
+      } = body || {};
       const userLoginId = login_id || loginId || null;
+      const finalStartWeight = startingWeightKg ?? starting_weight_kg ?? 0;
+      const finalCurrentWeight = currentWeightKg ?? current_weight_kg ?? finalStartWeight;
+      const finalGoalWeight = goalWeightKg ?? goal_weight_kg ?? 0;
+      const finalHeight = heightCm ?? height_cm ?? 170;
+      const finalGoal = goal || 'General Fitness';
+      const finalTrainerId = trainerId || trainer_id || '';
+      const finalTrainerName = trainerName || trainer_name || 'Unassigned';
 
       if (!email || !password || !role || !name) {
         return new Response(JSON.stringify({ error: 'Email, password, role, and name are required.' }), {
@@ -312,16 +328,55 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
       const salt = generateRandomHex(16);
       const passwordHash = await hashPassword(password, salt);
-      const userId = generateRandomHex(16);
+      const userId = id || generateRandomHex(16);
 
       await env.DB.prepare(`
-        INSERT INTO gym_users (id, email, password_hash, salt, role, name, phone, login_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `).bind(userId, email.toLowerCase().trim(), passwordHash, salt, role, name.trim(), phone || null, userLoginId).run();
+        INSERT INTO gym_users (
+          id, email, password_hash, salt, role, name, phone, login_id,
+          starting_weight_kg, current_weight_kg, goal_weight_kg,
+          height_cm, goal, trainer_id, trainer_name
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          email = excluded.email,
+          password_hash = excluded.password_hash,
+          salt = excluded.salt,
+          role = excluded.role,
+          name = excluded.name,
+          phone = excluded.phone,
+          login_id = excluded.login_id,
+          starting_weight_kg = excluded.starting_weight_kg,
+          current_weight_kg = excluded.current_weight_kg,
+          goal_weight_kg = excluded.goal_weight_kg,
+          height_cm = excluded.height_cm,
+          goal = excluded.goal,
+          trainer_id = excluded.trainer_id,
+          trainer_name = excluded.trainer_name,
+          updated_at = datetime('now');
+      `).bind(
+        userId, email.toLowerCase().trim(), passwordHash, salt, role, name.trim(), phone || null, userLoginId,
+        finalStartWeight, finalCurrentWeight, finalGoalWeight,
+        finalHeight, finalGoal, finalTrainerId, finalTrainerName
+      ).run();
 
       return new Response(JSON.stringify({
         success: true,
-        user: { id: userId, email, role, name, phone, loginId: userLoginId, login_id: userLoginId }
+        user: { 
+          id: userId, 
+          email, 
+          role, 
+          name, 
+          phone, 
+          loginId: userLoginId, 
+          login_id: userLoginId,
+          startingWeightKg: finalStartWeight,
+          currentWeightKg: finalCurrentWeight,
+          goalWeightKg: finalGoalWeight,
+          heightCm: finalHeight,
+          goal: finalGoal,
+          trainerId: finalTrainerId,
+          trainerName: finalTrainerName
+        }
       }), {
         status: 201,
         headers

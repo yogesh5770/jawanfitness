@@ -245,12 +245,20 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
     });
 
     const portalUser = await authService.createPortalUser({
+      id: created.id,
       email: created.email,
       password: assignedPassword,
       name: created.name,
       role: 'CLIENT',
       phone: created.phone,
-      loginId: assignedLoginId
+      loginId: assignedLoginId,
+      startingWeightKg: created.startingWeightKg,
+      currentWeightKg: created.currentWeightKg,
+      goalWeightKg: created.goalWeightKg,
+      heightCm: created.heightCm,
+      goal: created.goal,
+      trainerId: created.trainerId,
+      trainerName: created.trainerName
     });
 
     await syncedStore.forcePushToCloud();

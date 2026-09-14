@@ -218,13 +218,21 @@ class AuthService {
   }
 
   public async createPortalUser(input: {
+    id?: string;
     email: string;
     password: string;
     name: string;
     role: 'TRAINER' | 'CLIENT';
     phone?: string;
     loginId?: string;
-  }): Promise<{ success: boolean; error?: string }> {
+    startingWeightKg?: number;
+    currentWeightKg?: number;
+    goalWeightKg?: number;
+    heightCm?: number;
+    goal?: string;
+    trainerId?: string;
+    trainerName?: string;
+  }): Promise<{ success: boolean; user?: any; error?: string }> {
     const token = this.getToken();
     if (!token) {
       return { success: false, error: 'Admin session token missing.' };
@@ -241,7 +249,7 @@ class AuthService {
         return { success: false, error };
       }
 
-      return { success: true };
+      return { success: true, user: data?.user };
     } catch (err: any) {
       return { success: false, error: err?.message || 'Portal user creation failed.' };
     }

@@ -89,19 +89,28 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
         // Merge DB trainers into state
         for (const t of dbTrainers) {
-          const exists = inner.trainers.some((it: any) => it.id === t.id || it.loginId === t.login_id);
-          if (!exists) {
-            inner.trainers.push({
+          let trainerObj = inner.trainers.find((it: any) => 
+            it.id === t.id || 
+            (it.loginId && t.login_id && it.loginId.toLowerCase() === t.login_id.toLowerCase()) ||
+            (it.email && t.email && it.email.toLowerCase() === t.email.toLowerCase()) ||
+            (it.phone && t.phone && it.phone === t.phone)
+          );
+          if (!trainerObj) {
+            trainerObj = {
               id: t.id,
               name: t.name,
               email: t.email,
               phone: t.phone || '',
               role: 'Head Strength Coach & Nutritionist',
               status: 'Active',
-              clientsCount: 1,
+              clientsCount: 0,
               avgAdherence: 95,
               loginId: t.login_id
-            });
+            };
+            inner.trainers.push(trainerObj);
+          } else {
+            if (!trainerObj.loginId && t.login_id) trainerObj.loginId = t.login_id;
+            if (!trainerObj.phone && t.phone) trainerObj.phone = t.phone;
           }
         }
 
@@ -109,7 +118,9 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         for (const c of dbClients) {
           let clientObj = inner.clients.find((ic: any) => 
             ic.id === c.id || 
-            (ic.loginId && c.login_id && ic.loginId.toLowerCase() === c.login_id.toLowerCase())
+            (ic.loginId && c.login_id && ic.loginId.toLowerCase() === c.login_id.toLowerCase()) ||
+            (ic.email && c.email && ic.email.toLowerCase() === c.email.toLowerCase()) ||
+            (ic.phone && c.phone && ic.phone === c.phone)
           );
           if (!clientObj) {
             // Client exists in DB but not in sync state — create with real DB values
@@ -117,7 +128,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
               id: c.id,
               name: c.name,
               email: c.email,
-              phone: c.phone,
+              phone: c.phone || '',
               loginId: c.login_id,
               heightCm: c.height_cm || 170,
               startingWeightKg: c.starting_weight_kg || 0,
@@ -135,6 +146,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
             };
             inner.clients.push(clientObj);
           } else {
+            if (!clientObj.loginId && c.login_id) clientObj.loginId = c.login_id;
             // Client exists in sync state — patch stale 0 weights from DB if DB has real values
             if ((!clientObj.startingWeightKg || clientObj.startingWeightKg === 0) && c.starting_weight_kg) {
               clientObj.startingWeightKg = c.starting_weight_kg;

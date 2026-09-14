@@ -216,12 +216,16 @@ class CloudDatabaseService {
         if (primaryRes.ok && !contentType.includes('text/html')) {
           const json = await primaryRes.json();
           if (json && json.data) {
+            let resData = json.data;
+            if (resData.data && (Array.isArray(resData.data.clients) || Array.isArray(resData.data.trainers))) {
+              resData = resData.data;
+            }
             this.config.syncStatus = 'synced';
             this.config.lastSyncedAt = Date.now();
             this.config.activeProvider = 'Cloudflare D1 (Live)';
             this.config.errorMessage = undefined;
             this.notify();
-            return json.data as AppSyncState;
+            return resData as AppSyncState;
           }
         }
       } catch {
@@ -241,12 +245,16 @@ class CloudDatabaseService {
         if (remoteRes.ok && !contentType.includes('text/html')) {
           const json = await remoteRes.json();
           if (json && json.data) {
+            let resData = json.data;
+            if (resData.data && (Array.isArray(resData.data.clients) || Array.isArray(resData.data.trainers))) {
+              resData = resData.data;
+            }
             this.config.syncStatus = 'synced';
             this.config.lastSyncedAt = Date.now();
             this.config.activeProvider = 'Cloudflare D1 (Remote)';
             this.config.errorMessage = undefined;
             this.notify();
-            return json.data as AppSyncState;
+            return resData as AppSyncState;
           }
         }
       } catch {
