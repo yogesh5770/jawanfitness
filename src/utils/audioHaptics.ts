@@ -102,3 +102,15 @@ export function hapticTap() {
     navigator.vibrate(25);
   }
 }
+
+export function hapticSuccess() {
+  if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+    navigator.vibrate([40, 60, 80]);
+  }
+}
+
+export function hapticError() {
+  if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+    navigator.vibrate([100, 50, 100]);
+  }
+}

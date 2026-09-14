@@ -9,18 +9,23 @@ import {
   Smartphone,
   ExternalLink,
   ShieldCheck,
-  LogOut
+  LogOut,
+  Eye,
+  EyeOff,
+  KeyRound
 } from 'lucide-react';
 import { navigateToRole } from '../../services/appRouter';
 import { syncedStore, AppSyncState } from '../../services/syncedStore';
 import { authService } from '../../services/authService';
 import { hapticTap } from '../../utils/audioHaptics';
+import { ChangePasswordModal } from '../common/ChangePasswordModal';
 
 export const TrainerApp: React.FC = () => {
   const [syncState, setSyncState] = useState<AppSyncState>(() => syncedStore.getState());
   const [activeTrainerId, setActiveTrainerId] = useState<string>(() => {
     return localStorage.getItem('jawan_trainer_session_id_v1') || '';
   });
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
   const [loginIdentifier, setLoginIdentifier] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
@@ -180,14 +185,18 @@ export const TrainerApp: React.FC = () => {
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
                     placeholder="Enter password received on WhatsApp"
-                    className="w-full bg-slate-900 border border-white/10 focus:border-amber-500 rounded-xl px-3.5 py-2.5 pr-10 text-white text-xs outline-none transition-colors"
+                    className="w-full bg-slate-900 border border-white/10 focus:border-amber-500 rounded-xl px-3.5 py-2.5 pr-11 text-white text-xs outline-none transition-colors"
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs p-1"
+                    onClick={() => {
+                      hapticTap();
+                      setShowPassword(!showPassword);
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-amber-400 p-1 transition-colors"
+                    title={showPassword ? 'Hide password' : 'Show password'}
                   >
-                    {showPassword ? 'Hide' : 'Show'}
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
@@ -308,6 +317,18 @@ export const TrainerApp: React.FC = () => {
           </div>
 
           <button
+            onClick={() => {
+              hapticTap();
+              setIsChangePasswordOpen(true);
+            }}
+            title="Change Password"
+            className="p-2 rounded-lg bg-neutral-800/80 hover:bg-neutral-700 text-amber-400 hover:text-amber-300 transition-colors flex items-center space-x-1 text-xs font-bold"
+          >
+            <KeyRound className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Password</span>
+          </button>
+
+          <button
             onClick={handleLogout}
             title="Switch Coach / Log Out"
             className="p-2 rounded-lg bg-neutral-800/80 hover:bg-rose-950/40 text-neutral-400 hover:text-rose-400 transition-colors ml-1"
@@ -321,6 +342,15 @@ export const TrainerApp: React.FC = () => {
       <main className="flex-1 max-w-[1700px] w-full mx-auto p-3 sm:p-6 lg:p-8">
         <TrainerScreen activeTrainerId={activeTrainer.id} />
       </main>
+
+      {/* Change Password Modal */}
+      <ChangePasswordModal
+        isOpen={isChangePasswordOpen}
+        onClose={() => setIsChangePasswordOpen(false)}
+        userRole="TRAINER"
+        userIdentifier={activeTrainer.loginId || activeTrainer.phone || activeTrainer.email}
+        userName={activeTrainer.name}
+      />
 
       {/* Trainer Footer */}
       <footer className="border-t border-neutral-900 bg-neutral-950 px-4 py-4 text-neutral-500 text-xs flex flex-col sm:flex-row items-center justify-between gap-3">

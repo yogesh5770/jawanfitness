@@ -206,6 +206,77 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ status: 'logged_out' });
     }
 
+    // -------------------------------------------------------------
+    // 5. ACTION: CHANGE-PASSWORD
+    // -------------------------------------------------------------
+    if (action === 'change-password' && req.method === 'POST') {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      const { oldPassword, newPassword, identifier, token } = body || {};
+
+      if (!oldPassword || !newPassword) {
+        return res.status(400).json({ error: 'Both old password and new password are required.' });
+      }
+
+      if (newPassword.length < 6) {
+        return res.status(400).json({ error: 'New password must be at least 6 characters long.' });
+      }
+
+      let user: any = null;
+
+      // Authenticate by session token if available
+      const sessionToken = token || getBearerToken(req);
+      if (sessionToken) {
+        const session = await verifySessionToken(client, sessionToken);
+        if (session) {
+          const userRes = await client.query(`SELECT * FROM gym_users WHERE id = $1`, [session.user.id]);
+          if (userRes.rows.length > 0) {
+            user = userRes.rows[0];
+          }
+        }
+      }
+
+      // Or authenticate by identifier (loginId / email / phone)
+      if (!user && identifier) {
+        const idClean = String(identifier).toLowerCase().trim();
+        const digits = idClean.replace(/\D/g, '');
+        const userRes = await client.query(
+          `SELECT * FROM gym_users
+           WHERE lower(email) = $1
+              OR lower(login_id) = $1
+              OR ($2 <> '' AND regexp_replace(coalesce(phone, ''), '\\D', '', 'g') LIKE '%' || $2)
+           LIMIT 1`,
+          [idClean, digits]
+        );
+        if (userRes.rows.length > 0) {
+          user = userRes.rows[0];
+        }
+      }
+
+      if (!user) {
+        return res.status(401).json({ error: 'User account not found or session expired.' });
+      }
+
+      // Verify old password
+      const calculatedOldHash = hashPassword(oldPassword, user.salt);
+      if (!safeCompareHex(calculatedOldHash, user.password_hash)) {
+        return res.status(401).json({ error: 'Incorrect old password. Please enter the current password.' });
+      }
+
+      // Hash and update with new password
+      const newSalt = crypto.randomBytes(16).toString('hex');
+      const newHash = hashPassword(newPassword, newSalt);
+
+      await client.query(
+        `UPDATE gym_users SET password_hash = $1, salt = $2 WHERE id = $3`,
+        [newHash, newSalt, user.id]
+      );
+
+      return res.status(200).json({
+        status: 'ok',
+        message: 'Password changed successfully! You can now use your new password.'
+      });
+    }
+
     return res.status(400).json({ error: 'Unsupported auth action.' });
   } catch (err: any) {
     console.error('Auth API Error:', err);

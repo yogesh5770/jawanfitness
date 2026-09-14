@@ -16,18 +16,21 @@ import { ActiveWorkoutModal } from '../workout/ActiveWorkoutModal';
 import { FirstLoginModal } from '../onboarding/FirstLoginModal';
 import { IOSInstallBanner } from '../common/IOSInstallBanner';
 import { hapticTap } from '../../utils/audioHaptics';
-import { Users, Sparkles, LogOut } from 'lucide-react';
+import { Users, Sparkles, LogOut, Eye, EyeOff, KeyRound } from 'lucide-react';
 import { navigateToRole } from '../../services/appRouter';
-import { authService } from '../../services/authService';
+import { authService, AuthUser } from '../../services/authService';
+import { ChangePasswordModal } from '../common/ChangePasswordModal';
 
 export const ClientApp: React.FC = () => {
   const [clientTab, setClientTab] = useState<TabType>('home');
   const [isWorkoutModalOpen, setIsWorkoutModalOpen] = useState(false);
   const [syncState, setSyncState] = useState<AppSyncState>(() => syncedStore.getState());
-  // Permanent client session state: never logs out unless explicitly chosen
+  // Permanent client session state: requires explicit login credentials
   const [persistedClientId, setPersistedClientId] = useState<string>(() => {
     return localStorage.getItem('jawan_active_client_id_v1') || '';
   });
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => authService.getUser());
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
   const [loginIdentifier, setLoginIdentifier] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
@@ -43,7 +46,16 @@ export const ClientApp: React.FC = () => {
     return unsub;
   }, []);
 
-  const activeClient = syncState.clients.find((c) => c.id === persistedClientId);
+  // Require active authentication - prevents automatically defaulting to Arun without login
+  const isAuthValid = authService.isAuthenticated('CLIENT') && !!currentUser;
+  const activeClient = isAuthValid
+    ? syncState.clients.find((c) => {
+        if (persistedClientId && c.id === persistedClientId) return true;
+        if (currentUser?.loginId && c.loginId && c.loginId.toLowerCase() === currentUser.loginId.toLowerCase()) return true;
+        if (currentUser?.email && c.email && c.email.toLowerCase() === currentUser.email.toLowerCase()) return true;
+        return false;
+      })
+    : null;
 
   const handleSelectClient = (clientId: string) => {
     hapticTap();
@@ -89,6 +101,7 @@ export const ClientApp: React.FC = () => {
     }
 
     hapticTap();
+    setCurrentUser(verifiedUser);
     setPersistedClientId(matched.id);
     localStorage.setItem('jawan_active_client_id_v1', matched.id);
     syncedStore.setActiveClient(matched.id);
@@ -97,6 +110,7 @@ export const ClientApp: React.FC = () => {
   const handleLogoutClient = () => {
     hapticTap();
     authService.logout();
+    setCurrentUser(null);
     setPersistedClientId('');
     localStorage.removeItem('jawan_active_client_id_v1');
   };
@@ -178,14 +192,18 @@ export const ClientApp: React.FC = () => {
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
                     placeholder="Enter password from WhatsApp"
-                    className="w-full bg-slate-900 border border-white/10 focus:border-amber-500 rounded-xl px-3.5 py-2.5 pr-10 text-white text-xs outline-none transition-colors"
+                    className="w-full bg-slate-900 border border-white/10 focus:border-amber-500 rounded-xl px-3.5 py-2.5 pr-11 text-white text-xs outline-none transition-colors"
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs p-1"
+                    onClick={() => {
+                      hapticTap();
+                      setShowPassword(!showPassword);
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-amber-400 p-1 transition-colors"
+                    title={showPassword ? 'Hide password' : 'Show password'}
                   >
-                    {showPassword ? 'Hide' : 'Show'}
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
@@ -300,11 +318,11 @@ export const ClientApp: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#04060a] text-slate-100 flex flex-col items-center justify-center p-0 sm:p-4 font-sans select-none">
-      {/* Mobile viewport frame for Desktop / 100% full screen on Mobile & APK */}
-      <div className="w-full sm:max-w-md h-screen sm:h-[880px] bg-[#07090e] text-slate-100 flex flex-col sm:rounded-[44px] sm:border-4 sm:border-slate-800 relative overflow-hidden shadow-[0_25px_70px_rgba(0,0,0,0.9)] text-left">
-        {/* Top Status Bar with Member Name, Assigned Coach, and Logout */}
-        <header className="px-4 pt-3 pb-2.5 flex items-center justify-between bg-[#0c101a] border-b border-white/5 sticky top-0 z-40">
+    <div className="min-h-screen bg-[#04060a] text-slate-100 flex flex-col items-center justify-start p-0 font-sans select-none">
+      {/* Seamless edge-to-edge on Mobile & APK, clean responsive container on Tablet & Desktop */}
+      <div className="w-full max-w-xl md:max-w-2xl min-h-screen bg-[#07090e] text-slate-100 flex flex-col relative overflow-x-hidden shadow-2xl text-left border-x border-white/5">
+        {/* Top Status Bar with Member Name, Assigned Coach, Password & Logout */}
+        <header className="px-4 pt-3.5 pb-3 flex items-center justify-between bg-[#0c101a] border-b border-white/5 sticky top-0 z-40">
           <div className="flex items-center space-x-2.5">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center text-black font-black text-xs shadow-md shadow-amber-500/20">
               {activeClient.name.slice(0, 2).toUpperCase()}
@@ -313,7 +331,7 @@ export const ClientApp: React.FC = () => {
               <h3 className="text-xs font-black text-white tracking-wider uppercase font-display">
                 JAWAN <span className="text-amber-500">MEMBER</span>
               </h3>
-              <span className="text-[10px] text-neutral-400 font-medium block truncate max-w-[170px]">
+              <span className="text-[10px] text-neutral-400 font-medium block truncate max-w-[150px] sm:max-w-xs">
                 {activeClient.name} • Coach: {activeClient.trainerName || 'None'}
               </span>
             </div>
@@ -326,9 +344,21 @@ export const ClientApp: React.FC = () => {
             </div>
 
             <button
+              onClick={() => {
+                hapticTap();
+                setIsChangePasswordOpen(true);
+              }}
+              title="Change Password"
+              className="p-1.5 px-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-400 hover:text-amber-300 transition-colors flex items-center space-x-1 text-[11px] font-bold"
+            >
+              <KeyRound className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Password</span>
+            </button>
+
+            <button
               onClick={handleLogoutClient}
-              title="Switch Member Profile"
-              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
+              title="Sign Out / Switch Member"
+              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-rose-400 transition-colors"
             >
               <LogOut className="w-3.5 h-3.5" />
             </button>
@@ -457,6 +487,15 @@ export const ClientApp: React.FC = () => {
             }}
           />
         )}
+
+        {/* Change Password Modal */}
+        <ChangePasswordModal
+          isOpen={isChangePasswordOpen}
+          onClose={() => setIsChangePasswordOpen(false)}
+          userRole="CLIENT"
+          userIdentifier={activeClient.loginId || activeClient.phone || activeClient.email}
+          userName={activeClient.name}
+        />
 
         <IOSInstallBanner />
       </div>

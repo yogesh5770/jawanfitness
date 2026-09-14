@@ -6,7 +6,10 @@ import {
   Mail,
   ArrowRight,
   Loader2,
-  CheckCircle2
+  CheckCircle2,
+  AlertTriangle,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { authService, AuthUser } from '../../services/authService';
 import { hapticTap } from '../../utils/audioHaptics';
@@ -18,6 +21,7 @@ export const AdminApp: React.FC = () => {
 
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [keepSignedIn, setKeepSignedIn] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -137,14 +141,25 @@ export const AdminApp: React.FC = () => {
               </div>
               <div className="relative">
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   value={adminPassword}
                   onChange={(e) => setAdminPassword(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-black/50 border border-white/10 focus:border-amber-500 rounded-xl text-white text-sm outline-none transition-all pl-9 font-mono"
+                  className="w-full px-3.5 py-2.5 bg-black/50 border border-white/10 focus:border-amber-500 rounded-xl text-white text-sm outline-none transition-all pl-9 pr-11 font-mono"
                   placeholder="••••••••••••"
                   required
                 />
                 <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    hapticTap();
+                    setShowPassword(!showPassword);
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-amber-400 p-1 transition-colors"
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
             </div>
 

@@ -259,6 +259,67 @@ class AuthService {
   }
 
   /**
+   * Change user password with old password verification
+   */
+  public async changePassword(
+    oldPassword: string,
+    newPassword: string,
+    identifier?: string
+  ): Promise<{ success: boolean; message?: string; error?: string }> {
+    const token = this.getToken();
+    const payload = {
+      action: 'change-password',
+      oldPassword,
+      newPassword,
+      identifier: identifier || this.getUser()?.loginId || this.getUser()?.email,
+      token
+    };
+
+    try {
+      let res = await fetch(`${PRIMARY_AUTH_URL}?action=change-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(payload)
+      }).catch(() => null);
+
+      if (!res || !res.ok) {
+        const fallbackRes = await fetch(`${REMOTE_AUTH_URL}?action=change-password`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify(payload)
+        }).catch(() => null);
+
+        if (fallbackRes && fallbackRes.ok) {
+          res = fallbackRes;
+        }
+      }
+
+      if (!res) {
+        return { success: false, error: 'Network error: could not contact auth server.' };
+      }
+
+      const { data, error: parseError } = await parseJsonResponse(res);
+      if (parseError) {
+        return { success: false, error: parseError };
+      }
+
+      if (!res.ok || data?.error) {
+        return { success: false, error: data?.error || 'Password update failed.' };
+      }
+
+      return { success: true, message: data.message || 'Password changed successfully!' };
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Password change request failed.' };
+    }
+  }
+
+  /**
    * Revoke session on backend and clear storage
    */
   public async logout(): Promise<void> {

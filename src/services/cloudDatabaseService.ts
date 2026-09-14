@@ -90,16 +90,24 @@ class CloudDatabaseService {
   private startBackgroundSync() {
     if (typeof window === 'undefined') return;
 
-    // Auto-refresh when tab gains focus
+    // Refresh immediately when tab gains focus or becomes visible
     window.addEventListener('focus', () => {
       this.fetchStateFromCloud();
     });
 
-    // Auto-poll cloud DB every 8 seconds for live synchronization between Admin, Trainer & Client
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        this.fetchStateFromCloud();
+      }
+    });
+
+    // Gentle heartbeat (only when tab is actively visible) to prevent exhausting Vercel limits
     if (this.pollInterval) clearInterval(this.pollInterval);
     this.pollInterval = setInterval(() => {
-      this.fetchStateFromCloud();
-    }, 8000);
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        this.fetchStateFromCloud();
+      }
+    }, 60000); // 60s gentle sync instead of 8s aggressive burn
   }
 
   /**
