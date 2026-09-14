@@ -261,11 +261,21 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         (a, b) => Number(a.timestamp || 0) - Number(b.timestamp || 0)
       );
 
+      // Smart dictionary merge for assignedWorkouts and assignedDietPlans so existing plans are never wiped
+      const mergedWorkouts = {
+        ...(existingState.assignedWorkouts || {}),
+        ...(incomingData.assignedWorkouts || {})
+      };
+      const mergedDietPlans = {
+        ...(existingState.assignedDietPlans || {}),
+        ...(incomingData.assignedDietPlans || {})
+      };
+
       const mergedPayload = {
         clients: incomingData.clients || existingState.clients || [],
         trainers: incomingData.trainers || existingState.trainers || [],
-        assignedWorkouts: incomingData.assignedWorkouts || existingState.assignedWorkouts || {},
-        assignedDietPlans: incomingData.assignedDietPlans || existingState.assignedDietPlans || {},
+        assignedWorkouts: mergedWorkouts,
+        assignedDietPlans: mergedDietPlans,
         workoutHistory: incomingData.workoutHistory || existingState.workoutHistory || [],
         loggedMeals: incomingData.loggedMeals || existingState.loggedMeals || [],
         events: incomingData.events || existingState.events || [],

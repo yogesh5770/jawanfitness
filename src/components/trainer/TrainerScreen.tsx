@@ -973,8 +973,12 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
               <div className="flex-1 overflow-y-auto py-3 space-y-3">
                 {(() => {
                   const clientMessages = syncState.messages.filter((msg) => {
-                    if (msg.clientId && msg.clientId !== activeClient.id) return false;
-                    return true;
+                    if (!msg.clientId) return true;
+                    if (msg.clientId === activeClient.id) return true;
+                    if (activeClient.loginId && msg.clientId.toLowerCase() === activeClient.loginId.toLowerCase()) return true;
+                    if (activeClient.email && msg.clientId.toLowerCase() === activeClient.email.toLowerCase()) return true;
+                    if (syncState.clients.length <= 1) return true;
+                    return false;
                   });
 
                   if (clientMessages.length === 0) {

@@ -30,6 +30,7 @@ export const DietScreen: React.FC<DietScreenProps> = ({
   loggedMeals,
   waterMl,
   goals,
+  assignedMealPlan,
   onAddMealItem,
   onRemoveMealItem,
   onUpdateWater
@@ -182,6 +183,128 @@ export const DietScreen: React.FC<DietScreenProps> = ({
           </div>
         </div>
       </div>
+
+      {/* 1.5. COACH PRESCRIBED DIET PLAN */}
+      {assignedMealPlan ? (
+        <div className="bg-gradient-to-br from-[#0e1628] to-[#0a101d] border-2 border-amber-500/40 rounded-3xl p-5 shadow-xl relative overflow-hidden text-left space-y-4">
+          <div className="absolute top-0 right-0 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-white/10 pb-3">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 font-bold shadow-inner">
+                <Sparkles className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-[10px] font-tech uppercase tracking-widest text-amber-400 font-bold block">
+                  Prescribed by Coach {assignedMealPlan.assignedBy || trainerName}
+                </span>
+                <h3 className="text-lg font-black text-white font-display">
+                  {assignedMealPlan.title}
+                </h3>
+              </div>
+            </div>
+            <span className="text-xs font-tech font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 rounded-full">
+              Active Plan
+            </span>
+          </div>
+
+          {/* Prescribed Macro Targets */}
+          <div className="grid grid-cols-4 gap-2 text-center">
+            <div className="bg-slate-900/80 p-2 rounded-xl border border-white/5">
+              <span className="text-[9px] uppercase font-tech text-slate-400">Calories</span>
+              <p className="text-xs sm:text-sm font-black text-white font-display mt-0.5">{assignedMealPlan.dailyCalories} kcal</p>
+            </div>
+            <div className="bg-slate-900/80 p-2 rounded-xl border border-white/5">
+              <span className="text-[9px] uppercase font-tech text-amber-400">Protein</span>
+              <p className="text-xs sm:text-sm font-black text-amber-400 font-display mt-0.5">{assignedMealPlan.dailyProtein}g</p>
+            </div>
+            <div className="bg-slate-900/80 p-2 rounded-xl border border-white/5">
+              <span className="text-[9px] uppercase font-tech text-cyan-400">Carbs</span>
+              <p className="text-xs sm:text-sm font-black text-cyan-400 font-display mt-0.5">{assignedMealPlan.dailyCarbs}g</p>
+            </div>
+            <div className="bg-slate-900/80 p-2 rounded-xl border border-white/5">
+              <span className="text-[9px] uppercase font-tech text-rose-400">Fat</span>
+              <p className="text-xs sm:text-sm font-black text-rose-400 font-display mt-0.5">{assignedMealPlan.dailyFat}g</p>
+            </div>
+          </div>
+
+          {/* Prescribed Meals List */}
+          <div className="space-y-2 pt-1">
+            <h4 className="text-[11px] font-bold text-slate-300 font-tech uppercase tracking-wider flex items-center space-x-1.5">
+              <span>Prescribed Daily Meals</span>
+            </h4>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {assignedMealPlan.meals?.map((m: any, idx: number) => {
+                const mealIcons: Record<string, string> = {
+                  breakfast: '🌅',
+                  lunch: '☀️',
+                  snack: '⚡',
+                  dinner: '🌙'
+                };
+                return (
+                  <div key={idx} className="bg-slate-900/90 rounded-2xl p-3 border border-white/10 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-base">{mealIcons[m.type] || '🍽️'}</span>
+                        <div>
+                          <p className="text-xs font-bold text-white capitalize">{m.title || m.type}</p>
+                          <span className="text-[10px] text-amber-400 font-tech">
+                            {m.suggestedCalories} kcal • {m.suggestedProtein}g Protein
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          hapticTap();
+                          onAddMealItem({
+                            id: `meal-${Date.now()}-${idx}`,
+                            foodId: `custom-prescribed-${idx}`,
+                            name: `${m.title || m.type}: ${Array.isArray(m.items) ? m.items.join(', ') : m.items}`,
+                            mealType: m.type,
+                            servingQuantity: 1,
+                            calories: m.suggestedCalories || 0,
+                            protein: m.suggestedProtein || 0,
+                            carbs: Math.round((m.suggestedCalories || 0) * 0.45 / 4),
+                            fat: Math.round((m.suggestedCalories || 0) * 0.25 / 9),
+                            fiber: 5,
+                            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                          });
+                        }}
+                        className="px-2.5 py-1 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 text-[10px] font-bold border border-amber-500/30 transition-colors flex items-center space-x-1"
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>Log Meal</span>
+                      </button>
+                    </div>
+
+                    {/* Food Items Pills */}
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {(Array.isArray(m.items) ? m.items : [m.items]).map((item: string, iIdx: number) => (
+                        <span
+                          key={iIdx}
+                          className="text-[10px] px-2 py-0.5 rounded-lg bg-slate-800 text-slate-200 border border-white/5 font-medium"
+                        >
+                          {item}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-[#0c101a] border border-white/10 rounded-2xl p-4 text-center space-y-2">
+          <Sparkles className="w-6 h-6 text-amber-500/40 mx-auto" />
+          <h4 className="text-xs font-bold text-white">General Nutrition Guidelines</h4>
+          <p className="text-[11px] text-slate-400 max-w-sm mx-auto leading-relaxed">
+            Your coach {trainerName} has not prescribed a customized meal plan yet. You can track your daily calorie and macro intake below using the food search.
+          </p>
+        </div>
+      )}
 
       {/* 2. Water Hydration Card */}
       <div className="bg-[#0c101a] border border-cyan-500/30 rounded-3xl p-4 flex items-center justify-between shadow-md">

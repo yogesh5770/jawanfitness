@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import {
   WorkoutSession,
   Exercise,
-  ActiveWorkoutExercise
+  ActiveWorkoutExercise,
+  AssignedWorkout,
+  AssignedMealPlan
 } from '../../types';
 import { syncedStore, AppSyncState } from '../../services/syncedStore';
 import { ExerciseService } from '../../services/exerciseService';
@@ -355,14 +357,64 @@ export const ClientApp: React.FC = () => {
     );
   }
 
-  const assignedWorkout = syncState.assignedWorkouts[activeClient.id] || null;
-  const assignedDiet = syncState.assignedDietPlans[activeClient.id] || null;
+  const resolveAssignedWorkout = (): AssignedWorkout | null => {
+    const workouts = syncState.assignedWorkouts || {};
+    if (activeClient.id && workouts[activeClient.id]) return workouts[activeClient.id];
+    if (activeClient.loginId && workouts[activeClient.loginId]) return workouts[activeClient.loginId];
+    if (activeClient.email && workouts[activeClient.email]) return workouts[activeClient.email];
+    if (currentUser?.id && workouts[currentUser.id]) return workouts[currentUser.id];
+    if (currentUser?.loginId && workouts[currentUser.loginId]) return workouts[currentUser.loginId];
+    if (currentUser?.email && workouts[currentUser.email]) return workouts[currentUser.email];
+    const clientRecord = syncState.clients.find((c) =>
+      c.id === activeClient.id ||
+      (c.loginId && activeClient.loginId && c.loginId.toLowerCase() === activeClient.loginId.toLowerCase()) ||
+      (c.email && activeClient.email && c.email.toLowerCase() === activeClient.email.toLowerCase())
+    );
+    if (clientRecord) {
+      if (clientRecord.id && workouts[clientRecord.id]) return workouts[clientRecord.id];
+      if (clientRecord.loginId && workouts[clientRecord.loginId]) return workouts[clientRecord.loginId];
+      if (clientRecord.email && workouts[clientRecord.email]) return workouts[clientRecord.email];
+    }
+    const validKeys = Object.keys(workouts).filter((k) => workouts[k] != null);
+    if (validKeys.length === 1 && syncState.clients.length <= 1) {
+      return workouts[validKeys[0]];
+    }
+    return null;
+  };
+
+  const resolveAssignedDiet = (): AssignedMealPlan | null => {
+    const diets = syncState.assignedDietPlans || {};
+    if (activeClient.id && diets[activeClient.id]) return diets[activeClient.id];
+    if (activeClient.loginId && diets[activeClient.loginId]) return diets[activeClient.loginId];
+    if (activeClient.email && diets[activeClient.email]) return diets[activeClient.email];
+    if (currentUser?.id && diets[currentUser.id]) return diets[currentUser.id];
+    if (currentUser?.loginId && diets[currentUser.loginId]) return diets[currentUser.loginId];
+    if (currentUser?.email && diets[currentUser.email]) return diets[currentUser.email];
+    const clientRecord = syncState.clients.find((c) =>
+      c.id === activeClient.id ||
+      (c.loginId && activeClient.loginId && c.loginId.toLowerCase() === activeClient.loginId.toLowerCase()) ||
+      (c.email && activeClient.email && c.email.toLowerCase() === activeClient.email.toLowerCase())
+    );
+    if (clientRecord) {
+      if (clientRecord.id && diets[clientRecord.id]) return diets[clientRecord.id];
+      if (clientRecord.loginId && diets[clientRecord.loginId]) return diets[clientRecord.loginId];
+      if (clientRecord.email && diets[clientRecord.email]) return diets[clientRecord.email];
+    }
+    const validKeys = Object.keys(diets).filter((k) => diets[k] != null);
+    if (validKeys.length === 1 && syncState.clients.length <= 1) {
+      return diets[validKeys[0]];
+    }
+    return null;
+  };
+
+  const assignedWorkout = resolveAssignedWorkout();
+  const assignedDiet = resolveAssignedDiet();
 
   const handleStartAssignedWorkout = () => {
     if (!assignedWorkout) return;
     hapticTap();
 
-    const exercises: ActiveWorkoutExercise[] = assignedWorkout.exercises.map((asgEx) => {
+    const exercises: ActiveWorkoutExercise[] = assignedWorkout.exercises.map((asgEx: any) => {
       const baseEx = ExerciseService.getById(asgEx.exerciseId) || ExerciseService.getAll()[0];
       return {
         exercise: baseEx,
@@ -416,7 +468,8 @@ export const ClientApp: React.FC = () => {
   const isTrainerNameValid = Boolean(activeClient?.trainerName && activeClient.trainerName.trim() !== '' && activeClient.trainerName !== 'Unassigned');
 
   const assignedTrainer = (isTrainerIdValid ? syncState.trainers.find(t => t.id === activeClient.trainerId) : null) ||
-    (isTrainerNameValid ? syncState.trainers.find(t => t.name.toLowerCase() === (activeClient.trainerName || '').toLowerCase()) : null);
+    (isTrainerNameValid ? syncState.trainers.find(t => t.name.toLowerCase() === (activeClient.trainerName || '').toLowerCase()) : null) ||
+    (syncState.trainers.length === 1 ? syncState.trainers[0] : null);
 
   const isCoachAssigned = Boolean(assignedTrainer || isTrainerIdValid || isTrainerNameValid);
 
@@ -516,7 +569,14 @@ export const ClientApp: React.FC = () => {
               }}
               waterMl={syncState.waterMl}
               weightHistory={syncState.weightHistory}
-              latestMessage={syncState.messages.filter((m) => !m.clientId || m.clientId === activeClient.id).slice(-1)[0] || null}
+              latestMessage={syncState.messages.filter((m) => {
+                if (!m.clientId) return true;
+                if (m.clientId === activeClient.id) return true;
+                if (activeClient.loginId && m.clientId.toLowerCase() === activeClient.loginId.toLowerCase()) return true;
+                if (activeClient.email && m.clientId.toLowerCase() === activeClient.email.toLowerCase()) return true;
+                if (syncState.clients.length <= 1) return true;
+                return false;
+              }).slice(-1)[0] || null}
               onStartWorkout={handleStartAssignedWorkout}
               onResumeWorkout={() => setIsWorkoutModalOpen(true)}
               onDiscardWorkout={() => syncedStore.discardWorkoutSession()}

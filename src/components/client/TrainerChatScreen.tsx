@@ -20,31 +20,29 @@ export const TrainerChatScreen: React.FC<TrainerChatScreenProps> = ({ client, tr
     return unsub;
   }, []);
 
-  // Find assigned trainer strictly by ID or exact name
+  // Find assigned trainer strictly by ID or exact name, with fallback to gym's head coach
   const foundTrainer = syncState.trainers.find(
     (t) =>
       (client.trainerId && t.id === client.trainerId) ||
       (trainerName && trainerName !== 'Unassigned' && t.name.toLowerCase() === trainerName.toLowerCase())
-  );
+  ) || (syncState.trainers.length === 1 ? syncState.trainers[0] : undefined);
 
   const hasTrainerId = Boolean(
-    client.trainerId &&
-    client.trainerId.trim() !== '' &&
-    client.trainerId !== 'Unassigned'
+    (client.trainerId && client.trainerId.trim() !== '' && client.trainerId !== 'Unassigned') ||
+    foundTrainer
   );
 
   const hasTrainerName = Boolean(
-    trainerName &&
-    trainerName.trim() !== '' &&
-    trainerName !== 'Unassigned'
+    (trainerName && trainerName.trim() !== '' && trainerName !== 'Unassigned') ||
+    foundTrainer
   );
 
   const isAssigned = Boolean(foundTrainer || hasTrainerId || hasTrainerName);
 
   const trainer: TrainerData | undefined = foundTrainer || (isAssigned ? {
     id: client.trainerId || 'trainer-assigned',
-    name: hasTrainerName ? trainerName! : 'Assigned Coach',
-    role: 'Personal Fitness Coach',
+    name: (trainerName && trainerName !== 'Unassigned') ? trainerName : 'Assigned Coach',
+    role: 'Head Strength Coach & Nutritionist',
     email: '',
     phone: '',
     status: 'Active',
@@ -236,8 +234,12 @@ export const TrainerChatScreen: React.FC<TrainerChatScreenProps> = ({ client, tr
         {/* Message Stream */}
         {(() => {
           const clientMessages = syncState.messages.filter((msg) => {
-            if (msg.clientId && msg.clientId !== client.id) return false;
-            return true;
+            if (!msg.clientId) return true;
+            if (msg.clientId === client.id) return true;
+            if (client.loginId && msg.clientId.toLowerCase() === client.loginId.toLowerCase()) return true;
+            if (client.email && msg.clientId.toLowerCase() === client.email.toLowerCase()) return true;
+            if (syncState.clients.length <= 1) return true;
+            return false;
           });
 
           return (

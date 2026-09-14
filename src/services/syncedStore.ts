@@ -215,8 +215,14 @@ class SyncedStore {
       ...incoming,
       clients: Array.isArray(incoming.clients) ? incoming.clients : this.state.clients,
       trainers: Array.isArray(incoming.trainers) ? incoming.trainers : this.state.trainers,
-      assignedWorkouts: incoming.assignedWorkouts || this.state.assignedWorkouts,
-      assignedDietPlans: incoming.assignedDietPlans || this.state.assignedDietPlans,
+      assignedWorkouts: {
+        ...(this.state.assignedWorkouts || {}),
+        ...(incoming.assignedWorkouts || {})
+      },
+      assignedDietPlans: {
+        ...(this.state.assignedDietPlans || {}),
+        ...(incoming.assignedDietPlans || {})
+      },
       loggedMeals: Array.isArray(incoming.loggedMeals) ? incoming.loggedMeals : this.state.loggedMeals,
       workoutHistory: Array.isArray(incoming.workoutHistory) ? incoming.workoutHistory : this.state.workoutHistory,
       events: Array.isArray(incoming.events) ? incoming.events : this.state.events,
@@ -235,12 +241,12 @@ class SyncedStore {
     try {
       const cloudData = await cloudDbService.fetchStateFromCloud();
       if (cloudData) {
-        // Build state signature to detect real updates including message updates
+        // Build state signature to detect real updates including workouts, diets and messages
         const newSig = JSON.stringify({
           c: (cloudData.clients || []).map((c: any) => `${c.id}:${c.trainerId}:${c.currentWeightKg}`),
           t: (cloudData.trainers || []).map((t: any) => `${t.id}:${t.name}`),
-          w: Object.keys(cloudData.assignedWorkouts || {}).length,
-          d: Object.keys(cloudData.assignedDietPlans || {}).length,
+          w: Object.entries(cloudData.assignedWorkouts || {}).map(([k, v]: any) => `${k}:${v?.id || ''}:${v?.title || ''}`).join(','),
+          d: Object.entries(cloudData.assignedDietPlans || {}).map(([k, v]: any) => `${k}:${v?.id || ''}:${v?.title || ''}`).join(','),
           m: (cloudData.loggedMeals || []).length,
           wh: (cloudData.workoutHistory || []).length,
           msg: (cloudData.messages || []).map((m: any) => `${m.id}:${m.timestamp}`).join(','),
@@ -277,8 +283,14 @@ class SyncedStore {
             ...cloudData,
             clients: mergedClients,
             trainers: Array.isArray(cloudData.trainers) ? cloudData.trainers : this.state.trainers,
-            assignedWorkouts: cloudData.assignedWorkouts || this.state.assignedWorkouts,
-            assignedDietPlans: cloudData.assignedDietPlans || this.state.assignedDietPlans,
+            assignedWorkouts: {
+              ...(this.state.assignedWorkouts || {}),
+              ...(cloudData.assignedWorkouts || {})
+            },
+            assignedDietPlans: {
+              ...(this.state.assignedDietPlans || {}),
+              ...(cloudData.assignedDietPlans || {})
+            },
             loggedMeals: Array.isArray(cloudData.loggedMeals) ? cloudData.loggedMeals : this.state.loggedMeals,
             workoutHistory: Array.isArray(cloudData.workoutHistory) ? cloudData.workoutHistory : this.state.workoutHistory,
             events: Array.isArray(cloudData.events) ? cloudData.events : this.state.events,
@@ -447,12 +459,12 @@ class SyncedStore {
 
   public assignClientToTrainer(clientId: string, trainerId: string) {
     const trainer = this.state.trainers.find((t) => t.id === trainerId);
-    const client = this.state.clients.find((c) => c.id === clientId);
+    const client = this.state.clients.find((c) => c.id === clientId || c.loginId === clientId);
 
     this.state = {
       ...this.state,
       clients: this.state.clients.map((c) =>
-        c.id === clientId
+        c.id === clientId || (client?.loginId && c.loginId === client.loginId)
           ? {
               ...c,
               trainerId: trainer ? trainer.id : '',
@@ -464,13 +476,13 @@ class SyncedStore {
 
     // Synchronize auth storage if current user is this client
     try {
-      const authUserStr = localStorage.getItem('jawan_auth_user');
+      const authUserStr = localStorage.getItem('jawan_auth_user_v1');
       if (authUserStr) {
         const authUser = JSON.parse(authUserStr);
         if (authUser && (authUser.id === clientId || authUser.loginId === client?.loginId)) {
           authUser.trainerId = trainer ? trainer.id : '';
           authUser.trainerName = trainer ? trainer.name : 'Unassigned';
-          localStorage.setItem('jawan_auth_user', JSON.stringify(authUser));
+          localStorage.setItem('jawan_auth_user_v1', JSON.stringify(authUser));
         }
       }
     } catch {}
@@ -481,7 +493,9 @@ class SyncedStore {
       `Admin assigned member ${client?.name || clientId} to coach ${trainer?.name || 'Unassigned'}`,
       'Admin'
     );
-    // Immediate force push to cloud database for instantaneous cross-device update
+    this.persist();
+    this.emitState();
+    this.broadcastToTabs();
     this.forcePushToCloud();
   }
 
@@ -619,21 +633,32 @@ class SyncedStore {
 
   // 2. TRAINER ACTIONS
   public assignWorkout(clientId: string, workout: AssignedWorkout) {
+    const client = this.state.clients.find((c) => c.id === clientId || c.loginId === clientId);
+    const updatedAssigned = {
+      ...this.state.assignedWorkouts,
+      [clientId]: workout
+    };
+    if (client) {
+      if (client.id) updatedAssigned[client.id] = workout;
+      if (client.loginId) updatedAssigned[client.loginId] = workout;
+      if (client.email) updatedAssigned[client.email] = workout;
+    }
+
     this.state = {
       ...this.state,
-      assignedWorkouts: {
-        ...this.state.assignedWorkouts,
-        [clientId]: workout
-      }
+      assignedWorkouts: updatedAssigned
     };
 
-    const client = this.state.clients.find((c) => c.id === clientId);
     this.logEvent(
       'TRAINER',
       'Workout Assigned',
       `${workout.assignedBy} assigned ${workout.title} (${workout.exercises.length} exercises, ~${workout.estimatedMinutes} min) to ${client?.name || clientId}`,
       'Workout'
     );
+    this.persist();
+    this.emitState();
+    this.broadcastToTabs();
+    this.forcePushToCloud();
   }
 
   public removeAssignedWorkout(clientId: string) {
@@ -648,21 +673,32 @@ class SyncedStore {
   }
 
   public assignDietPlan(clientId: string, plan: AssignedMealPlan) {
+    const client = this.state.clients.find((c) => c.id === clientId || c.loginId === clientId);
+    const updatedDiets = {
+      ...this.state.assignedDietPlans,
+      [clientId]: plan
+    };
+    if (client) {
+      if (client.id) updatedDiets[client.id] = plan;
+      if (client.loginId) updatedDiets[client.loginId] = plan;
+      if (client.email) updatedDiets[client.email] = plan;
+    }
+
     this.state = {
       ...this.state,
-      assignedDietPlans: {
-        ...this.state.assignedDietPlans,
-        [clientId]: plan
-      }
+      assignedDietPlans: updatedDiets
     };
 
-    const client = this.state.clients.find((c) => c.id === clientId);
     this.logEvent(
       'TRAINER',
       'Diet Assigned',
       `${plan.assignedBy} assigned ${plan.title} (${plan.dailyCalories} kcal, ${plan.dailyProtein}g protein) to ${client?.name || clientId}`,
       'Diet'
     );
+    this.persist();
+    this.emitState();
+    this.broadcastToTabs();
+    this.forcePushToCloud();
   }
 
   public removeAssignedDietPlan(clientId: string) {
@@ -873,9 +909,20 @@ class SyncedStore {
     explicitSenderName?: string
   ) {
     const activeClientId = targetClientId || this.state.activeClientId;
-    const client = this.state.clients.find((c) => c.id === activeClientId);
+    const client = this.state.clients.find(
+      (c) =>
+        c.id === activeClientId ||
+        (c.loginId && activeClientId && c.loginId.toLowerCase() === activeClientId.toLowerCase()) ||
+        (c.email && activeClientId && c.email.toLowerCase() === activeClientId.toLowerCase())
+    ) || (this.state.clients.length === 1 ? this.state.clients[0] : undefined);
+
     const activeTrainerId = targetTrainerId || client?.trainerId || this.state.activeTrainerId;
-    const trainer = this.state.trainers.find((t) => t.id === activeTrainerId || t.name === client?.trainerName);
+    const trainer = this.state.trainers.find(
+      (t) =>
+        t.id === activeTrainerId ||
+        (client?.trainerName && t.name.toLowerCase() === client.trainerName.toLowerCase()) ||
+        (t.loginId && activeTrainerId && t.loginId.toLowerCase() === activeTrainerId.toLowerCase())
+    ) || (this.state.trainers.length === 1 ? this.state.trainers[0] : undefined);
 
     const senderName = explicitSenderName || (sender === 'client' ? client?.name || 'Client' : trainer?.name || 'Coach');
 
@@ -886,8 +933,8 @@ class SyncedStore {
       text,
       timestamp: Date.now(),
       read: true,
-      clientId: activeClientId || client?.id || '',
-      trainerId: activeTrainerId || trainer?.id || ''
+      clientId: client?.id || activeClientId || '',
+      trainerId: trainer?.id || activeTrainerId || ''
     };
 
     this.state = {
@@ -901,7 +948,9 @@ class SyncedStore {
       `${newMsg.senderName}: "${text.length > 40 ? text.substring(0, 40) + '...' : text}"`,
       sender === 'client' ? 'Client' : 'Admin'
     );
-    // Force push immediately to cloud database for real-time delivery
+    this.persist();
+    this.emitState();
+    this.broadcastToTabs();
     this.forcePushToCloud();
   }
 

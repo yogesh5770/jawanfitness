@@ -12,7 +12,8 @@ import {
   CheckCircle2,
   Calendar,
   Phone,
-  MessageCircle
+  MessageCircle,
+  Apple
 } from 'lucide-react';
 import { 
   AssignedWorkout, 
@@ -332,11 +333,18 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                   <Flame className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-xs uppercase font-tech font-bold tracking-widest text-slate-500 dark:text-slate-400">
-                    Today's Nutrition
-                  </h3>
+                  <div className="flex items-center space-x-2">
+                    <h3 className="text-xs uppercase font-tech font-bold tracking-widest text-slate-500 dark:text-slate-400">
+                      Today's Nutrition
+                    </h3>
+                    {assignedMealPlan && (
+                      <span className="text-[9px] font-tech font-bold uppercase px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-500 border border-amber-500/20 truncate max-w-[130px]">
+                        {assignedMealPlan.title}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-base font-black text-slate-900 dark:text-white font-display">
-                    {totalCalories} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">/ {goals.calories} kcal</span>
+                    {totalCalories} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">/ {assignedMealPlan ? assignedMealPlan.dailyCalories : goals.calories} kcal</span>
                   </p>
                 </div>
               </div>
@@ -352,17 +360,38 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               </button>
             </div>
 
+            {/* Coach Prescribed Meal Plan Prompt */}
+            {assignedMealPlan && (
+              <div className="mb-3 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between text-xs">
+                <div className="flex items-center space-x-2">
+                  <Apple className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+                  <span className="text-slate-700 dark:text-slate-300 font-medium text-[11px] truncate max-w-[200px] sm:max-w-xs">
+                    Prescribed: <strong className="text-amber-500 dark:text-amber-400 font-bold">{assignedMealPlan.title}</strong> ({assignedMealPlan.meals?.length || 0} meals)
+                  </span>
+                </div>
+                <button
+                  onClick={() => {
+                    hapticTap();
+                    onNavigateToDiet();
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-tech font-bold text-[10px] uppercase transition-all flex-shrink-0"
+                >
+                  Log Meals &rarr;
+                </button>
+              </div>
+            )}
+
             {/* Macros Breakdown Bar Grid */}
             <div className="grid grid-cols-4 gap-2 text-center pt-1">
               <div className="bg-slate-50 dark:bg-slate-900/90 rounded-xl p-2 border border-slate-200 dark:border-white/5">
                 <span className="text-[10px] font-tech text-slate-500 dark:text-slate-400 uppercase">Protein</span>
                 <div className="text-xs font-bold text-amber-600 dark:text-amber-400 mt-0.5">
-                  {totalProtein} <span className="text-[10px] text-slate-500">/ {goals.protein}g</span>
+                  {totalProtein} <span className="text-[10px] text-slate-500">/ {assignedMealPlan ? assignedMealPlan.dailyProtein : goals.protein}g</span>
                 </div>
                 <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-1 mt-1 overflow-hidden">
                   <div
                     className="bg-amber-500 dark:bg-amber-400 h-full rounded-full"
-                    style={{ width: `${Math.min(100, (totalProtein / goals.protein) * 100)}%` }}
+                    style={{ width: `${Math.min(100, (totalProtein / (assignedMealPlan ? assignedMealPlan.dailyProtein : goals.protein)) * 100)}%` }}
                   />
                 </div>
               </div>
@@ -370,12 +399,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               <div className="bg-slate-50 dark:bg-slate-900/90 rounded-xl p-2 border border-slate-200 dark:border-white/5">
                 <span className="text-[10px] font-tech text-slate-500 dark:text-slate-400 uppercase">Carbs</span>
                 <div className="text-xs font-bold text-cyan-600 dark:text-cyan-400 mt-0.5">
-                  {totalCarbs} <span className="text-[10px] text-slate-500">/ {goals.carbs}g</span>
+                  {totalCarbs} <span className="text-[10px] text-slate-500">/ {assignedMealPlan ? assignedMealPlan.dailyCarbs : goals.carbs}g</span>
                 </div>
                 <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-1 mt-1 overflow-hidden">
                   <div
                     className="bg-cyan-500 dark:bg-cyan-400 h-full rounded-full"
-                    style={{ width: `${Math.min(100, (totalCarbs / goals.carbs) * 100)}%` }}
+                    style={{ width: `${Math.min(100, (totalCarbs / (assignedMealPlan ? assignedMealPlan.dailyCarbs : goals.carbs)) * 100)}%` }}
                   />
                 </div>
               </div>
@@ -383,12 +412,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               <div className="bg-slate-50 dark:bg-slate-900/90 rounded-xl p-2 border border-slate-200 dark:border-white/5">
                 <span className="text-[10px] font-tech text-slate-500 dark:text-slate-400 uppercase">Fat</span>
                 <div className="text-xs font-bold text-rose-600 dark:text-rose-400 mt-0.5">
-                  {totalFat} <span className="text-[10px] text-slate-500">/ {goals.fat}g</span>
+                  {totalFat} <span className="text-[10px] text-slate-500">/ {assignedMealPlan ? assignedMealPlan.dailyFat : goals.fat}g</span>
                 </div>
                 <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-1 mt-1 overflow-hidden">
                   <div
                     className="bg-rose-500 dark:bg-rose-400 h-full rounded-full"
-                    style={{ width: `${Math.min(100, (totalFat / goals.fat) * 100)}%` }}
+                    style={{ width: `${Math.min(100, (totalFat / (assignedMealPlan ? assignedMealPlan.dailyFat : goals.fat)) * 100)}%` }}
                   />
                 </div>
               </div>
