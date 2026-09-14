@@ -19,6 +19,7 @@ import { syncedStore, AppSyncState } from '../../services/syncedStore';
 import { authService } from '../../services/authService';
 import { hapticTap } from '../../utils/audioHaptics';
 import { ChangePasswordModal } from '../common/ChangePasswordModal';
+import { IOSInstallBanner } from '../common/IOSInstallBanner';
 
 export const TrainerApp: React.FC = () => {
   const [syncState, setSyncState] = useState<AppSyncState>(() => syncedStore.getState());
@@ -353,6 +354,8 @@ export const TrainerApp: React.FC = () => {
           </button>
         </div>
       </footer>
+
+      <IOSInstallBanner />
     </div>
   );
 };
