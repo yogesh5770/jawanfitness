@@ -275,6 +275,17 @@ class SyncedStore {
     );
   }
 
+  public updateTrainer(trainerId: string, updates: Partial<TrainerData>) {
+    this.state = {
+      ...this.state,
+      trainers: this.state.trainers.map((t) =>
+        t.id === trainerId ? { ...t, ...updates } : t
+      )
+    };
+    this.persist();
+    this.notify();
+  }
+
   public setActiveTrainer(trainerId: string) {
     if (this.state.trainers.some((t) => t.id === trainerId) || trainerId === '') {
       this.state = {

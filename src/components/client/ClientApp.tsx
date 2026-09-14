@@ -404,6 +404,9 @@ export const ClientApp: React.FC = () => {
   const currentTrainerPhone = isCoachAssigned 
     ? (assignedTrainer?.phone || '') 
     : '';
+  const currentTrainerAvatarUrl = isCoachAssigned
+    ? (assignedTrainer?.avatarUrl || '')
+    : '';
 
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-[#04060a] text-slate-900 dark:text-slate-100 flex flex-col items-center justify-start p-0 font-sans select-none transition-colors duration-200">
@@ -426,7 +429,7 @@ export const ClientApp: React.FC = () => {
           </div>
 
           <div className="flex items-center space-x-2">
-            <ThemeToggle className="scale-90" />
+            <ThemeToggle />
             <div className="flex items-center space-x-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               <span>LIVE</span>
@@ -465,6 +468,7 @@ export const ClientApp: React.FC = () => {
               trainerName={currentTrainerName}
               trainerRole={currentTrainerRole}
               trainerPhone={currentTrainerPhone}
+              trainerAvatarUrl={currentTrainerAvatarUrl}
               assignedWorkout={assignedWorkout}
               assignedMealPlan={assignedDiet}
               activeWorkoutSession={syncState.activeWorkoutSession}

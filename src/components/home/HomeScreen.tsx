@@ -33,6 +33,7 @@ interface HomeScreenProps {
   trainerName?: string;
   trainerRole?: string;
   trainerPhone?: string;
+  trainerAvatarUrl?: string;
   assignedWorkout: AssignedWorkout | null;
   assignedMealPlan?: AssignedMealPlan | null;
   activeWorkoutSession?: WorkoutSession | null;
@@ -59,6 +60,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   trainerName = 'Unassigned',
   trainerRole = 'No Trainer Assigned',
   trainerPhone = '',
+  trainerAvatarUrl = '',
   assignedWorkout,
   assignedMealPlan,
   activeWorkoutSession,
@@ -459,8 +461,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               <div className="bg-white dark:bg-[#0e1422] rounded-2xl p-4 border border-slate-200 dark:border-white/10 shadow-sm">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center space-x-2.5">
-                    <div className="w-9 h-9 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-600 dark:text-amber-400 text-xs font-black font-display shadow-sm">
-                      {isAssigned ? coachInitials : '—'}
+                    <div className="w-9 h-9 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-600 dark:text-amber-400 text-xs font-black font-display shadow-sm overflow-hidden">
+                      {isAssigned && trainerAvatarUrl ? (
+                        <img src={trainerAvatarUrl} alt={trainerName} className="w-full h-full object-cover" />
+                      ) : (
+                        isAssigned ? coachInitials : '—'
+                      )}
                     </div>
                     <div>
                       <div className="flex items-center space-x-1.5">

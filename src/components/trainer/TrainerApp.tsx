@@ -331,8 +331,12 @@ export const TrainerApp: React.FC = () => {
           </button>
 
           <div className="flex items-center space-x-2.5 pl-2 border-l border-neutral-800">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-600 to-amber-400 text-black font-bold text-xs flex items-center justify-center shadow">
-              {activeTrainer.name.slice(0, 2).toUpperCase()}
+            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-600 to-amber-400 text-black font-bold text-xs flex items-center justify-center shadow overflow-hidden">
+              {activeTrainer.avatarUrl ? (
+                <img src={activeTrainer.avatarUrl} alt={activeTrainer.name} className="w-full h-full object-cover" />
+              ) : (
+                activeTrainer.name.slice(0, 2).toUpperCase()
+              )}
             </div>
             <div className="hidden sm:block text-left">
               <div className="text-xs font-bold text-neutral-200">{activeTrainer.name}</div>

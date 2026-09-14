@@ -22,13 +22,17 @@ import {
   Database,
   MessageCircle,
   Key,
-  Lock
+  Lock,
+  Camera,
+  Upload,
+  Image as ImageIcon
 } from 'lucide-react';
 import { ExerciseService } from '../../services/exerciseService';
 import { FoodService } from '../../data/foodDatabase';
 import { syncedStore, AppSyncState, ClientData, TrainerData } from '../../services/syncedStore';
 import { authService } from '../../services/authService';
 import { hapticTap } from '../../utils/audioHaptics';
+import { compressImageFile } from '../../utils/imageUtils';
 import { CredentialShareModal } from './CredentialShareModal';
 import { CredentialInfo } from '../../utils/credentialUtils';
 import { ThemeToggle } from '../common/ThemeToggle';
@@ -81,6 +85,8 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
   const [newTrainerPhone, setNewTrainerPhone] = useState('');
   const [newTrainerLoginId, setNewTrainerLoginId] = useState('');
   const [newTrainerPassword, setNewTrainerPassword] = useState('');
+  const [newTrainerPhoto, setNewTrainerPhoto] = useState('');
+  const [isUploadingTrainerPhoto, setIsUploadingTrainerPhoto] = useState(false);
 
   // Reassign Client Modal State
   const [reassigningClient, setReassigningClient] = useState<ClientData | null>(null);
@@ -136,7 +142,36 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
     const suffix = Math.floor(1000 + Math.random() * 9000);
     setNewTrainerLoginId(`JWT-${suffix}`);
     setNewTrainerPassword(`Coach@${suffix}`);
+    setNewTrainerPhoto('');
     setIsAddTrainerOpen(true);
+  };
+
+  const handleTrainerPhotoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setIsUploadingTrainerPhoto(true);
+      const compressed = await compressImageFile(file, 360, 0.82);
+      setNewTrainerPhoto(compressed);
+    } catch (err) {
+      console.error('Failed to compress trainer photo:', err);
+    } finally {
+      setIsUploadingTrainerPhoto(false);
+    }
+  };
+
+  const handleUpdateExistingTrainerPhoto = async (trainerId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      hapticTap();
+      const compressed = await compressImageFile(file, 360, 0.82);
+      syncedStore.updateTrainer(trainerId, { avatarUrl: compressed });
+      await syncedStore.forcePushToCloud();
+      showNotification('Trainer profile photo updated and synchronized!');
+    } catch (err) {
+      console.error('Failed to update trainer photo:', err);
+    }
   };
 
   const openAddClientModal = () => {
@@ -164,7 +199,8 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
       role: 'Staff Trainer',
       status: 'Active',
       loginId: assignedLoginId,
-      temporaryPassword: assignedPassword
+      temporaryPassword: assignedPassword,
+      avatarUrl: newTrainerPhoto || undefined
     });
 
     const portalUser = await authService.createPortalUser({
@@ -176,12 +212,15 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
       loginId: assignedLoginId
     });
 
+    await syncedStore.forcePushToCloud();
+
     setIsAddTrainerOpen(false);
     setNewTrainerName('');
     setNewTrainerEmail('');
     setNewTrainerPhone('');
     setNewTrainerLoginId('');
     setNewTrainerPassword('');
+    setNewTrainerPhoto('');
     showNotification(
       portalUser.success
         ? `Trainer ${created.name} appointed! Official credentials ready.`
@@ -707,8 +746,26 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center font-bold text-amber-400 text-sm">
-                              {trainer.name.slice(0, 2).toUpperCase()}
+                            <div className="relative group">
+                              <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center font-bold text-amber-400 text-sm overflow-hidden flex-shrink-0 shadow-sm">
+                                {trainer.avatarUrl ? (
+                                  <img src={trainer.avatarUrl} alt={trainer.name} className="w-full h-full object-cover" />
+                                ) : (
+                                  trainer.name.slice(0, 2).toUpperCase()
+                                )}
+                              </div>
+                              <label
+                                className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-amber-500 hover:bg-amber-400 text-black flex items-center justify-center cursor-pointer shadow-md transition-transform active:scale-90"
+                                title="Upload / Change Trainer Photo"
+                              >
+                                <Camera className="w-3 h-3" />
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => handleUpdateExistingTrainerPhoto(trainer.id, e)}
+                                />
+                              </label>
                             </div>
                             <div>
                               <h4 className="font-bold text-white text-sm">{trainer.name}</h4>
@@ -1274,6 +1331,44 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
             </div>
 
             <form onSubmit={handleCreateTrainer} className="space-y-3 text-xs">
+              {/* Trainer Photo Upload & Live Avatar Preview */}
+              <div className="p-3 bg-black/40 border border-white/10 rounded-2xl flex items-center space-x-3.5">
+                <div className="w-16 h-16 rounded-2xl bg-amber-500/20 border-2 border-amber-500/40 flex items-center justify-center font-bold text-amber-400 text-lg overflow-hidden flex-shrink-0 shadow-md">
+                  {newTrainerPhoto ? (
+                    <img src={newTrainerPhoto} alt="Trainer Preview" className="w-full h-full object-cover" />
+                  ) : (
+                    <Camera className="w-6 h-6 text-amber-500/60" />
+                  )}
+                </div>
+                <div className="space-y-1.5 flex-1">
+                  <div className="text-white font-bold text-xs">Trainer Profile Photo</div>
+                  <p className="text-[10px] text-slate-400">
+                    Visible to all members and on trainer portal.
+                  </p>
+                  <div className="flex items-center space-x-2">
+                    <label className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-tech font-bold text-[11px] flex items-center space-x-1 cursor-pointer transition-all active:scale-95 shadow">
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>{isUploadingTrainerPhoto ? 'Processing...' : newTrainerPhoto ? 'Change Photo' : 'Upload Photo'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleTrainerPhotoFileChange}
+                      />
+                    </label>
+                    {newTrainerPhoto && (
+                      <button
+                        type="button"
+                        onClick={() => setNewTrainerPhoto('')}
+                        className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 text-[11px] font-tech font-bold transition-all"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <label className="text-slate-400 font-tech uppercase text-[10px] block mb-1 font-bold">
                   Trainer Full Name *

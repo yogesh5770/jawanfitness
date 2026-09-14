@@ -18,13 +18,16 @@ import {
   Clock,
   ArrowRight,
   Smartphone,
-  Eye
+  Eye,
+  Camera,
+  Upload
 } from 'lucide-react';
 import { ExerciseService } from '../../services/exerciseService';
 import { FoodService } from '../../data/foodDatabase';
 import { Exercise, FoodItem, AssignedWorkout, AssignedMealPlan, ChatMessage } from '../../types';
 import { syncedStore, AppSyncState, ClientData } from '../../services/syncedStore';
 import { hapticTap } from '../../utils/audioHaptics';
+import { compressImageFile } from '../../utils/imageUtils';
 import { AddFoodModal } from '../common/AddFoodModal';
 
 interface TrainerScreenProps {
@@ -214,6 +217,7 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
     };
 
     syncedStore.assignWorkout(activeClient.id, newAssigned);
+    syncedStore.forcePushToCloud();
     setActionNotice(`Assigned "${workoutTitle}" (${builderExercises.length} movements) to ${activeClient.name}!`);
     setTimeout(() => setActionNotice(null), 4000);
   };
@@ -239,8 +243,24 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
     };
 
     syncedStore.assignDietPlan(activeClient.id, newPlan);
+    syncedStore.forcePushToCloud();
     setActionNotice(`Assigned "${dietTitle}" (${dietCalories} kcal) to ${activeClient.name}!`);
     setTimeout(() => setActionNotice(null), 4000);
+  };
+
+  const handleUpdateMyPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !currentTrainer) return;
+    try {
+      hapticTap();
+      const compressed = await compressImageFile(file, 360, 0.82);
+      syncedStore.updateTrainer(currentTrainer.id, { avatarUrl: compressed });
+      await syncedStore.forcePushToCloud();
+      setActionNotice('Profile photo updated and synchronized across all portals!');
+      setTimeout(() => setActionNotice(null), 4000);
+    } catch (err) {
+      console.error('Failed to update trainer photo:', err);
+    }
   };
 
   const handleSendMessage = () => {
@@ -255,8 +275,21 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
       {/* 1. TOP TRAINER WEB / PWA HEADER */}
       <header className="w-full bg-[#0b0f1a] border-b border-white/10 px-3 sm:px-6 py-2.5 sm:py-3.5 flex flex-wrap items-center justify-between sticky top-0 z-40 backdrop-blur-xl gap-2">
         <div className="flex items-center space-x-2.5 sm:space-x-4">
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 font-black text-base sm:text-lg shadow">
-            🧑‍🏫
+          <div className="relative group">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 font-black text-base sm:text-lg shadow overflow-hidden flex-shrink-0">
+              {currentTrainer?.avatarUrl ? (
+                <img src={currentTrainer.avatarUrl} alt={currentTrainer.name} className="w-full h-full object-cover" />
+              ) : (
+                currentTrainer?.name ? currentTrainer.name.slice(0, 2).toUpperCase() : '🧑‍🏫'
+              )}
+            </div>
+            <label
+              className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-amber-500 hover:bg-amber-400 text-black flex items-center justify-center cursor-pointer shadow transition-transform active:scale-90"
+              title="Upload / Change Photo"
+            >
+              <Camera className="w-2.5 h-2.5" />
+              <input type="file" accept="image/*" className="hidden" onChange={handleUpdateMyPhoto} />
+            </label>
           </div>
           <div>
             <div className="flex items-center space-x-1.5 sm:space-x-2">
@@ -433,13 +466,57 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
         <main className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* SUB-VIEW 1: TRAINER DASHBOARD */}
           {activeTab === 'dashboard' && (
-            <div className="space-y-6 animate-fadeIn">
+            <div className="space-y-5 animate-fadeIn">
+              {/* Coach Profile Card with Photo & Instant Upload */}
+              <div className="bg-[#0b0f1a] border border-amber-500/30 rounded-2xl p-4 sm:p-5 shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center space-x-3.5">
+                  <div className="relative group">
+                    <div className="w-16 h-16 rounded-2xl bg-amber-500/20 border-2 border-amber-500/40 flex items-center justify-center font-black text-amber-400 text-xl font-display shadow-lg overflow-hidden flex-shrink-0">
+                      {currentTrainer?.avatarUrl ? (
+                        <img src={currentTrainer.avatarUrl} alt={currentTrainer.name} className="w-full h-full object-cover" />
+                      ) : (
+                        currentTrainer?.name ? currentTrainer.name.slice(0, 2).toUpperCase() : 'CO'
+                      )}
+                    </div>
+                    <label
+                      className="absolute -bottom-1 -right-1 p-1.5 rounded-full bg-amber-500 hover:bg-amber-400 text-black cursor-pointer shadow-lg transition-transform active:scale-90"
+                      title="Upload Photo"
+                    >
+                      <Camera className="w-3.5 h-3.5" />
+                      <input type="file" accept="image/*" className="hidden" onChange={handleUpdateMyPhoto} />
+                    </label>
+                  </div>
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <h3 className="text-base font-black text-white font-display">
+                        {currentTrainer ? currentTrainer.name : 'Coach'}
+                      </h3>
+                      <span className="text-[10px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-tech font-bold">
+                        ACTIVE COACH
+                      </span>
+                    </div>
+                    <p className="text-xs text-amber-400 font-tech font-bold">
+                      {currentTrainer?.role || 'Staff Personal Trainer'}
+                    </p>
+                    <div className="text-[11px] text-slate-400 font-mono mt-0.5">
+                      {currentTrainer?.phone || '+91 98420 12345'} • {currentTrainer?.email}
+                    </div>
+                  </div>
+                </div>
+
+                <label className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/30 font-tech font-bold text-xs flex items-center space-x-1.5 cursor-pointer shadow transition-all self-start sm:self-auto">
+                  <Camera className="w-3.5 h-3.5" />
+                  <span>{currentTrainer?.avatarUrl ? 'Change Profile Photo' : 'Upload Profile Photo'}</span>
+                  <input type="file" accept="image/*" className="hidden" onChange={handleUpdateMyPhoto} />
+                </label>
+              </div>
+
               <div>
-                <h2 className="text-xl font-black text-white font-display">
-                  Welcome, {currentTrainer ? currentTrainer.name : 'Coach'} 👋
+                <h2 className="text-lg font-black text-white font-display">
+                  Performance & Roster Telemetry
                 </h2>
                 <p className="text-xs text-slate-400 font-tech">
-                  {currentTrainer ? currentTrainer.role : 'Staff Coach'} • Assigned Client Roster
+                  Real-time client synchronization and session tracking
                 </p>
               </div>
 

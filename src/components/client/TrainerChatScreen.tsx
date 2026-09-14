@@ -159,8 +159,12 @@ export const TrainerChatScreen: React.FC<TrainerChatScreenProps> = ({ client, tr
       <div className="bg-[#0b0f1a] border border-amber-500/30 rounded-3xl p-5 shadow-lg relative overflow-hidden">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-600 to-amber-400 text-black font-black text-sm flex items-center justify-center shadow-lg shadow-amber-500/20 flex-shrink-0 font-display">
-              {coachInitials}
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-600 to-amber-400 text-black font-black text-sm flex items-center justify-center shadow-lg shadow-amber-500/20 flex-shrink-0 font-display overflow-hidden border border-amber-500/40">
+              {trainer.avatarUrl ? (
+                <img src={trainer.avatarUrl} alt={trainer.name} className="w-full h-full object-cover" />
+              ) : (
+                coachInitials
+              )}
             </div>
             <div>
               <div className="flex items-center space-x-1.5">
