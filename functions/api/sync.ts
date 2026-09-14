@@ -147,9 +147,21 @@ export const onRequest: PagesFunction<Env> = async (context) => {
             inner.clients.push(clientObj);
           } else {
             if (!clientObj.loginId && c.login_id) clientObj.loginId = c.login_id;
-            // Always sync trainer assignment directly from DB
-            clientObj.trainerId = c.trainer_id || '';
-            clientObj.trainerName = c.trainer_name || 'Unassigned';
+            // Trainer assignment sync: prefer assigned coach from either DB or state
+            if (c.trainer_id && c.trainer_id.trim() !== '' && c.trainer_id !== 'Unassigned') {
+              clientObj.trainerId = c.trainer_id;
+              clientObj.trainerName = c.trainer_name || 'Assigned Coach';
+            } else if (clientObj.trainerId && clientObj.trainerId.trim() !== '' && clientObj.trainerId !== 'Unassigned') {
+              // gym_sync_state has the assignment, propagate back to gym_users
+              try {
+                await env.DB.prepare(`
+                  UPDATE gym_users
+                  SET trainer_id = ?, trainer_name = ?, updated_at = datetime('now')
+                  WHERE id = ? OR (login_id IS NOT NULL AND login_id = ?)
+                `).bind(clientObj.trainerId, clientObj.trainerName || 'Assigned Coach', c.id, c.login_id || '').run();
+              } catch {}
+            }
+
             // Client exists in sync state — patch stale 0 weights from DB if DB has real values
             if ((!clientObj.startingWeightKg || clientObj.startingWeightKg === 0) && c.starting_weight_kg) {
               clientObj.startingWeightKg = c.starting_weight_kg;
@@ -172,6 +184,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         console.error('Failed to enrich with gym_users:', dbErr);
       }
 
+      headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0';
       return new Response(JSON.stringify({
         data: inner,
         updatedAt: row.updated_at
@@ -193,7 +206,54 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       }
 
       const body = await request.json() as any;
-      const dataString = typeof body === 'string' ? body : JSON.stringify(body);
+      const parsedBody = typeof body === 'string' ? JSON.parse(body) : body;
+      const incomingData = parsedBody?.data || parsedBody;
+
+      // Fetch current row so we don't accidentally drop trainers or clients
+      const existingRow = await env.DB.prepare(`
+        SELECT data FROM gym_sync_state WHERE id = 'master' LIMIT 1
+      `).first() as any;
+      let existingState: any = {};
+      if (existingRow?.data) {
+        try {
+          const ep = JSON.parse(existingRow.data);
+          existingState = ep?.data || ep || {};
+        } catch {}
+      }
+
+      // Safeguard: never let client wipe out trainers or client list
+      if ((!incomingData.trainers || incomingData.trainers.length === 0) && existingState.trainers?.length > 0) {
+        incomingData.trainers = existingState.trainers;
+      }
+      if ((!incomingData.clients || incomingData.clients.length === 0) && existingState.clients?.length > 0) {
+        incomingData.clients = existingState.clients;
+      }
+
+      // If a non-admin posts clients, protect existing trainer assignments from being wiped
+      if (session.role !== 'ADMIN' && Array.isArray(incomingData.clients) && Array.isArray(existingState.clients)) {
+        incomingData.clients = incomingData.clients.map((ic: any) => {
+          const ec = existingState.clients.find((e: any) => e.id === ic.id || (e.loginId && e.loginId === ic.loginId));
+          if (ec && ec.trainerId && (!ic.trainerId || ic.trainerId === 'Unassigned')) {
+            return {
+              ...ic,
+              trainerId: ec.trainerId,
+              trainerName: ec.trainerName
+            };
+          }
+          return ic;
+        });
+      }
+
+      const mergedPayload = {
+        clients: incomingData.clients || existingState.clients || [],
+        trainers: incomingData.trainers || existingState.trainers || [],
+        assignedWorkouts: incomingData.assignedWorkouts || existingState.assignedWorkouts || {},
+        assignedDietPlans: incomingData.assignedDietPlans || existingState.assignedDietPlans || {},
+        workoutHistory: incomingData.workoutHistory || existingState.workoutHistory || [],
+        loggedMeals: incomingData.loggedMeals || existingState.loggedMeals || [],
+        events: incomingData.events || existingState.events || [],
+        messages: incomingData.messages || existingState.messages || []
+      };
 
       await env.DB.prepare(`
         INSERT INTO gym_sync_state (id, data, updated_at)
@@ -201,28 +261,28 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         ON CONFLICT(id) DO UPDATE SET
           data = excluded.data,
           updated_at = datetime('now');
-      `).bind(dataString).run();
+      `).bind(JSON.stringify({ data: mergedPayload })).run();
 
       // Synchronize client trainer assignments to gym_users table in D1
       try {
-        const parsedBody = typeof body === 'string' ? JSON.parse(body) : body;
-        const clientList = Array.isArray(parsedBody?.clients)
-          ? parsedBody.clients
-          : (Array.isArray(parsedBody?.data?.clients) ? parsedBody.data.clients : []);
-
+        const clientList = Array.isArray(mergedPayload.clients) ? mergedPayload.clients : [];
         for (const cl of clientList) {
           if (cl.id || cl.loginId) {
-            await env.DB.prepare(`
-              UPDATE gym_users
-              SET trainer_id = ?, trainer_name = ?, updated_at = datetime('now')
-              WHERE id = ? OR (login_id IS NOT NULL AND login_id = ?)
-            `).bind(cl.trainerId || '', cl.trainerName || 'Unassigned', cl.id || '', cl.loginId || '').run();
+            // Admin can assign/unassign; non-admin can only update if trainerId is non-empty
+            if (session.role === 'ADMIN' || (cl.trainerId && cl.trainerId.trim() !== '' && cl.trainerId !== 'Unassigned')) {
+              await env.DB.prepare(`
+                UPDATE gym_users
+                SET trainer_id = ?, trainer_name = ?, updated_at = datetime('now')
+                WHERE id = ? OR (login_id IS NOT NULL AND login_id = ?)
+              `).bind(cl.trainerId || '', cl.trainerName || 'Unassigned', cl.id || '', cl.loginId || '').run();
+            }
           }
         }
       } catch (userSyncErr) {
         console.error('Failed to sync clients to gym_users:', userSyncErr);
       }
 
+      headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0';
       return new Response(JSON.stringify({
         success: true,
         timestamp: new Date().toISOString()

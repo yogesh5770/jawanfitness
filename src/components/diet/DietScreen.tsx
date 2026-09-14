@@ -335,20 +335,25 @@ export const DietScreen: React.FC<DietScreenProps> = ({
                 )}
               </div>
 
-              {/* Tamil Nadu Gym Food Categories Pill Bar */}
+              {/* Verified Food Categories Pill Bar */}
               <div className="flex space-x-1.5 overflow-x-auto scrollbar-none pt-2 text-[10px] font-tech font-bold">
                 {[
                   { id: 'All', label: 'All Items' },
+                  { id: 'Rice & grains', label: '🌾 Rice & Grains' },
+                  { id: 'Millets', label: '🌾 Millets' },
+                  { id: 'Pulses & dals', label: '🌱 Pulses & Dals' },
+                  { id: 'Chicken & meat', label: '🍗 Chicken & Meat' },
+                  { id: 'Fish & seafood', label: '🐟 Fish & Seafood' },
+                  { id: 'Eggs', label: '🥚 Eggs' },
+                  { id: 'Dairy', label: '🥛 Dairy' },
+                  { id: 'Vegetables', label: '🥦 Vegetables & Greens' },
                   { id: 'Fruits', label: '🍎 Fruits' },
-                  { id: 'Vegetables & Greens', label: '🥦 Veggies & Greens' },
-                  { id: 'Meats & Seafood', label: '🍗 Chicken, Meat & Fish' },
-                  { id: 'Eggs & Dairy', label: '🥚 Eggs & Dairy' },
-                  { id: 'Grains & Millets', label: '🌾 Rice, Oats & Millets' },
-                  { id: 'Pulses & Legumes', label: '🌱 Dal, Chana & Soya' },
-                  { id: 'Nuts & Healthy Fats', label: '🥜 Nuts & Seeds' },
-                  { id: 'Beverages & Drinks', label: '🥥 Hydration & Drinks' },
-                  { id: 'Supplements', label: '⚡ Supplements' },
-                  { id: 'South Indian Breakfast', label: '🥞 Idli & Dosa' }
+                  { id: 'Nuts & seeds', label: '🥜 Nuts & Seeds' },
+                  { id: 'Indian & Tamil Nadu meals', label: '🍛 Meals & Tiffin' },
+                  { id: 'Snacks & restaurant foods', label: '🥪 Snacks & Quick Bites' },
+                  { id: 'Beverages', label: '🥤 Beverages & Drinks' },
+                  { id: 'Sweets & desserts', label: '🍨 Sweets & Desserts' },
+                  { id: 'Cooking ingredients & condiments', label: '🧂 Spices & Condiments' }
                 ].map((cat) => (
                   <button
                     key={cat.id}

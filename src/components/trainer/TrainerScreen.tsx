@@ -23,7 +23,7 @@ import {
   Upload
 } from 'lucide-react';
 import { ExerciseService } from '../../services/exerciseService';
-import { FoodService } from '../../data/foodDatabase';
+import { FoodService, FOOD_CATEGORIES } from '../../data/foodDatabase';
 import { Exercise, FoodItem, AssignedWorkout, AssignedMealPlan, ChatMessage } from '../../types';
 import { syncedStore, AppSyncState, ClientData } from '../../services/syncedStore';
 import { hapticTap } from '../../utils/audioHaptics';
@@ -1171,33 +1171,22 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
               />
             </div>
 
-            {/* English Category Pills */}
+            {/* Verified Category Pills */}
             <div className="flex space-x-1.5 overflow-x-auto pb-2 scrollbar-none text-[10px] font-tech font-bold">
-              {[
-                { id: 'All', label: 'All Items' },
-                { id: 'Fruits', label: '🍎 Fruits' },
-                { id: 'Vegetables & Greens', label: '🥦 Veggies & Greens' },
-                { id: 'Meats & Seafood', label: '🍗 Meats & Fish' },
-                { id: 'Eggs & Dairy', label: '🥚 Eggs & Dairy' },
-                { id: 'Grains & Millets', label: '🌾 Rice & Grains' },
-                { id: 'Pulses & Legumes', label: '🌱 Dal & Soya' },
-                { id: 'Nuts & Healthy Fats', label: '🥜 Nuts & Seeds' },
-                { id: 'Beverages & Drinks', label: '🥥 Drinks' },
-                { id: 'Supplements', label: '⚡ Supplements' }
-              ].map((c) => (
+              {FOOD_CATEGORIES.map((cat) => (
                 <button
-                  key={c.id}
+                  key={cat}
                   onClick={() => {
                     hapticTap();
-                    setTrainerFoodCategory(c.id);
+                    setTrainerFoodCategory(cat);
                   }}
                   className={`px-2.5 py-1 rounded-lg flex-shrink-0 transition-all ${
-                    trainerFoodCategory === c.id
+                    trainerFoodCategory === cat
                       ? 'bg-amber-500 text-black font-extrabold shadow'
                       : 'bg-slate-900 text-slate-400 hover:text-white border border-white/5'
                   }`}
                 >
-                  {c.label}
+                  {cat}
                 </button>
               ))}
             </div>

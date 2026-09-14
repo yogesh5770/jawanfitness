@@ -100,11 +100,70 @@ class SyncedStore {
   private state: AppSyncState;
   private listeners: Set<Listener> = new Set();
   private cloudPushTimeout: any = null;
+  private syncBus: BroadcastChannel | null = null;
+  private pollInterval: any = null;
+  private isSyncingFromCloud: boolean = false;
+  private lastStateHash: string = '';
 
   constructor() {
     this.purgeLegacyKeys();
     this.state = this.loadInitialState();
-    this.syncFromCloud();
+    this.initBroadcastBus();
+    this.startLiveHeartbeat();
+    this.syncFromCloud(true);
+  }
+
+  private initBroadcastBus() {
+    if (typeof window === 'undefined') return;
+
+    if (typeof BroadcastChannel !== 'undefined') {
+      try {
+        this.syncBus = new BroadcastChannel('jawan_gym_sync_bus');
+        this.syncBus.onmessage = (event) => {
+          if (event.data?.type === 'SYNC_STATE_BROADCAST' && event.data.state) {
+            this.applyIncomingState(event.data.state, false);
+          }
+        };
+      } catch (err) {
+        console.warn('BroadcastChannel not supported or restricted:', err);
+      }
+    }
+
+    // Storage event for cross-tab fallback
+    window.addEventListener('storage', (e) => {
+      if (e.key === STORAGE_KEY && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          this.applyIncomingState(parsed, false);
+        } catch {}
+      }
+    });
+  }
+
+  private startLiveHeartbeat() {
+    if (typeof window === 'undefined') return;
+
+    window.addEventListener('focus', () => {
+      this.syncFromCloud(true);
+    });
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        this.syncFromCloud(true);
+      }
+    });
+
+    window.addEventListener('online', () => {
+      this.syncFromCloud(true);
+    });
+
+    // Rapid 2.5s polling loop while window is active
+    if (this.pollInterval) clearInterval(this.pollInterval);
+    this.pollInterval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        this.syncFromCloud(false);
+      }
+    }, 2500);
   }
 
   private purgeLegacyKeys() {
@@ -119,29 +178,106 @@ class SyncedStore {
     }
   }
 
-  public async syncFromCloud(): Promise<AppSyncState | null> {
+  private emitState() {
+    this.listeners.forEach((listener) => {
+      try {
+        listener(this.state);
+      } catch (err) {
+        console.error('Listener error in SyncedStore:', err);
+      }
+    });
+  }
+
+  private broadcastToTabs() {
+    if (this.syncBus) {
+      try {
+        this.syncBus.postMessage({
+          type: 'SYNC_STATE_BROADCAST',
+          state: this.state
+        });
+      } catch {}
+    }
+  }
+
+  private applyIncomingState(incoming: AppSyncState, broadcast = true) {
+    if (!incoming) return;
+    this.state = {
+      ...this.state,
+      ...incoming,
+      clients: Array.isArray(incoming.clients) ? incoming.clients : this.state.clients,
+      trainers: Array.isArray(incoming.trainers) ? incoming.trainers : this.state.trainers,
+      assignedWorkouts: incoming.assignedWorkouts || this.state.assignedWorkouts,
+      assignedDietPlans: incoming.assignedDietPlans || this.state.assignedDietPlans,
+      loggedMeals: Array.isArray(incoming.loggedMeals) ? incoming.loggedMeals : this.state.loggedMeals,
+      workoutHistory: Array.isArray(incoming.workoutHistory) ? incoming.workoutHistory : this.state.workoutHistory,
+      events: Array.isArray(incoming.events) ? incoming.events : this.state.events,
+      messages: Array.isArray(incoming.messages) ? incoming.messages : this.state.messages
+    };
+    this.persist();
+    this.emitState();
+    if (broadcast) {
+      this.broadcastToTabs();
+    }
+  }
+
+  public async syncFromCloud(force = false): Promise<AppSyncState | null> {
+    if (this.isSyncingFromCloud && !force) return null;
+    this.isSyncingFromCloud = true;
     try {
       const cloudData = await cloudDbService.fetchStateFromCloud();
       if (cloudData) {
-        this.state = {
-          ...this.state,
-          ...cloudData,
-          clients: Array.isArray(cloudData.clients) ? cloudData.clients : [],
-          trainers: Array.isArray(cloudData.trainers) ? cloudData.trainers : [],
-          events: Array.isArray(cloudData.events) ? cloudData.events : []
-        };
-        this.persist();
-        this.listeners.forEach((listener) => {
-          try {
-            listener(this.state);
-          } catch (err) {
-            console.error('Listener error in SyncedStore:', err);
-          }
+        // Build state signature to detect real updates
+        const newSig = JSON.stringify({
+          c: (cloudData.clients || []).map((c: any) => `${c.id}:${c.trainerId}:${c.currentWeightKg}`),
+          t: (cloudData.trainers || []).map((t: any) => `${t.id}:${t.name}`),
+          w: Object.keys(cloudData.assignedWorkouts || {}).length,
+          d: Object.keys(cloudData.assignedDietPlans || {}).length,
+          m: (cloudData.loggedMeals || []).length,
+          wh: (cloudData.workoutHistory || []).length,
+          msg: (cloudData.messages || []).length,
+          ev: (cloudData.events || []).length
         });
+
+        if (force || newSig !== this.lastStateHash) {
+          this.lastStateHash = newSig;
+          
+          // Smart merge clients: protect local assigned trainer if remote is momentarily blank
+          const mergedClients = Array.isArray(cloudData.clients) ? cloudData.clients.map((remoteC: any) => {
+            const localC = this.state.clients.find(c => c.id === remoteC.id || (c.loginId && c.loginId === remoteC.loginId));
+            if (localC && localC.trainerId && (!remoteC.trainerId || remoteC.trainerId === 'Unassigned')) {
+              // Local has trainer assigned, preserve it!
+              return {
+                ...remoteC,
+                trainerId: localC.trainerId,
+                trainerName: localC.trainerName || 'Assigned Coach'
+              };
+            }
+            return remoteC;
+          }) : this.state.clients;
+
+          this.state = {
+            ...this.state,
+            ...cloudData,
+            clients: mergedClients,
+            trainers: Array.isArray(cloudData.trainers) ? cloudData.trainers : this.state.trainers,
+            assignedWorkouts: cloudData.assignedWorkouts || this.state.assignedWorkouts,
+            assignedDietPlans: cloudData.assignedDietPlans || this.state.assignedDietPlans,
+            loggedMeals: Array.isArray(cloudData.loggedMeals) ? cloudData.loggedMeals : this.state.loggedMeals,
+            workoutHistory: Array.isArray(cloudData.workoutHistory) ? cloudData.workoutHistory : this.state.workoutHistory,
+            events: Array.isArray(cloudData.events) ? cloudData.events : this.state.events,
+            messages: Array.isArray(cloudData.messages) ? cloudData.messages : this.state.messages
+          };
+
+          this.persist();
+          this.emitState();
+          this.broadcastToTabs();
+        }
         return this.state;
       }
     } catch (err) {
-      console.warn('Cloud sync on init skipped:', err);
+      console.warn('Cloud sync tick skipped:', err);
+    } finally {
+      this.isSyncingFromCloud = false;
     }
     return null;
   }
@@ -182,19 +318,15 @@ class SyncedStore {
 
   public async forcePushToCloud(): Promise<boolean> {
     if (this.cloudPushTimeout) clearTimeout(this.cloudPushTimeout);
+    this.broadcastToTabs();
     return await cloudDbService.pushStateToCloud(this.state);
   }
 
   private notify() {
     this.persist();
     this.pushToCloudDebounced();
-    this.listeners.forEach((listener) => {
-      try {
-        listener(this.state);
-      } catch (err) {
-        console.error('Listener error in SyncedStore:', err);
-      }
-    });
+    this.emitState();
+    this.broadcastToTabs();
   }
 
   public getState(): AppSyncState {
@@ -313,12 +445,27 @@ class SyncedStore {
       )
     };
 
+    // Synchronize auth storage if current user is this client
+    try {
+      const authUserStr = localStorage.getItem('jawan_auth_user');
+      if (authUserStr) {
+        const authUser = JSON.parse(authUserStr);
+        if (authUser && (authUser.id === clientId || authUser.loginId === client?.loginId)) {
+          authUser.trainerId = trainer ? trainer.id : '';
+          authUser.trainerName = trainer ? trainer.name : 'Unassigned';
+          localStorage.setItem('jawan_auth_user', JSON.stringify(authUser));
+        }
+      }
+    } catch {}
+
     this.logEvent(
       'ADMIN',
       'Client Assigned to Trainer',
       `Admin assigned member ${client?.name || clientId} to coach ${trainer?.name || 'Unassigned'}`,
       'Admin'
     );
+    // Immediate force push to cloud database for instantaneous cross-device update
+    this.forcePushToCloud();
   }
 
   public deleteClient(clientId: string) {

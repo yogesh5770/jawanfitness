@@ -3,7 +3,6 @@ import rawExercises from '../data/allExercises.json';
 
 // Cast JSON to typed Exercise list
 export const ALL_EXERCISES: Exercise[] = (rawExercises as unknown as Exercise[]).map((ex) => {
-  // Check if we have a Vital Animations override for first 50 exercises
   return {
     ...ex,
     // Ensure default values if any are missing

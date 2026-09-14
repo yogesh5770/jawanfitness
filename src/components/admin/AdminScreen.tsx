@@ -28,7 +28,7 @@ import {
   Image as ImageIcon
 } from 'lucide-react';
 import { ExerciseService } from '../../services/exerciseService';
-import { FoodService } from '../../data/foodDatabase';
+import { FoodService, FOOD_CATEGORIES } from '../../data/foodDatabase';
 import { syncedStore, AppSyncState, ClientData, TrainerData } from '../../services/syncedStore';
 import { authService } from '../../services/authService';
 import { hapticTap } from '../../utils/audioHaptics';
@@ -1107,19 +1107,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
 
                 {/* Category Pills */}
                 <div className="flex space-x-1.5 overflow-x-auto pb-1 scrollbar-none text-[11px] font-tech font-bold">
-                  {[
-                    'All',
-                    'Fruits',
-                    'Vegetables & Greens',
-                    'Meats & Seafood',
-                    'Eggs & Dairy',
-                    'Grains & Millets',
-                    'Pulses & Legumes',
-                    'Nuts & Healthy Fats',
-                    'Beverages & Drinks',
-                    'Supplements',
-                    'South Indian Breakfast'
-                  ].map((cat) => (
+                  {FOOD_CATEGORIES.map((cat) => (
                     <button
                       key={cat}
                       onClick={() => {

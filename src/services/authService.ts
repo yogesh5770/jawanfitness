@@ -157,6 +157,25 @@ class AuthService {
     return this.currentSession?.user || null;
   }
 
+  public saveUser(user: AuthUser) {
+    if (this.currentSession) {
+      this.currentSession.user = user;
+    }
+    try {
+      localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(user));
+    } catch {}
+  }
+
+  public updateUser(updates: Partial<AuthUser>): AuthUser | null {
+    const current = this.getUser();
+    if (current) {
+      const updated = { ...current, ...updates };
+      this.saveUser(updated);
+      return updated;
+    }
+    return null;
+  }
+
   public getToken(): string | null {
     return this.currentSession?.token || localStorage.getItem(STORAGE_TOKEN_KEY);
   }

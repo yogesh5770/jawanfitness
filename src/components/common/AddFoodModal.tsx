@@ -12,18 +12,21 @@ interface AddFoodModalProps {
 }
 
 const CATEGORIES: FoodCategory[] = [
+  'Rice & grains',
+  'Millets',
+  'Pulses & dals',
+  'Chicken & meat',
+  'Fish & seafood',
+  'Eggs',
+  'Dairy',
+  'Vegetables',
   'Fruits',
-  'Vegetables & Greens',
-  'Meats & Seafood',
-  'Eggs & Dairy',
-  'Grains & Millets',
-  'Pulses & Legumes',
-  'Nuts & Healthy Fats',
-  'Beverages & Drinks',
-  'Supplements',
-  'High Protein',
-  'South Indian Breakfast',
-  'Snacks'
+  'Nuts & seeds',
+  'Indian & Tamil Nadu meals',
+  'Snacks & restaurant foods',
+  'Beverages',
+  'Sweets & desserts',
+  'Cooking ingredients & condiments'
 ];
 
 export const AddFoodModal: React.FC<AddFoodModalProps> = ({
@@ -33,7 +36,7 @@ export const AddFoodModal: React.FC<AddFoodModalProps> = ({
   sourceRole = 'ADMIN'
 }) => {
   const [name, setName] = useState('');
-  const [category, setCategory] = useState<FoodCategory>('High Protein');
+  const [category, setCategory] = useState<FoodCategory>('Rice & grains');
   const [servingSize, setServingSize] = useState('1 serving (100g)');
   const [calories, setCalories] = useState<number | ''>('');
   const [protein, setProtein] = useState<number | ''>('');

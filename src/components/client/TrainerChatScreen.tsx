@@ -20,23 +20,37 @@ export const TrainerChatScreen: React.FC<TrainerChatScreenProps> = ({ client, tr
     return unsub;
   }, []);
 
-  // Strict check: Member has a coach ONLY if trainerId is non-empty and trainerName is not 'Unassigned'
-  const isAssigned = Boolean(
-    client.trainerId &&
-    client.trainerId.trim() !== '' &&
-    client.trainerId !== 'Unassigned' &&
-    trainerName &&
-    trainerName.trim() !== '' &&
-    trainerName !== 'Unassigned' &&
-    trainerName !== 'Head Coach'
+  // Find assigned trainer strictly by ID or exact name
+  const foundTrainer = syncState.trainers.find(
+    (t) =>
+      (client.trainerId && t.id === client.trainerId) ||
+      (trainerName && trainerName !== 'Unassigned' && t.name.toLowerCase() === trainerName.toLowerCase())
   );
 
-  // Find assigned trainer strictly by ID or exact name. NEVER fall back to syncState.trainers[0]!
-  const trainer: TrainerData | undefined = isAssigned
-    ? syncState.trainers.find(
-        (t) => t.id === client.trainerId || (trainerName && t.name.toLowerCase() === trainerName.toLowerCase())
-      )
-    : undefined;
+  const hasTrainerId = Boolean(
+    client.trainerId &&
+    client.trainerId.trim() !== '' &&
+    client.trainerId !== 'Unassigned'
+  );
+
+  const hasTrainerName = Boolean(
+    trainerName &&
+    trainerName.trim() !== '' &&
+    trainerName !== 'Unassigned'
+  );
+
+  const isAssigned = Boolean(foundTrainer || hasTrainerId || hasTrainerName);
+
+  const trainer: TrainerData | undefined = foundTrainer || (isAssigned ? {
+    id: client.trainerId || 'trainer-assigned',
+    name: hasTrainerName ? trainerName! : 'Assigned Coach',
+    role: 'Personal Fitness Coach',
+    email: '',
+    phone: '',
+    status: 'Active',
+    clientsCount: 1,
+    avgAdherence: 95
+  } : undefined);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -110,7 +124,7 @@ export const TrainerChatScreen: React.FC<TrainerChatScreenProps> = ({ client, tr
               <span className="block text-white font-bold">Contact Jawan Fitness Front Desk</span>
             </div>
             <a
-              href="https://wa.me/919842012345?text=Hello%20Jawan%20Fitness%2C%20please%20assign%20a%20personal%20coach%20to%20my%20membership."
+              href="https://wa.me/919790228874?text=Hello%20Jawan%20Fitness%2C%20please%20assign%20a%20personal%20coach%20to%20my%20membership."
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => hapticTap()}

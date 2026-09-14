@@ -83,21 +83,46 @@ export const ClientApp: React.FC = () => {
     };
   }
 
-  // Heal stale 0 starting weight and synchronize coach assignment directly from verified DB user
-  if (activeClient && currentUser) {
-    if (currentUser.trainerId !== undefined) {
-      activeClient.trainerId = currentUser.trainerId || '';
-    }
-    if (currentUser.trainerName !== undefined) {
-      activeClient.trainerName = currentUser.trainerName || 'Unassigned';
-    }
-    if ((!activeClient.startingWeightKg || activeClient.startingWeightKg === 0) && currentUser.startingWeightKg) {
+  // Heal stale biometrics and keep coach assignment synchronized with syncState as source of truth
+  if (activeClient) {
+    // 1. Biometrics healing (only if activeClient has missing/0 values)
+    if ((!activeClient.startingWeightKg || activeClient.startingWeightKg === 0) && currentUser?.startingWeightKg) {
       activeClient.startingWeightKg = currentUser.startingWeightKg;
       activeClient.currentWeightKg = currentUser.currentWeightKg || currentUser.startingWeightKg;
     }
-    if (currentUser.goalWeightKg) activeClient.goalWeightKg = currentUser.goalWeightKg;
-    if (currentUser.goal) activeClient.goal = currentUser.goal;
-    if (currentUser.heightCm) activeClient.heightCm = currentUser.heightCm;
+    if (currentUser?.goalWeightKg && (!activeClient.goalWeightKg || activeClient.goalWeightKg === 0)) {
+      activeClient.goalWeightKg = currentUser.goalWeightKg;
+    }
+    if (currentUser?.goal && (!activeClient.goal || activeClient.goal === 'General Fitness')) {
+      activeClient.goal = currentUser.goal;
+    }
+    if (currentUser?.heightCm && (!activeClient.heightCm || activeClient.heightCm === 170)) {
+      activeClient.heightCm = currentUser.heightCm;
+    }
+
+    // 2. Coach assignment synchronization:
+    // If activeClient has an assigned coach in syncState, preserve it and update cached currentUser!
+    const clientHasTrainer = Boolean(
+      activeClient.trainerId &&
+      activeClient.trainerId.trim() !== '' &&
+      activeClient.trainerId !== 'Unassigned'
+    );
+
+    if (clientHasTrainer) {
+      if (currentUser && (currentUser.trainerId !== activeClient.trainerId || currentUser.trainerName !== activeClient.trainerName)) {
+        const updatedUser: AuthUser = {
+          ...currentUser,
+          trainerId: activeClient.trainerId,
+          trainerName: activeClient.trainerName || 'Assigned Coach'
+        };
+        authService.saveUser(updatedUser);
+        setCurrentUser(updatedUser);
+      }
+    } else if (currentUser?.trainerId && currentUser.trainerId.trim() !== '' && currentUser.trainerId !== 'Unassigned') {
+      // Fallback: If DB login user has a trainer but syncState client didn't have it set yet
+      activeClient.trainerId = currentUser.trainerId;
+      activeClient.trainerName = currentUser.trainerName || 'Assigned Coach';
+    }
   }
 
   const handleSelectClient = (clientId: string) => {
@@ -387,13 +412,13 @@ export const ClientApp: React.FC = () => {
     setIsWorkoutModalOpen(true);
   };
 
-  const isTrainerIdValid = Boolean(activeClient.trainerId && activeClient.trainerId.trim() !== '' && activeClient.trainerId !== 'Unassigned');
-  const isTrainerNameValid = Boolean(activeClient.trainerName && activeClient.trainerName.trim() !== '' && activeClient.trainerName !== 'Unassigned' && activeClient.trainerName !== 'Head Coach');
+  const isTrainerIdValid = Boolean(activeClient?.trainerId && activeClient.trainerId.trim() !== '' && activeClient.trainerId !== 'Unassigned');
+  const isTrainerNameValid = Boolean(activeClient?.trainerName && activeClient.trainerName.trim() !== '' && activeClient.trainerName !== 'Unassigned');
 
   const assignedTrainer = (isTrainerIdValid ? syncState.trainers.find(t => t.id === activeClient.trainerId) : null) ||
     (isTrainerNameValid ? syncState.trainers.find(t => t.name.toLowerCase() === (activeClient.trainerName || '').toLowerCase()) : null);
 
-  const isCoachAssigned = Boolean(assignedTrainer || (isTrainerIdValid && isTrainerNameValid));
+  const isCoachAssigned = Boolean(assignedTrainer || isTrainerIdValid || isTrainerNameValid);
 
   const currentTrainerName = isCoachAssigned 
     ? (assignedTrainer?.name || activeClient.trainerName) 
