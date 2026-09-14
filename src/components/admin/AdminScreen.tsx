@@ -127,13 +127,6 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
     showNotification('Cloud Database synchronized!');
   };
 
-  // Sync default trainer selection when trainers change
-  useEffect(() => {
-    if (syncState.trainers.length > 0 && !newClientTrainer) {
-      setNewClientTrainer(syncState.trainers[0].id);
-    }
-  }, [syncState.trainers, newClientTrainer]);
-
   const showNotification = (msg: string) => {
     setActionNotice(msg);
     setTimeout(() => setActionNotice(null), 4000);
@@ -209,10 +202,11 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
   };
 
   // ADMIN ACTION: Remove Trainer
-  const handleDeleteTrainer = (trainerId: string, trainerName: string) => {
+  const handleDeleteTrainer = async (trainerId: string, trainerName: string) => {
     if (window.confirm(`Are you sure you want to remove ${trainerName}? Any assigned clients will become unassigned.`)) {
       hapticTap();
       syncedStore.deleteTrainer(trainerId);
+      await syncedStore.forcePushToCloud();
       showNotification(`Trainer ${trainerName} removed.`);
     }
   };
@@ -299,12 +293,13 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
   };
 
   // ADMIN ACTION: Assign / Reassign Client to Trainer
-  const handleReassignClient = (e: React.FormEvent) => {
+  const handleReassignClient = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!reassigningClient) return;
     hapticTap();
 
     syncedStore.assignClientToTrainer(reassigningClient.id, selectedTrainerForReassign);
+    await syncedStore.forcePushToCloud();
     const trainer = syncState.trainers.find((t) => t.id === selectedTrainerForReassign);
     showNotification(`Member ${reassigningClient.name} assigned to ${trainer ? trainer.name : 'Unassigned'}.`);
     setReassigningClient(null);
@@ -625,7 +620,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                             onClick={() => {
                               hapticTap();
                               setReassigningClient(member);
-                              setSelectedTrainerForReassign(member.trainerId || (syncState.trainers[0]?.id || ''));
+                              setSelectedTrainerForReassign(member.trainerId || '');
                             }}
                             className="text-[10px] text-amber-400 hover:underline font-tech font-bold"
                           >
@@ -893,7 +888,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                               onClick={() => {
                                 hapticTap();
                                 setReassigningClient(client);
-                                setSelectedTrainerForReassign(client.trainerId || (syncState.trainers[0]?.id || ''));
+                                setSelectedTrainerForReassign(client.trainerId || '');
                               }}
                               className="text-[11px] text-amber-400 font-bold hover:underline"
                             >
@@ -966,7 +961,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                                     onClick={() => {
                                       hapticTap();
                                       setReassigningClient(client);
-                                      setSelectedTrainerForReassign(client.trainerId || (syncState.trainers[0]?.id || ''));
+                                      setSelectedTrainerForReassign(client.trainerId || '');
                                     }}
                                     className="p-1 rounded bg-slate-800 text-amber-400 hover:bg-slate-700 text-[10px] font-bold"
                                     title="Reassign Trainer"

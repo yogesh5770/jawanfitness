@@ -83,10 +83,18 @@ export const ClientApp: React.FC = () => {
     };
   }
 
-  // Heal stale 0 starting weight from real DB biometrics
-  if (activeClient && (!activeClient.startingWeightKg || activeClient.startingWeightKg === 0) && currentUser?.startingWeightKg) {
-    activeClient.startingWeightKg = currentUser.startingWeightKg;
-    activeClient.currentWeightKg = currentUser.currentWeightKg || currentUser.startingWeightKg;
+  // Heal stale 0 starting weight and synchronize coach assignment directly from verified DB user
+  if (activeClient && currentUser) {
+    if (currentUser.trainerId !== undefined) {
+      activeClient.trainerId = currentUser.trainerId || '';
+    }
+    if (currentUser.trainerName !== undefined) {
+      activeClient.trainerName = currentUser.trainerName || 'Unassigned';
+    }
+    if ((!activeClient.startingWeightKg || activeClient.startingWeightKg === 0) && currentUser.startingWeightKg) {
+      activeClient.startingWeightKg = currentUser.startingWeightKg;
+      activeClient.currentWeightKg = currentUser.currentWeightKg || currentUser.startingWeightKg;
+    }
     if (currentUser.goalWeightKg) activeClient.goalWeightKg = currentUser.goalWeightKg;
     if (currentUser.goal) activeClient.goal = currentUser.goal;
     if (currentUser.heightCm) activeClient.heightCm = currentUser.heightCm;
@@ -379,22 +387,19 @@ export const ClientApp: React.FC = () => {
     setIsWorkoutModalOpen(true);
   };
 
-  const assignedTrainer = (activeClient.trainerId ? syncState.trainers.find(t => t.id === activeClient.trainerId) : null) ||
-    (activeClient.trainerName && activeClient.trainerName !== 'Unassigned' && activeClient.trainerName !== 'Head Coach'
-      ? syncState.trainers.find(t => t.name.toLowerCase() === (activeClient.trainerName || '').toLowerCase())
-      : null);
+  const isTrainerIdValid = Boolean(activeClient.trainerId && activeClient.trainerId.trim() !== '' && activeClient.trainerId !== 'Unassigned');
+  const isTrainerNameValid = Boolean(activeClient.trainerName && activeClient.trainerName.trim() !== '' && activeClient.trainerName !== 'Unassigned' && activeClient.trainerName !== 'Head Coach');
 
-  const isCoachAssigned = Boolean(
-    assignedTrainer || 
-    (activeClient.trainerId && activeClient.trainerId.trim() !== '') || 
-    (activeClient.trainerName && activeClient.trainerName !== 'Unassigned' && activeClient.trainerName !== 'Head Coach')
-  );
+  const assignedTrainer = (isTrainerIdValid ? syncState.trainers.find(t => t.id === activeClient.trainerId) : null) ||
+    (isTrainerNameValid ? syncState.trainers.find(t => t.name.toLowerCase() === (activeClient.trainerName || '').toLowerCase()) : null);
+
+  const isCoachAssigned = Boolean(assignedTrainer || (isTrainerIdValid && isTrainerNameValid));
 
   const currentTrainerName = isCoachAssigned 
     ? (assignedTrainer?.name || activeClient.trainerName) 
     : 'Unassigned';
   const currentTrainerRole = isCoachAssigned 
-    ? (assignedTrainer?.role || 'Fitness Coach') 
+    ? (assignedTrainer?.role || 'Personal Fitness Coach') 
     : 'No Trainer Assigned';
   const currentTrainerPhone = isCoachAssigned 
     ? (assignedTrainer?.phone || '') 
@@ -523,7 +528,7 @@ export const ClientApp: React.FC = () => {
           {clientTab === 'trainer' && (
             <TrainerChatScreen
               client={activeClient}
-              trainerName={activeClient.trainerName}
+              trainerName={currentTrainerName}
             />
           )}
         </main>

@@ -127,7 +127,7 @@ export const DietScreen: React.FC<DietScreenProps> = ({
     dailyProtein: goals.protein,
     dailyCarbs: goals.carbs,
     dailyFat: goals.fat,
-    assignedBy: trainerName ? `Coach ${trainerName}` : 'Head Coach',
+    assignedBy: (trainerName && trainerName !== 'Unassigned' && trainerName !== 'Head Coach') ? `Coach ${trainerName}` : 'Jawan Nutrition System',
     meals: [
       {
         type: 'breakfast',

@@ -147,6 +147,9 @@ export const onRequest: PagesFunction<Env> = async (context) => {
             inner.clients.push(clientObj);
           } else {
             if (!clientObj.loginId && c.login_id) clientObj.loginId = c.login_id;
+            // Always sync trainer assignment directly from DB
+            clientObj.trainerId = c.trainer_id || '';
+            clientObj.trainerName = c.trainer_name || 'Unassigned';
             // Client exists in sync state — patch stale 0 weights from DB if DB has real values
             if ((!clientObj.startingWeightKg || clientObj.startingWeightKg === 0) && c.starting_weight_kg) {
               clientObj.startingWeightKg = c.starting_weight_kg;
@@ -199,6 +202,26 @@ export const onRequest: PagesFunction<Env> = async (context) => {
           data = excluded.data,
           updated_at = datetime('now');
       `).bind(dataString).run();
+
+      // Synchronize client trainer assignments to gym_users table in D1
+      try {
+        const parsedBody = typeof body === 'string' ? JSON.parse(body) : body;
+        const clientList = Array.isArray(parsedBody?.clients)
+          ? parsedBody.clients
+          : (Array.isArray(parsedBody?.data?.clients) ? parsedBody.data.clients : []);
+
+        for (const cl of clientList) {
+          if (cl.id || cl.loginId) {
+            await env.DB.prepare(`
+              UPDATE gym_users
+              SET trainer_id = ?, trainer_name = ?, updated_at = datetime('now')
+              WHERE id = ? OR (login_id IS NOT NULL AND login_id = ?)
+            `).bind(cl.trainerId || '', cl.trainerName || 'Unassigned', cl.id || '', cl.loginId || '').run();
+          }
+        }
+      } catch (userSyncErr) {
+        console.error('Failed to sync clients to gym_users:', userSyncErr);
+      }
 
       return new Response(JSON.stringify({
         success: true,
