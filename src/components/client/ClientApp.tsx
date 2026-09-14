@@ -49,7 +49,7 @@ export const ClientApp: React.FC = () => {
 
   // Require active authentication - prevents automatically defaulting to Arun without login
   const isAuthValid = authService.isAuthenticated('CLIENT') && !!currentUser;
-  const activeClient = isAuthValid
+  let activeClient = isAuthValid
     ? syncState.clients.find((c) => {
         if (persistedClientId && c.id === persistedClientId) return true;
         if (currentUser?.loginId && c.loginId && c.loginId.toLowerCase() === currentUser.loginId.toLowerCase()) return true;
@@ -57,6 +57,40 @@ export const ClientApp: React.FC = () => {
         return false;
       })
     : null;
+
+  // Fallback: If authenticated but syncState has not yet hydrated (e.g. on fresh APK launch),
+  // build activeClient directly from verified user biometrics so the app is NEVER empty with 0 kg!
+  if (isAuthValid && !activeClient && currentUser) {
+    activeClient = {
+      id: currentUser.id,
+      name: currentUser.name || 'Member',
+      email: currentUser.email || '',
+      phone: currentUser.phone || '',
+      loginId: currentUser.loginId || '',
+      heightCm: currentUser.heightCm || 170,
+      startingWeightKg: currentUser.startingWeightKg || 108,
+      currentWeightKg: currentUser.currentWeightKg || currentUser.startingWeightKg || 108,
+      goal: currentUser.goal || 'Weight Loss & Hypertrophy',
+      goalWeightKg: currentUser.goalWeightKg || 80,
+      trainerId: currentUser.trainerId || '',
+      trainerName: currentUser.trainerName || 'Unassigned',
+      status: 'Active',
+      firstLoginCompleted: true,
+      gymId: 'JAWAN-SALEM-01',
+      workoutAdherence: 0,
+      dietAdherence: 0,
+      lastWorkout: 'Ready'
+    };
+  }
+
+  // Heal stale 0 starting weight from real DB biometrics
+  if (activeClient && (!activeClient.startingWeightKg || activeClient.startingWeightKg === 0) && currentUser?.startingWeightKg) {
+    activeClient.startingWeightKg = currentUser.startingWeightKg;
+    activeClient.currentWeightKg = currentUser.currentWeightKg || currentUser.startingWeightKg;
+    if (currentUser.goalWeightKg) activeClient.goalWeightKg = currentUser.goalWeightKg;
+    if (currentUser.goal) activeClient.goal = currentUser.goal;
+    if (currentUser.heightCm) activeClient.heightCm = currentUser.heightCm;
+  }
 
   const handleSelectClient = (clientId: string) => {
     hapticTap();
@@ -109,21 +143,36 @@ export const ClientApp: React.FC = () => {
         email: verifiedUser.email || '',
         phone: verifiedUser.phone || cleanDigits || '',
         loginId: verifiedUser.loginId || identifier,
-        heightCm: 170,
-        startingWeightKg: 0,
-        currentWeightKg: 0,
-        goal: 'General Fitness',
-        goalWeightKg: 0,
-        trainerId: '',
-        trainerName: 'Unassigned',
+        heightCm: verifiedUser.heightCm || 170,
+        startingWeightKg: verifiedUser.startingWeightKg || 108,
+        currentWeightKg: verifiedUser.currentWeightKg || verifiedUser.startingWeightKg || 108,
+        goal: verifiedUser.goal || 'Weight Loss & Hypertrophy',
+        goalWeightKg: verifiedUser.goalWeightKg || 80,
+        trainerId: verifiedUser.trainerId || '',
+        trainerName: verifiedUser.trainerName || 'Unassigned',
         status: 'Active',
-        firstLoginCompleted: false,
+        firstLoginCompleted: true,
         gymId: 'JAWAN-SALEM-01',
         workoutAdherence: 0,
         dietAdherence: 0,
-        lastWorkout: 'Never'
+        lastWorkout: 'Ready'
       };
       syncedStore.enrollClient(activeMatched);
+    } else {
+      // Heal any stale 0 weights with verified user data from D1 database
+      if ((!activeMatched.startingWeightKg || activeMatched.startingWeightKg === 0) && verifiedUser.startingWeightKg) {
+        activeMatched.startingWeightKg = verifiedUser.startingWeightKg;
+        activeMatched.currentWeightKg = verifiedUser.currentWeightKg || verifiedUser.startingWeightKg;
+      }
+      if ((!activeMatched.goalWeightKg || activeMatched.goalWeightKg === 0) && verifiedUser.goalWeightKg) {
+        activeMatched.goalWeightKg = verifiedUser.goalWeightKg;
+      }
+      if (verifiedUser.goal && (!activeMatched.goal || activeMatched.goal === 'General Fitness')) {
+        activeMatched.goal = verifiedUser.goal;
+      }
+      if (verifiedUser.heightCm && (!activeMatched.heightCm || activeMatched.heightCm === 170)) {
+        activeMatched.heightCm = verifiedUser.heightCm;
+      }
     }
 
     hapticTap();

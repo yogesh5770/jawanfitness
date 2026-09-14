@@ -12,6 +12,13 @@ export interface AuthUser {
   role: 'ADMIN' | 'TRAINER' | 'CLIENT';
   loginId?: string;
   phone?: string;
+  startingWeightKg?: number;
+  currentWeightKg?: number;
+  goalWeightKg?: number;
+  heightCm?: number;
+  goal?: string;
+  trainerId?: string;
+  trainerName?: string;
 }
 
 export interface AuthSession {
@@ -187,14 +194,21 @@ class AuthService {
         return { success: false, error: error || 'Authentication failed.' };
       }
 
-      // Normalize login_id → loginId for client-side compatibility
+      // Normalize login_id → loginId and biometrics for client-side compatibility
       const user: AuthUser = {
         id: data.user.id,
         email: data.user.email,
         name: data.user.name,
         role: data.user.role,
         phone: data.user.phone,
-        loginId: data.user.loginId || data.user.login_id || undefined
+        loginId: data.user.loginId || data.user.login_id || undefined,
+        startingWeightKg: data.user.startingWeightKg ?? data.user.starting_weight_kg ?? undefined,
+        currentWeightKg: data.user.currentWeightKg ?? data.user.current_weight_kg ?? undefined,
+        goalWeightKg: data.user.goalWeightKg ?? data.user.goal_weight_kg ?? undefined,
+        heightCm: data.user.heightCm ?? data.user.height_cm ?? undefined,
+        goal: data.user.goal ?? undefined,
+        trainerId: data.user.trainerId ?? data.user.trainer_id ?? undefined,
+        trainerName: data.user.trainerName ?? data.user.trainer_name ?? undefined
       };
 
       // Save verified session
@@ -279,7 +293,14 @@ class AuthService {
             name: data.user.name,
             role: data.user.role,
             phone: data.user.phone,
-            loginId: data.user.loginId || data.user.login_id || undefined
+            loginId: data.user.loginId || data.user.login_id || undefined,
+            startingWeightKg: data.user.startingWeightKg ?? data.user.starting_weight_kg ?? undefined,
+            currentWeightKg: data.user.currentWeightKg ?? data.user.current_weight_kg ?? undefined,
+            goalWeightKg: data.user.goalWeightKg ?? data.user.goal_weight_kg ?? undefined,
+            heightCm: data.user.heightCm ?? data.user.height_cm ?? undefined,
+            goal: data.user.goal ?? undefined,
+            trainerId: data.user.trainerId ?? data.user.trainer_id ?? undefined,
+            trainerName: data.user.trainerName ?? data.user.trainer_name ?? undefined
           };
           this.currentSession = {
             token,

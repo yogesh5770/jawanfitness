@@ -7,7 +7,7 @@ function corsHeaders(request: Request) {
   return {
     'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, Cache-Control, Pragma, Accept, *',
     'Access-Control-Allow-Credentials': 'true',
     'Content-Type': 'application/json'
   };
@@ -160,7 +160,14 @@ export const onRequest: PagesFunction<Env> = async (context) => {
           name: user.name,
           phone: user.phone,
           login_id: user.login_id,
-          loginId: user.login_id
+          loginId: user.login_id,
+          startingWeightKg: user.starting_weight_kg ?? 0,
+          currentWeightKg: user.current_weight_kg ?? user.starting_weight_kg ?? 0,
+          goalWeightKg: user.goal_weight_kg ?? 0,
+          heightCm: user.height_cm ?? 170,
+          goal: user.goal ?? 'General Fitness',
+          trainerId: user.trainer_id ?? '',
+          trainerName: user.trainer_name ?? 'Unassigned'
         }
       }), {
         status: 200,
@@ -188,7 +195,9 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       }
 
       const session = await env.DB.prepare(`
-        SELECT s.*, u.email, u.name, u.phone, u.login_id
+        SELECT s.*, u.email, u.name, u.phone, u.login_id,
+               u.starting_weight_kg, u.current_weight_kg, u.goal_weight_kg,
+               u.height_cm, u.goal, u.trainer_id, u.trainer_name
         FROM gym_sessions s
         JOIN gym_users u ON s.user_id = u.id
         WHERE s.token = ? AND datetime(s.expires_at) > datetime('now')
@@ -212,7 +221,14 @@ export const onRequest: PagesFunction<Env> = async (context) => {
           name: session.name,
           phone: session.phone,
           login_id: session.login_id,
-          loginId: session.login_id
+          loginId: session.login_id,
+          startingWeightKg: session.starting_weight_kg ?? 0,
+          currentWeightKg: session.current_weight_kg ?? session.starting_weight_kg ?? 0,
+          goalWeightKg: session.goal_weight_kg ?? 0,
+          heightCm: session.height_cm ?? 170,
+          goal: session.goal ?? 'General Fitness',
+          trainerId: session.trainer_id ?? '',
+          trainerName: session.trainer_name ?? 'Unassigned'
         }
       }), {
         status: 200,

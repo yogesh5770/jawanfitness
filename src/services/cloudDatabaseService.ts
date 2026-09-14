@@ -202,14 +202,16 @@ class CloudDatabaseService {
       this.config.syncStatus = 'syncing';
       this.notify();
 
+      const token = authService.getToken();
+      const getHeaders: Record<string, string> = {};
+      if (token) getHeaders['Authorization'] = `Bearer ${token}`;
+
       // 1. Primary
       try {
         const endpoint = getSyncEndpoint();
         const primaryRes = await fetch(endpoint, {
-          headers: {
-            ...this.authHeaders(),
-            'Cache-Control': 'no-cache'
-          }
+          headers: getHeaders,
+          cache: 'no-store'
         });
 
         const contentType = primaryRes.headers.get('content-type') || '';
@@ -228,17 +230,15 @@ class CloudDatabaseService {
             return resData as AppSyncState;
           }
         }
-      } catch {
-        // continue to fallback
+      } catch (err: any) {
+        console.warn('Primary sync failed, trying fallback:', err?.message || err);
       }
 
       // 2. Fallback to remote admin endpoint
       try {
         const remoteRes = await fetch(FALLBACK_REMOTE_API, {
-          headers: {
-            ...this.authHeaders(),
-            'Cache-Control': 'no-cache'
-          }
+          headers: getHeaders,
+          cache: 'no-store'
         });
 
         const contentType = remoteRes.headers.get('content-type') || '';
@@ -257,8 +257,8 @@ class CloudDatabaseService {
             return resData as AppSyncState;
           }
         }
-      } catch {
-        // continue
+      } catch (err: any) {
+        console.warn('Fallback sync failed:', err?.message || err);
       }
 
       this.config.syncStatus = 'synced';
