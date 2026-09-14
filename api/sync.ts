@@ -7,7 +7,10 @@ function setCorsHeaders(req: VercelRequest, res: VercelResponse) {
     'http://localhost:5173',
     'https://jawan-fitness-admin.vercel.app',
     'https://jawan-fitness-trainer.vercel.app',
-    'https://jawan-fitness-app.vercel.app'
+    'https://jawan-fitness-app.vercel.app',
+    'https://jawan-fitness-admin.pages.dev',
+    'https://jawan-fitness-trainer.pages.dev',
+    'https://jawan-fitness-app.pages.dev'
   ];
   const allowedOrigins = (process.env.ALLOWED_CORS_ORIGINS || defaultOrigins.join(','))
     .split(',')
