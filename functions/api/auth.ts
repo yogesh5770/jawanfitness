@@ -225,9 +225,10 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     // -----------------------------------------------------------------
     if (action === 'change-password' && request.method === 'POST') {
       const body = await request.json() as any;
-      const { email, oldPassword, newPassword } = body || {};
+      const { email, identifier, oldPassword, newPassword } = body || {};
+      const userIdentifier = email || identifier;
 
-      if (!email || !oldPassword || !newPassword) {
+      if (!userIdentifier || !oldPassword || !newPassword) {
         return new Response(JSON.stringify({ error: 'User ID, old password, and new password are required.' }), {
           status: 400,
           headers
@@ -241,7 +242,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         });
       }
 
-      const cleanInput = email.trim();
+      const cleanInput = userIdentifier.trim();
       const user = await env.DB.prepare(`
         SELECT * FROM gym_users
         WHERE LOWER(email) = LOWER(?)

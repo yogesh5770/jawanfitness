@@ -80,21 +80,56 @@ export const TrainerApp: React.FC = () => {
     const state = latestState || syncedStore.getState();
     const cleanDigits = identifier.replace(/\D/g, '');
     const matched = state.trainers.find((t) => {
-      const matchId = t.loginId && verifiedUser.loginId && t.loginId.toLowerCase() === verifiedUser.loginId.toLowerCase();
-      const matchEmail = t.email && t.email.toLowerCase() === verifiedUser.email.toLowerCase();
-      const matchPhone = cleanDigits && t.phone && t.phone.replace(/\D/g, '').endsWith(cleanDigits);
-      return matchId || matchEmail || matchPhone;
+      // Match by loginId from verified user
+      const matchLoginId = t.loginId && verifiedUser.loginId && t.loginId.toLowerCase() === verifiedUser.loginId.toLowerCase();
+      // Match by raw identifier against loginId (fallback)
+      const matchRawId = t.loginId && t.loginId.toLowerCase() === identifier.trim().toLowerCase();
+      // Match by email
+      const matchEmail = t.email && verifiedUser.email && t.email.toLowerCase() === verifiedUser.email.toLowerCase();
+      // Match by phone digits
+      const matchPhone = cleanDigits.length >= 10 && t.phone && t.phone.replace(/\D/g, '').endsWith(cleanDigits.slice(-10));
+      return matchLoginId || matchRawId || matchEmail || matchPhone;
     });
 
-    if (!matched) {
-      setLoginError('Login succeeded, but no trainer profile is assigned to this account yet.');
-      return;
+    let activeMatched = matched;
+    if (!activeMatched) {
+      // Auth succeeded but no trainer profile in sync state — create one so trainer can access UI
+      activeMatched = {
+        id: verifiedUser.id,
+        name: verifiedUser.name || 'Coach',
+        email: verifiedUser.email || '',
+        phone: verifiedUser.phone || cleanDigits || '',
+        role: 'Fitness Coach',
+        status: 'Active',
+        clientsCount: 0,
+        avgAdherence: 0,
+        loginId: verifiedUser.loginId || identifier
+      };
+      // Add to sync state so it persists
+      const updatedState = syncedStore.getState();
+      const exists = updatedState.trainers.some((t) => t.id === activeMatched!.id);
+      if (!exists) {
+        syncedStore.createTrainer({
+          name: activeMatched.name,
+          email: activeMatched.email,
+          phone: activeMatched.phone,
+          role: activeMatched.role,
+          status: 'Active',
+          loginId: activeMatched.loginId
+        });
+        // Re-fetch to get the created trainer with proper id
+        const refreshedState = syncedStore.getState();
+        const justCreated = refreshedState.trainers.find((t) =>
+          t.loginId && activeMatched!.loginId && t.loginId.toLowerCase() === activeMatched!.loginId!.toLowerCase()
+        );
+        if (justCreated) activeMatched = justCreated;
+      }
     }
 
     hapticTap();
-    setActiveTrainerId(matched.id);
-    localStorage.setItem('jawan_trainer_session_id_v1', matched.id);
-    syncedStore.setActiveTrainer(matched.id);
+    setActiveTrainerId(activeMatched.id);
+    localStorage.setItem('jawan_trainer_session_id_v1', activeMatched.id);
+    syncedStore.setActiveTrainer(activeMatched.id);
   };
 
   const handleLogout = () => {
