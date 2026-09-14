@@ -67,8 +67,98 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         }
       }
 
+      // If wrapped in { data: ... }, unwrap
+      let inner = parsed && parsed.data ? parsed.data : parsed;
+      if (!inner) inner = {};
+      if (!Array.isArray(inner.trainers)) inner.trainers = [];
+      if (!Array.isArray(inner.clients)) inner.clients = [];
+      if (!Array.isArray(inner.messages)) inner.messages = [];
+
+      // Query real users from D1 gym_users table to ensure 100% database accuracy
+      try {
+        const dbUsersRes = await env.DB.prepare(`
+          SELECT id, email, name, role, login_id, phone,
+                 starting_weight_kg, current_weight_kg, goal_weight_kg,
+                 height_cm, goal, trainer_id, trainer_name
+          FROM gym_users
+        `).all();
+
+        const dbUsers = dbUsersRes?.results || [];
+        const dbTrainers = dbUsers.filter((u: any) => u.role === 'TRAINER');
+        const dbClients = dbUsers.filter((u: any) => u.role === 'CLIENT');
+
+        // Merge DB trainers into state
+        for (const t of dbTrainers) {
+          const exists = inner.trainers.some((it: any) => it.id === t.id || it.loginId === t.login_id);
+          if (!exists) {
+            inner.trainers.push({
+              id: t.id,
+              name: t.name,
+              email: t.email,
+              phone: t.phone || '',
+              role: 'Head Strength Coach & Nutritionist',
+              status: 'Active',
+              clientsCount: 1,
+              avgAdherence: 95,
+              loginId: t.login_id
+            });
+          }
+        }
+
+        // Ensure DB clients are in state — use real DB weight/goal values
+        for (const c of dbClients) {
+          let clientObj = inner.clients.find((ic: any) => 
+            ic.id === c.id || 
+            (ic.loginId && c.login_id && ic.loginId.toLowerCase() === c.login_id.toLowerCase())
+          );
+          if (!clientObj) {
+            // Client exists in DB but not in sync state — create with real DB values
+            clientObj = {
+              id: c.id,
+              name: c.name,
+              email: c.email,
+              phone: c.phone,
+              loginId: c.login_id,
+              heightCm: c.height_cm || 170,
+              startingWeightKg: c.starting_weight_kg || 0,
+              currentWeightKg: c.current_weight_kg || 0,
+              goal: c.goal || 'General Fitness',
+              goalWeightKg: c.goal_weight_kg || 0,
+              trainerId: c.trainer_id || '',
+              trainerName: c.trainer_name || 'Unassigned',
+              status: 'Active',
+              firstLoginCompleted: false,
+              gymId: 'JAWAN-SALEM-01',
+              workoutAdherence: 0,
+              dietAdherence: 0,
+              lastWorkout: 'Ready'
+            };
+            inner.clients.push(clientObj);
+          } else {
+            // Client exists in sync state — patch stale 0 weights from DB if DB has real values
+            if ((!clientObj.startingWeightKg || clientObj.startingWeightKg === 0) && c.starting_weight_kg) {
+              clientObj.startingWeightKg = c.starting_weight_kg;
+            }
+            if ((!clientObj.currentWeightKg || clientObj.currentWeightKg === 0) && c.current_weight_kg) {
+              clientObj.currentWeightKg = c.current_weight_kg;
+            }
+            if ((!clientObj.goalWeightKg || clientObj.goalWeightKg === 0) && c.goal_weight_kg) {
+              clientObj.goalWeightKg = c.goal_weight_kg;
+            }
+            if ((!clientObj.heightCm || clientObj.heightCm === 170) && c.height_cm && c.height_cm !== 170) {
+              clientObj.heightCm = c.height_cm;
+            }
+            if ((!clientObj.goal || clientObj.goal === 'General Fitness') && c.goal) {
+              clientObj.goal = c.goal;
+            }
+          }
+        }
+      } catch (dbErr) {
+        console.error('Failed to enrich with gym_users:', dbErr);
+      }
+
       return new Response(JSON.stringify({
-        data: parsed,
+        data: inner,
         updatedAt: row.updated_at
       }), {
         status: 200,

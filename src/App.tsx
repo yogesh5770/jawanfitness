@@ -21,6 +21,18 @@ export const App: React.FC = () => {
     };
   }, []);
 
+  useEffect(() => {
+    if (role === 'admin') {
+      document.title = 'Jawan Admin | Director Console';
+    } else if (role === 'trainer') {
+      document.title = 'Jawan Trainer | Coach Portal';
+    } else if (role === 'dev-sync') {
+      document.title = 'Jawan Developer Simulator';
+    } else {
+      document.title = 'Jawan Fitness | Member Portal';
+    }
+  }, [role]);
+
   // 1. ADMIN PRODUCTION APPLICATION (e.g. jawanfitnessadmin.com or /admin)
   if (role === 'admin') {
     return <AdminApp />;

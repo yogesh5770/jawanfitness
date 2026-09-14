@@ -81,13 +81,34 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       }
 
       const cleanInput = email.trim();
+      const digitsOnly = cleanInput.replace(/\D/g, '');
+      const last10Digits = digitsOnly.length >= 10 ? digitsOnly.slice(-10) : digitsOnly;
+      const phoneWithCountry = last10Digits ? `+91${last10Digits}` : cleanInput;
+
       const user = await env.DB.prepare(`
         SELECT * FROM gym_users
-        WHERE LOWER(email) = LOWER(?)
-           OR LOWER(login_id) = LOWER(?)
-           OR phone = ?
+        WHERE (
+          LOWER(email) = LOWER(?)
+          OR LOWER(login_id) = LOWER(?)
+          OR phone = ?
+          OR phone = ?
+          OR (length(?) >= 10 AND phone LIKE '%' || ?)
+        )
+        ORDER BY CASE 
+          WHEN role = ? THEN 0 
+          WHEN role = 'ADMIN' THEN 1
+          ELSE 2 
+        END
         LIMIT 1
-      `).bind(cleanInput, cleanInput, cleanInput).first() as any;
+      `).bind(
+        cleanInput,
+        cleanInput,
+        cleanInput,
+        phoneWithCountry,
+        last10Digits,
+        last10Digits,
+        requiredRole
+      ).first() as any;
 
       if (!user) {
         return new Response(JSON.stringify({ error: 'Invalid user credentials.' }), {
@@ -116,7 +137,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       }
 
       const token = generateRandomHex(32);
-      const days = keepSignedIn ? 30 : 1;
+      const days = keepSignedIn ? 365 : 30;
       const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
       const sessionId = generateRandomHex(16);
 
@@ -131,13 +152,15 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
       return new Response(JSON.stringify({
         token,
+        expiresAt,
         user: {
           id: user.id,
           email: user.email,
           role: user.role,
           name: user.name,
           phone: user.phone,
-          login_id: user.login_id
+          login_id: user.login_id,
+          loginId: user.login_id
         }
       }), {
         status: 200,
@@ -148,8 +171,15 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     // -----------------------------------------------------------------
     // 2. VERIFY SESSION
     // -----------------------------------------------------------------
-    if (action === 'verify' && request.method === 'GET') {
-      const token = getBearerToken(request);
+    if (action === 'verify' && (request.method === 'GET' || request.method === 'POST')) {
+      let token = getBearerToken(request);
+      if (!token && request.method === 'POST') {
+        try {
+          const body = await request.clone().json() as any;
+          token = body?.token || null;
+        } catch {}
+      }
+
       if (!token) {
         return new Response(JSON.stringify({ valid: false, error: 'No token provided' }), {
           status: 401,
@@ -174,13 +204,15 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
       return new Response(JSON.stringify({
         valid: true,
+        expiresAt: session.expires_at,
         user: {
           id: session.user_id,
           role: session.role,
           email: session.email,
           name: session.name,
           phone: session.phone,
-          login_id: session.login_id
+          login_id: session.login_id,
+          loginId: session.login_id
         }
       }), {
         status: 200,
@@ -249,9 +281,9 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     }
 
     // -----------------------------------------------------------------
-    // 4. REGISTER NEW USER (ADMIN ONLY)
+    // 4. REGISTER / CREATE NEW USER (ADMIN ONLY)
     // -----------------------------------------------------------------
-    if (action === 'register' && request.method === 'POST') {
+    if ((action === 'register' || action === 'create-user') && request.method === 'POST') {
       const token = getBearerToken(request);
       const adminSession = token ? await env.DB.prepare(`
         SELECT * FROM gym_sessions
@@ -267,7 +299,8 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       }
 
       const body = await request.json() as any;
-      const { email, password, role, name, phone, login_id } = body || {};
+      const { email, password, role, name, phone, login_id, loginId } = body || {};
+      const userLoginId = login_id || loginId || null;
 
       if (!email || !password || !role || !name) {
         return new Response(JSON.stringify({ error: 'Email, password, role, and name are required.' }), {
@@ -283,11 +316,11 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       await env.DB.prepare(`
         INSERT INTO gym_users (id, email, password_hash, salt, role, name, phone, login_id)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `).bind(userId, email.toLowerCase().trim(), passwordHash, salt, role, name.trim(), phone || null, login_id || null).run();
+      `).bind(userId, email.toLowerCase().trim(), passwordHash, salt, role, name.trim(), phone || null, userLoginId).run();
 
       return new Response(JSON.stringify({
         success: true,
-        user: { id: userId, email, role, name, phone, login_id }
+        user: { id: userId, email, role, name, phone, loginId: userLoginId, login_id: userLoginId }
       }), {
         status: 201,
         headers

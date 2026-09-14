@@ -25,6 +25,7 @@ import { FoodService } from '../../data/foodDatabase';
 import { Exercise, FoodItem, AssignedWorkout, AssignedMealPlan, ChatMessage } from '../../types';
 import { syncedStore, AppSyncState, ClientData } from '../../services/syncedStore';
 import { hapticTap } from '../../utils/audioHaptics';
+import { AddFoodModal } from '../common/AddFoodModal';
 
 interface TrainerScreenProps {
   activeTrainerId?: string;
@@ -146,6 +147,7 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
   const [targetMealType, setTargetMealType] = useState<null | 'breakfast' | 'lunch' | 'snack' | 'dinner'>(null);
   const [foodQuery, setFoodQuery] = useState('');
   const [trainerFoodCategory, setTrainerFoodCategory] = useState('All');
+  const [isAddFoodOpen, setIsAddFoodOpen] = useState(false);
 
   const currentTrainer = syncState.trainers.find((t) => t.id === activeTrainerId) || syncState.trainers[0];
   const myAssignedClients = currentTrainer
@@ -658,7 +660,7 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
                     className="text-amber-400 hover:text-amber-300 flex items-center space-x-1"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>+ Add From 1,324 Dataset</span>
+                    <span>+ Add Exercise</span>
                   </button>
                 </div>
 
@@ -795,17 +797,31 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
                       ))}
                     </div>
 
-                    <button
-                      onClick={() => {
-                        hapticTap();
-                        setTargetMealType(meal.type);
-                        setFoodQuery('');
-                      }}
-                      className="w-full py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-400 border border-dashed border-amber-500/30 text-xs font-bold font-tech flex items-center justify-center space-x-1"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>+ Add Tamil Gym Food Item</span>
-                    </button>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => {
+                          hapticTap();
+                          setTargetMealType(meal.type);
+                          setFoodQuery('');
+                        }}
+                        className="flex-1 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-400 border border-dashed border-amber-500/30 text-xs font-bold font-tech flex items-center justify-center space-x-1"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Food Catalog</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          hapticTap();
+                          setTargetMealType(meal.type);
+                          setIsAddFoodOpen(true);
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold font-tech flex items-center space-x-1"
+                        title="Create & Add Custom Food"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>+ Custom</span>
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -968,14 +984,14 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
         </main>
       </div>
 
-      {/* 3. EXERCISE PICKER MODAL (1,324 Dataset) */}
+      {/* 3. EXERCISE PICKER MODAL */}
       {isAddingExercise && (
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-[#0c101a] border border-amber-500/40 rounded-3xl p-5 w-full max-w-lg shadow-2xl max-h-[85vh] flex flex-col text-left">
             <div className="flex items-center justify-between pb-3 border-b border-white/10">
               <div className="flex items-center space-x-2">
                 <Dumbbell className="w-4 h-4 text-amber-400" />
-                <h3 className="text-sm font-black text-white font-display">Pick From 1,324 Gym Exercises</h3>
+                <h3 className="text-sm font-black text-white font-display">Exercise Library</h3>
               </div>
               <button onClick={() => setIsAddingExercise(false)} className="text-slate-400 hover:text-white">
                 <X className="w-4 h-4" />
@@ -1084,11 +1100,23 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
                 <span className="text-[10px] font-tech text-amber-400 font-bold uppercase">
                   Adding to {targetMealType.toUpperCase()}
                 </span>
-                <h3 className="text-sm font-black text-white font-display">Pick From 10,000+ Nutrition Database</h3>
+                <h3 className="text-sm font-black text-white font-display">Food & Nutrition Database</h3>
               </div>
-              <button onClick={() => setTargetMealType(null)} className="text-slate-400 hover:text-white">
-                <X className="w-4 h-4" />
-              </button>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => {
+                    hapticTap();
+                    setIsAddFoodOpen(true);
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-[11px] font-tech font-black flex items-center space-x-1 shadow"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>+ Custom</span>
+                </button>
+                <button onClick={() => setTargetMealType(null)} className="text-slate-400 hover:text-white">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             <div className="my-2 relative">
@@ -1174,6 +1202,32 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
           </div>
         </div>
       )}
+
+      {/* 5. ADD CUSTOM FOOD MODAL */}
+      <AddFoodModal
+        isOpen={isAddFoodOpen}
+        onClose={() => setIsAddFoodOpen(false)}
+        sourceRole="TRAINER"
+        onFoodAdded={(newFood) => {
+          if (targetMealType) {
+            setDietMeals((prev) =>
+              prev.map((m) =>
+                m.type === targetMealType
+                  ? {
+                      ...m,
+                      items: [...m.items, `${newFood.name} (${newFood.servingSize})`]
+                    }
+                  : m
+              )
+            );
+            setDietCalories((prev) => prev + newFood.calories);
+            setDietProtein((prev) => Math.round(prev + newFood.protein));
+            setDietCarbs((prev) => Math.round(prev + newFood.carbs));
+            setDietFat((prev) => Math.round(prev + newFood.fat));
+            setTargetMealType(null);
+          }
+        }}
+      />
     </div>
   );
 };

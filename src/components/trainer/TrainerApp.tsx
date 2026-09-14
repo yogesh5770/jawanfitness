@@ -20,6 +20,7 @@ import { authService } from '../../services/authService';
 import { hapticTap } from '../../utils/audioHaptics';
 import { ChangePasswordModal } from '../common/ChangePasswordModal';
 import { IOSInstallBanner } from '../common/IOSInstallBanner';
+import { ThemeToggle } from '../common/ThemeToggle';
 
 export const TrainerApp: React.FC = () => {
   const [syncState, setSyncState] = useState<AppSyncState>(() => syncedStore.getState());
@@ -111,21 +112,24 @@ export const TrainerApp: React.FC = () => {
         <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative w-full max-w-md bg-[#0a0e1a]/95 border border-amber-500/30 rounded-3xl p-6 sm:p-8 backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.85)] text-left animate-in fade-in zoom-in-95 duration-200">
-          <div className="flex items-center space-x-3 mb-6">
-            <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 p-2 flex items-center justify-center shadow-lg shadow-amber-500/20 flex-shrink-0">
-              <img src="/logo-3d-tight.png" alt="Jawan Fitness" className="w-full h-full object-contain drop-shadow" />
-            </div>
-            <div>
-              <div className="flex items-center space-x-2">
-                <h1 className="font-display font-black text-xl tracking-wider text-white uppercase">
-                  JAWAN <span className="text-amber-500">TRAINER</span>
-                </h1>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">
-                  COACH PWA
-                </span>
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 p-2 flex items-center justify-center shadow-lg shadow-amber-500/20 flex-shrink-0">
+                <img src="/logo-3d-tight.png" alt="Jawan Fitness" className="w-full h-full object-contain drop-shadow" />
               </div>
-              <p className="text-xs text-neutral-400">Personal Coach Command Center</p>
+              <div>
+                <div className="flex items-center space-x-2">
+                  <h1 className="font-display font-black text-xl tracking-wider text-white uppercase">
+                    JAWAN <span className="text-amber-500">TRAINER</span>
+                  </h1>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">
+                    COACH PWA
+                  </span>
+                </div>
+                <p className="text-xs text-neutral-400">Personal Coach Command Center</p>
+              </div>
             </div>
+            <ThemeToggle />
           </div>
 
           <div className="mb-5 bg-slate-900/60 border border-white/5 p-3 rounded-2xl text-xs text-slate-300 space-y-1">
@@ -241,7 +245,7 @@ export const TrainerApp: React.FC = () => {
   return (
     <div className="min-h-screen bg-neutral-950 text-white flex flex-col font-sans selection:bg-amber-500 selection:text-black">
       {/* Top Trainer Workspace Header */}
-      <header className="h-16 border-b border-neutral-800 bg-neutral-900/90 backdrop-blur-md px-4 sm:px-8 flex items-center justify-between sticky top-0 z-50">
+      <header className="pt-safe min-h-[4rem] h-auto py-2.5 border-b border-neutral-800 bg-neutral-900/90 backdrop-blur-md px-4 sm:px-8 flex items-center justify-between sticky top-0 z-50">
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 p-1.5 flex items-center justify-center shadow-lg shadow-amber-500/20 flex-shrink-0">
             <img src="/logo-3d-tight.png" alt="Jawan Fitness" className="w-full h-full object-contain drop-shadow" />
@@ -300,6 +304,8 @@ export const TrainerApp: React.FC = () => {
               <div className="text-[10px] text-amber-400 font-semibold">{activeTrainer.role}</div>
             </div>
           </div>
+
+          <ThemeToggle />
 
           <button
             onClick={() => {

@@ -9,19 +9,23 @@ import { hapticTap } from '../../utils/audioHaptics';
 interface ExercisesScreenProps {
   onStartExercise?: (exercise: Exercise) => void;
   onBack?: () => void;
+  clientId?: string;
 }
 
-export const ExercisesScreen: React.FC<ExercisesScreenProps> = ({ onStartExercise, onBack }) => {
+export const ExercisesScreen: React.FC<ExercisesScreenProps> = ({ onStartExercise, onBack, clientId }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('Chest');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedEquipment, setSelectedEquipment] = useState<string>('All');
   const [activeDetailExercise, setActiveDetailExercise] = useState<Exercise | null>(null);
 
-  // Persistent favorites state
+  // Per-user favorites storage key
+  const favStorageKey = clientId ? `jawan_favorite_exercises_${clientId}` : 'jawan_favorite_exercises';
+
+  // Persistent favorites state — scoped per user
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(() => {
     try {
-      const saved = localStorage.getItem('jawan_favorite_exercises');
-      return saved ? new Set(JSON.parse(saved)) : new Set(['0314', '0319', '0025']);
+      const saved = localStorage.getItem(favStorageKey);
+      return saved ? new Set(JSON.parse(saved)) : new Set();
     } catch {
       return new Set();
     }
@@ -29,13 +33,24 @@ export const ExercisesScreen: React.FC<ExercisesScreenProps> = ({ onStartExercis
 
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
 
+  // Reload favorites when the active user changes
   useEffect(() => {
     try {
-      localStorage.setItem('jawan_favorite_exercises', JSON.stringify(Array.from(favoriteIds)));
+      const key = clientId ? `jawan_favorite_exercises_${clientId}` : 'jawan_favorite_exercises';
+      const saved = localStorage.getItem(key);
+      setFavoriteIds(saved ? new Set(JSON.parse(saved)) : new Set());
+    } catch {
+      setFavoriteIds(new Set());
+    }
+  }, [clientId]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(favStorageKey, JSON.stringify(Array.from(favoriteIds)));
     } catch {
       // ignore
     }
-  }, [favoriteIds]);
+  }, [favoriteIds, favStorageKey]);
 
   const categories = [
     'All',
@@ -62,7 +77,7 @@ export const ExercisesScreen: React.FC<ExercisesScreenProps> = ({ onStartExercis
     'Machine'
   ];
 
-  // Real-time query execution across 1,324 exercises
+  // Real-time query execution across exercise library
   const filteredExercises = useMemo(() => {
     let results: Exercise[] = [];
 
@@ -144,7 +159,7 @@ export const ExercisesScreen: React.FC<ExercisesScreenProps> = ({ onStartExercis
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search 1,324 exercises (e.g. incline dumbbell)..."
+            placeholder="Search exercises (e.g. incline dumbbell)..."
             className="bg-transparent text-white text-sm w-full outline-none placeholder-slate-500"
           />
           {searchQuery && (

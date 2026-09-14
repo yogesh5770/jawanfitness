@@ -15,6 +15,7 @@
     -webkit-tap-highlight-color: transparent;
     user-select: none;
     touch-action: manipulation;
+    transition: background-color 0.25s ease, color 0.25s ease;
   }
 
   /* Safe area padding utilities for iPhone notch and bottom gesture bar */
@@ -37,7 +38,7 @@
   font-family: 'Space Grotesk', monospace;
 }
 
-/* Glassmorphism & high-end obsidian cards */
+/* Glassmorphism & Obsidian Cards - Dark Mode */
 .glass-panel {
   background: rgba(15, 19, 28, 0.85);
   backdrop-filter: blur(16px);
@@ -68,4 +69,142 @@
 
 .animate-glow {
   animation: subtle-glow 3s infinite ease-in-out;
+}
+
+/* =========================================================================
+   PERFECT EXECUTIVE LIGHT THEME ENGINE
+   Automatically transforms deep obsidian surfaces into clean, luxury porcelain
+   surfaces with razor-sharp typography and warm gold/amber accents.
+   ========================================================================= */
+
+html.light body {
+  background-color: #f4f6fb;
+  color: #0f172a;
+}
+
+html.light .glass-panel {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04);
+}
+
+html.light .glass-panel-gold {
+  background: linear-gradient(135deg, rgba(254, 243, 199, 0.8), rgba(255, 255, 255, 0.95));
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(217, 119, 6, 0.25);
+  box-shadow: 0 4px 20px -2px rgba(245, 158, 11, 0.08);
+}
+
+/* Automatic Surface Color Adaptation for Light Mode */
+html.light .bg-\[\#04060a\],
+html.light .bg-\[\#05070d\],
+html.light .bg-\[\#06080e\],
+html.light .bg-\[\#07090e\],
+html.light .bg-neutral-950,
+html.light .bg-slate-950 {
+  background-color: #f6f8fc !important;
+  color: #0f172a !important;
+}
+
+html.light .bg-\[\#0c101a\],
+html.light .bg-\[\#0a0e18\],
+html.light .bg-\[\#0a0e1a\],
+html.light .bg-\[\#0a0e1a\]\/90,
+html.light .bg-\[\#0a0e1a\]\/95,
+html.light .bg-\[\#0b0f1a\],
+html.light .bg-\[\#0d121c\],
+html.light .bg-\[\#0e1422\],
+html.light .bg-\[\#090d16\],
+html.light .bg-\[\#090d16\]\/95,
+html.light .bg-\[\#101522\],
+html.light .bg-\[\#121824\],
+html.light .bg-\[\#151a24\],
+html.light .bg-neutral-900 {
+  background-color: #ffffff !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.05) !important;
+}
+
+html.light .bg-slate-900,
+html.light .bg-slate-900\/40,
+html.light .bg-slate-900\/50,
+html.light .bg-slate-900\/60,
+html.light .bg-slate-900\/80,
+html.light .bg-slate-900\/90,
+html.light .bg-slate-900\/95,
+html.light .bg-slate-800,
+html.light .bg-\[\#1c1c1e\] {
+  background-color: #f1f5f9 !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+html.light .bg-black,
+html.light .bg-black\/50,
+html.light .bg-black\/60 {
+  background-color: #ffffff !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Ensure no dark gradient surfaces bleed through in light mode */
+html.light .from-\[\#121929\],
+html.light [class*="from-[#121929]"] {
+  background: #ffffff !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Light Mode High-Contrast Typography */
+html.light h1.text-white,
+html.light h2.text-white,
+html.light h3.text-white,
+html.light h4.text-white,
+html.light h5.text-white,
+html.light span.text-white,
+html.light div.text-white,
+html.light p.text-white,
+html.light td.text-white,
+html.light th.text-white,
+html.light input.text-white {
+  color: #0f172a !important;
+}
+
+html.light .text-slate-100,
+html.light .text-slate-200 {
+  color: #1e293b !important;
+}
+
+html.light .text-slate-300,
+html.light .text-slate-400,
+html.light .text-neutral-400,
+html.light .text-neutral-500 {
+  color: #475569 !important;
+}
+
+html.light .border-white\/5,
+html.light .border-white\/10,
+html.light .border-white\/20,
+html.light .border-neutral-800,
+html.light .border-neutral-900 {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Input Fields in Light Mode */
+html.light input,
+html.light select,
+html.light textarea {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.light input:focus,
+html.light select:focus,
+html.light textarea:focus {
+  border-color: #f59e0b !important;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2) !important;
+}
+
+html.light .shadow-2xl {
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.15) !important;
 }

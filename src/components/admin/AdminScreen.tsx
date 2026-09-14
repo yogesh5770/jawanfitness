@@ -31,6 +31,8 @@ import { authService } from '../../services/authService';
 import { hapticTap } from '../../utils/audioHaptics';
 import { CredentialShareModal } from './CredentialShareModal';
 import { CredentialInfo } from '../../utils/credentialUtils';
+import { ThemeToggle } from '../common/ThemeToggle';
+import { AddFoodModal } from '../common/AddFoodModal';
 
 type AdminTab =
   | 'dashboard'
@@ -102,13 +104,28 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
   // Mobile menu drawer toggle
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Listen to syncedStore
+  // Add Custom Food Modal State
+  const [isAddFoodOpen, setIsAddFoodOpen] = useState(false);
+
+  const [isManualSyncing, setIsManualSyncing] = useState(false);
+
+  // Listen to syncedStore and hydrate from Cloudflare D1 on mount
   useEffect(() => {
+    syncedStore.syncFromCloud();
+
     const unsub = syncedStore.subscribe((newState) => {
       setSyncState(newState);
     });
     return unsub;
   }, []);
+
+  const handleManualSync = async () => {
+    hapticTap();
+    setIsManualSyncing(true);
+    await syncedStore.syncFromCloud();
+    setIsManualSyncing(false);
+    showNotification('Cloud Database synchronized!');
+  };
 
   // Sync default trainer selection when trainers change
   useEffect(() => {
@@ -236,12 +253,15 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
       loginId: assignedLoginId
     });
 
+    await syncedStore.forcePushToCloud();
+
     setIsAddClientOpen(false);
     setNewClientName('');
     setNewClientEmail('');
     setNewClientPhone('');
     setNewClientLoginId('');
     setNewClientPassword('');
+    setNewClientTrainer('');
     showNotification(
       portalUser.success
         ? `Member ${created.name} enrolled! Official credentials ready.`
@@ -256,8 +276,8 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
       role: 'CLIENT',
       loginId: created.loginId || assignedLoginId,
       temporaryPassword: created.temporaryPassword || assignedPassword,
-      portalUrl: 'https://jawan-fitness-app.vercel.app',
-      assignedCoach: created.trainerName
+      portalUrl: window.location.origin.includes('pages.dev') ? 'https://jawan-fitness-app.pages.dev' : window.location.origin,
+      assignedCoach: created.trainerName || 'Unassigned'
     });
   };
 
@@ -299,8 +319,8 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
     { id: 'dashboard', label: 'Dashboard', icon: Activity },
     { id: 'clients', label: `Clients (${syncState.clients.length})`, icon: Users },
     { id: 'trainers', label: `Trainers (${syncState.trainers.length})`, icon: ShieldCheck },
-    { id: 'exercises', label: '1,324 Exercises', icon: Dumbbell },
-    { id: 'foods', label: '10,000+ Foods', icon: Apple },
+    { id: 'exercises', label: 'Exercises', icon: Dumbbell },
+    { id: 'foods', label: 'Food & Nutrition', icon: Apple },
     { id: 'templates', label: 'Templates', icon: ClipboardList },
     { id: 'audit', label: `Audit (${syncState.events.length})`, icon: FileText }
   ];
@@ -316,31 +336,34 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
       )}
 
       {/* 1. TOP RESPONSIVE ADMIN HEADER */}
-      <header className="w-full bg-[#0a0e18] border-b border-white/10 px-3 sm:px-6 py-2.5 sm:py-3.5 flex flex-wrap items-center justify-between sticky top-0 z-40 backdrop-blur-xl gap-2">
-        <div className="flex items-center space-x-2.5 sm:space-x-4">
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-amber-500/20 border border-amber-500/40 p-1.5 flex items-center justify-center shadow flex-shrink-0">
+      <header className="w-full bg-[#0a0e18] border-b border-white/10 px-3 sm:px-6 pt-safe py-2 sm:py-3 flex items-center justify-between sticky top-0 z-40 backdrop-blur-xl gap-2">
+        <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 p-1 flex items-center justify-center shadow flex-shrink-0">
             <img src="/logo-3d-tight.png" alt="Jawan Fitness" className="w-full h-full object-contain drop-shadow" />
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center space-x-1.5 sm:space-x-2">
-              <h1 className="text-xs sm:text-base font-black text-white font-display tracking-tight">
+              <h1 className="text-xs sm:text-base font-black text-white font-display tracking-tight truncate">
                 JAWAN ADMIN
               </h1>
-              <span className="text-[9px] sm:text-[10px] bg-amber-500 text-black px-1.5 py-0.5 rounded font-tech font-extrabold uppercase">
+              <span className="text-[9px] sm:text-[10px] bg-amber-500 text-black px-1.5 py-0.2 rounded font-tech font-extrabold uppercase">
                 HQ
               </span>
-              <span className="hidden sm:inline-flex text-[10px] bg-amber-500/10 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded font-tech font-bold items-center space-x-1">
+              <span className="hidden md:inline-flex text-[10px] bg-amber-500/10 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded font-tech font-bold items-center space-x-1">
                 <span>Enterprise OS</span>
               </span>
             </div>
-            <p className="text-[10px] sm:text-xs text-slate-400 font-tech truncate">
+            <p className="text-[10px] sm:text-xs text-slate-400 font-tech truncate hidden xs:block">
               Headquarters Management Console
             </p>
           </div>
         </div>
 
-        {/* Global Action Switchers & Actions */}
-        <div className="flex items-center space-x-2">
+        {/* Global Action Switchers & Actions - Clean single row on all mobile screens */}
+        <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
+          {/* Theme Toggle */}
+          <ThemeToggle className="scale-85 sm:scale-100" />
+
           {/* Live Cloud DB indicator */}
           <div className="hidden md:flex items-center space-x-1.5 px-2.5 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[11px] font-tech font-bold">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -348,20 +371,32 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
             <span>Cloud DB: Synced</span>
           </div>
 
+          {/* Quick Manual Cloud Sync Button */}
+          <button
+            onClick={handleManualSync}
+            title="Refresh data from Cloudflare D1"
+            className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-amber-400 border border-white/5 text-xs font-tech font-bold flex items-center space-x-1 transition-colors"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isManualSyncing ? 'animate-spin text-amber-400' : ''}`} />
+            <span className="hidden sm:inline">Sync</span>
+          </button>
+
           <button
             onClick={openAddTrainerModal}
-            className="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border border-amber-500/40 text-xs font-bold font-tech flex items-center space-x-1.5 transition-all"
+            title="+ Appoint Trainer"
+            className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border border-amber-500/40 text-xs font-bold font-tech flex items-center space-x-1.5 transition-all"
           >
-            <ShieldCheck className="w-3.5 h-3.5" />
-            <span>+ Appoint Trainer</span>
+            <ShieldCheck className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+            <span className="hidden sm:inline">+ Appoint Trainer</span>
           </button>
 
           <button
             onClick={openAddClientModal}
-            className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-black font-tech flex items-center space-x-1.5 transition-all shadow"
+            title="+ Enroll Member"
+            className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-black font-tech flex items-center space-x-1.5 transition-all shadow"
           >
-            <UserPlus className="w-3.5 h-3.5" />
-            <span>+ Enroll Member</span>
+            <UserPlus className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+            <span className="hidden sm:inline">+ Enroll Member</span>
           </button>
 
           {/* Logout button */}
@@ -369,7 +404,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
             <button
               onClick={onLogout}
               title="Lock Console (Logout)"
-              className="p-1.5 rounded-xl bg-slate-800 hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 border border-white/5 transition-all"
+              className="p-1.5 sm:p-2 rounded-xl bg-slate-800 hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 border border-white/5 transition-all"
             >
               <LogOut className="w-4 h-4" />
             </button>
@@ -378,7 +413,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
           {/* Mobile Menu Hamburger */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="lg:hidden p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white"
+            className="lg:hidden p-1.5 sm:p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white"
           >
             <Menu className="w-4 h-4" />
           </button>
@@ -998,21 +1033,33 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
             </div>
           )}
 
-          {/* TAB 4: 10,000+ COMPREHENSIVE ENGLISH FOOD DATABASE */}
+          {/* TAB 4: NUTRITION & FOOD DATABASE */}
           {activeTab === 'foods' && (
             <div className="space-y-4 animate-fadeIn">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
                   <h2 className="text-base sm:text-lg font-black text-white font-display">
-                    10,000+ Comprehensive English Nutrition Database
+                    Nutrition & Food Database
                   </h2>
                   <p className="text-xs text-slate-400">
-                    Clean English names, fruits, vegetables, grains, meats, fish, pulses, nuts, seeds, beverages with verified macros.
+                    Comprehensive nutrition catalog with verified macros, custom items, and real-time cloud sync.
                   </p>
                 </div>
-                <span className="text-xs font-tech font-bold text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20 self-start sm:self-auto">
-                  {FoodService.getCount().toLocaleString()} Items Indexed
-                </span>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => {
+                      hapticTap();
+                      setIsAddFoodOpen(true);
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-tech font-black text-xs flex items-center space-x-1.5 shadow-lg shadow-amber-500/20 active:scale-95 transition-all"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>+ Add Food</span>
+                  </button>
+                  <span className="text-xs font-tech font-bold text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20 self-start sm:self-auto">
+                    {FoodService.getCount().toLocaleString()} Items
+                  </span>
+                </div>
               </div>
 
               {/* Search & Filter Bar */}
@@ -1069,7 +1116,14 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                     className="p-3 bg-[#0b0f1a] border border-white/10 rounded-2xl flex items-center justify-between hover:border-amber-500/40 transition-all text-xs"
                   >
                     <div className="min-w-0 pr-2">
-                      <h4 className="font-bold text-white truncate leading-tight">{food.name}</h4>
+                      <div className="flex items-center space-x-1.5">
+                        <h4 className="font-bold text-white truncate leading-tight">{food.name}</h4>
+                        {food.id.startsWith('custom-') && (
+                          <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-400 text-[9px] font-tech font-bold border border-amber-500/30 flex-shrink-0">
+                            CUSTOM
+                          </span>
+                        )}
+                      </div>
                       <span className="text-[10px] text-slate-400 font-tech">
                         {food.servingSize} • {food.category}
                       </span>
@@ -1080,8 +1134,22 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                         <span>Fib: <span className="text-emerald-400 font-bold">{food.fiber}g</span></span>
                       </div>
                     </div>
-                    <div className="text-right font-tech font-bold text-sm text-white flex-shrink-0">
-                      {food.calories} <span className="text-[10px] text-slate-500 block">kcal</span>
+                    <div className="flex items-center space-x-2 flex-shrink-0">
+                      <div className="text-right font-tech font-bold text-sm text-white">
+                        {food.calories} <span className="text-[10px] text-slate-500 block">kcal</span>
+                      </div>
+                      {food.id.startsWith('custom-') && (
+                        <button
+                          onClick={() => {
+                            hapticTap();
+                            syncedStore.deleteCustomFood(food.id, 'ADMIN');
+                          }}
+                          className="p-1.5 rounded-lg bg-rose-950/40 border border-rose-500/30 text-rose-400 hover:text-rose-300 hover:bg-rose-900/60 transition-all"
+                          title="Delete Custom Food"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -1089,13 +1157,13 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
             </div>
           )}
 
-          {/* TAB 5: 1,324 EXERCISES AUDITOR */}
+          {/* TAB 5: EXERCISES AUDITOR */}
           {activeTab === 'exercises' && (
             <div className="space-y-4 animate-fadeIn">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                 <div>
                   <h2 className="text-base sm:text-lg font-black text-white font-display">
-                    1,324 Gym Exercise Master Dataset
+                    Gym Exercise Master Dataset
                   </h2>
                   <p className="text-xs text-slate-400 font-tech">
                     Multilingual 3D human biomechanics animations with loopable playback.
@@ -1622,6 +1690,13 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
           onClose={() => setActiveCredentialModal(null)}
         />
       )}
+
+      {/* MODAL 5: ADD CUSTOM FOOD MODAL */}
+      <AddFoodModal
+        isOpen={isAddFoodOpen}
+        onClose={() => setIsAddFoodOpen(false)}
+        sourceRole="ADMIN"
+      />
     </div>
   );
 };

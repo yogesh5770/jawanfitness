@@ -1,25 +1,34 @@
 /**
  * Cloud Database Service for Jawan Fitness
- * Seamlessly connects to user's Supabase PostgreSQL database
- * (sjphtqnyptbxcrwadaxy.supabase.co in ap-south-1 Mumbai)
+ * Seamlessly connects to Cloudflare D1 database (jawan-fitness-db)
  * with automatic fallback and offline-first persistence.
  */
 
 import type { AppSyncState } from './syncedStore';
 import { authService } from './authService';
-
-export const SUPABASE_PROJECT_REF = 'sjphtqnyptbxcrwadaxy';
-export const SUPABASE_PROJECT_URL = `https://${SUPABASE_PROJECT_REF}.supabase.co`;
+import { Capacitor } from '@capacitor/core';
 
 // Local and remote serverless API routes
-const PRIMARY_API_ENDPOINT = '/api/sync';
 const FALLBACK_REMOTE_API = 'https://jawan-fitness-admin.pages.dev/api/sync';
+
+function getSyncEndpoint(): string {
+  if (typeof window === 'undefined') return FALLBACK_REMOTE_API;
+  if (
+    Capacitor.isNativePlatform() ||
+    window.location.protocol === 'capacitor:' ||
+    window.location.protocol === 'file:' ||
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1' ||
+    !window.location.hostname.includes('pages.dev')
+  ) {
+    return FALLBACK_REMOTE_API;
+  }
+  return '/api/sync';
+}
 
 export interface CloudDbConfig {
   enabled: boolean;
-  dbType: 'supabase-postgresql' | 'live-cloud-rest' | 'custom';
-  supabaseUrl?: string;
-  supabaseAnonKey?: string;
+  dbType: 'cloudflare-d1' | 'live-cloud-rest' | 'custom';
   lastSyncedAt?: number;
   syncStatus: 'idle' | 'syncing' | 'synced' | 'error';
   activeProvider: string;
@@ -29,9 +38,9 @@ export interface CloudDbConfig {
 class CloudDatabaseService {
   private config: CloudDbConfig = {
     enabled: true,
-    dbType: 'supabase-postgresql',
+    dbType: 'cloudflare-d1',
     syncStatus: 'idle',
-    activeProvider: 'Supabase PostgreSQL (Mumbai)'
+    activeProvider: 'Cloudflare D1 (Live)'
   };
 
   private syncListeners: Set<(config: CloudDbConfig) => void> = new Set();
@@ -131,42 +140,47 @@ class CloudDatabaseService {
         events: Array.isArray(state.events) ? state.events : []
       };
 
-      // 1. Primary: Direct Supabase PostgreSQL via Serverless API
+      // 1. Primary: Direct or remote API
       try {
-        const primaryRes = await fetch(PRIMARY_API_ENDPOINT, {
+        const endpoint = getSyncEndpoint();
+        const primaryRes = await fetch(endpoint, {
           method: 'POST',
           headers: this.authHeaders(),
           body: JSON.stringify({ data: payload })
         });
 
-        if (primaryRes.ok) {
+        const contentType = primaryRes.headers.get('content-type') || '';
+        if (primaryRes.ok && !contentType.includes('text/html')) {
           this.config.syncStatus = 'synced';
           this.config.lastSyncedAt = Date.now();
-          this.config.activeProvider = 'Supabase PostgreSQL (Live)';
+          this.config.activeProvider = 'Cloudflare D1 (Live)';
           this.config.errorMessage = undefined;
           this.notify();
           return true;
         }
       } catch {
-        // Fallback to cross-origin admin endpoint for Trainer / Client PWA
-        try {
-          const remoteRes = await fetch(FALLBACK_REMOTE_API, {
-            method: 'POST',
-            headers: this.authHeaders(),
-            body: JSON.stringify({ data: payload })
-          });
+        // continue to fallback
+      }
 
-          if (remoteRes.ok) {
-            this.config.syncStatus = 'synced';
-            this.config.lastSyncedAt = Date.now();
-            this.config.activeProvider = 'Supabase PostgreSQL (Remote)';
-            this.config.errorMessage = undefined;
-            this.notify();
-            return true;
-          }
-        } catch {
-          // continue to final error
+      // 2. Fallback to remote admin endpoint
+      try {
+        const remoteRes = await fetch(FALLBACK_REMOTE_API, {
+          method: 'POST',
+          headers: this.authHeaders(),
+          body: JSON.stringify({ data: payload })
+        });
+
+        const contentType = remoteRes.headers.get('content-type') || '';
+        if (remoteRes.ok && !contentType.includes('text/html')) {
+          this.config.syncStatus = 'synced';
+          this.config.lastSyncedAt = Date.now();
+          this.config.activeProvider = 'Cloudflare D1 (Remote)';
+          this.config.errorMessage = undefined;
+          this.notify();
+          return true;
         }
+      } catch {
+        // continue to error
       }
 
       throw new Error('Authenticated database sync endpoint unreachable');
@@ -183,56 +197,60 @@ class CloudDatabaseService {
    */
   public async fetchStateFromCloud(): Promise<AppSyncState | null> {
     if (!this.config.enabled) return null;
-    if (!this.hasAuthToken()) return null;
 
     try {
       this.config.syncStatus = 'syncing';
       this.notify();
 
-      // 1. Primary: Direct Supabase PostgreSQL via Serverless API
+      // 1. Primary
       try {
-        const primaryRes = await fetch(PRIMARY_API_ENDPOINT, {
+        const endpoint = getSyncEndpoint();
+        const primaryRes = await fetch(endpoint, {
           headers: {
             ...this.authHeaders(),
             'Cache-Control': 'no-cache'
           }
         });
 
-        if (primaryRes.ok) {
+        const contentType = primaryRes.headers.get('content-type') || '';
+        if (primaryRes.ok && !contentType.includes('text/html')) {
           const json = await primaryRes.json();
           if (json && json.data) {
             this.config.syncStatus = 'synced';
             this.config.lastSyncedAt = Date.now();
-            this.config.activeProvider = 'Supabase PostgreSQL (Live)';
+            this.config.activeProvider = 'Cloudflare D1 (Live)';
             this.config.errorMessage = undefined;
             this.notify();
             return json.data as AppSyncState;
           }
         }
       } catch {
-        // Fallback to cross-origin admin endpoint
-        try {
-          const remoteRes = await fetch(FALLBACK_REMOTE_API, {
-            headers: {
-              ...this.authHeaders(),
-              'Cache-Control': 'no-cache'
-            }
-          });
+        // continue to fallback
+      }
 
-          if (remoteRes.ok) {
-            const json = await remoteRes.json();
-            if (json && json.data) {
-              this.config.syncStatus = 'synced';
-              this.config.lastSyncedAt = Date.now();
-              this.config.activeProvider = 'Supabase PostgreSQL (Remote)';
-              this.config.errorMessage = undefined;
-              this.notify();
-              return json.data as AppSyncState;
-            }
+      // 2. Fallback to remote admin endpoint
+      try {
+        const remoteRes = await fetch(FALLBACK_REMOTE_API, {
+          headers: {
+            ...this.authHeaders(),
+            'Cache-Control': 'no-cache'
           }
-        } catch {
-          // continue to final empty state
+        });
+
+        const contentType = remoteRes.headers.get('content-type') || '';
+        if (remoteRes.ok && !contentType.includes('text/html')) {
+          const json = await remoteRes.json();
+          if (json && json.data) {
+            this.config.syncStatus = 'synced';
+            this.config.lastSyncedAt = Date.now();
+            this.config.activeProvider = 'Cloudflare D1 (Remote)';
+            this.config.errorMessage = undefined;
+            this.notify();
+            return json.data as AppSyncState;
+          }
         }
+      } catch {
+        // continue
       }
 
       this.config.syncStatus = 'synced';

@@ -1,7 +1,9 @@
 /**
  * JAWAN FITNESS - ENTERPRISE AUTHENTICATION SERVICE
- * Backed by Supabase PostgreSQL database and verified server-side.
+ * Backed by Cloudflare D1 database and verified server-side with PBKDF2 Web Crypto.
  */
+
+import { Capacitor } from '@capacitor/core';
 
 export interface AuthUser {
   id: string;
@@ -22,18 +24,99 @@ const STORAGE_TOKEN_KEY = 'jawan_auth_session_token_v1';
 const STORAGE_USER_KEY = 'jawan_auth_user_v1';
 
 // Base API endpoints (local serverless route or remote admin domain for PWA/APK)
-const PRIMARY_AUTH_URL = '/api/auth';
 const REMOTE_AUTH_URL = 'https://jawan-fitness-admin.pages.dev/api/auth';
 
-async function parseJsonResponse(res: Response | null): Promise<{ data: any; error?: string }> {
-  if (!res) return { data: null, error: 'Network error: server unreachable.' };
-  try {
-    const text = await res.text();
-    const parsed = text ? JSON.parse(text) : {};
-    return { data: parsed };
-  } catch {
-    return { data: null, error: `Authentication server returned status ${res.status}.` };
+function getPrimaryAuthUrl(): string {
+  if (typeof window === 'undefined') return REMOTE_AUTH_URL;
+  // If running in Capacitor native Android/iOS app or local development or non-pages domain:
+  if (
+    Capacitor.isNativePlatform() ||
+    window.location.protocol === 'capacitor:' ||
+    window.location.protocol === 'file:' ||
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1' ||
+    !window.location.hostname.includes('pages.dev')
+  ) {
+    return REMOTE_AUTH_URL;
   }
+  return '/api/auth';
+}
+
+async function safeApiCall(
+  action: string,
+  options: {
+    method?: string;
+    body?: any;
+    token?: string | null;
+  } = {}
+): Promise<{ data: any; error?: string }> {
+  const { method = 'POST', body, token } = options;
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json'
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const primaryUrl = `${getPrimaryAuthUrl()}?action=${action}`;
+  const remoteUrl = `${REMOTE_AUTH_URL}?action=${action}`;
+
+  async function tryFetch(url: string) {
+    try {
+      const res = await fetch(url, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : undefined
+      });
+
+      const contentType = res.headers.get('content-type') || '';
+      const text = await res.text();
+
+      // If server returned single-page-app HTML index file instead of JSON
+      if (
+        contentType.includes('text/html') ||
+        text.trim().startsWith('<!DOCTYPE') ||
+        text.trim().startsWith('<html')
+      ) {
+        return { ok: false, isHtml: true, status: res.status, data: null };
+      }
+
+      let data: any = null;
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        return { ok: false, isHtml: false, status: res.status, data: null, parseError: true };
+      }
+
+      return { ok: res.ok, isHtml: false, status: res.status, data };
+    } catch {
+      return { ok: false, isHtml: false, status: 0, data: null, networkError: true };
+    }
+  }
+
+  // 1. Try primary endpoint
+  let result = await tryFetch(primaryUrl);
+
+  // 2. If primary returned HTML (e.g. Capacitor WebView SPA fallback) or failed, try remote admin endpoint
+  if ((!result.ok || result.isHtml || result.parseError || result.networkError) && primaryUrl !== remoteUrl) {
+    const fallbackResult = await tryFetch(remoteUrl);
+    if (fallbackResult.data || fallbackResult.ok) {
+      result = fallbackResult;
+    }
+  }
+
+  if (result.data) {
+    if (result.data.error) {
+      return { data: null, error: result.data.error };
+    }
+    return { data: result.data };
+  }
+
+  if (result.networkError) {
+    return { data: null, error: 'Network error: auth server unreachable. Please check internet connection.' };
+  }
+
+  return { data: null, error: `Authentication failed (status ${result.status}).` };
 }
 
 class AuthService {
@@ -95,53 +178,40 @@ class AuthService {
     };
 
     try {
-      let res = await fetch(`${PRIMARY_AUTH_URL}?action=login`, {
+      const { data, error } = await safeApiCall('login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      }).catch(() => null);
+        body: payload
+      });
 
-      if (!res || !res.ok) {
-        // Fallback to remote admin host for Trainer/Client domains
-        const fallbackRes = await fetch(`${REMOTE_AUTH_URL}?action=login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        }).catch(() => null);
-
-        if (fallbackRes && fallbackRes.ok) {
-          res = fallbackRes;
-        }
+      if (error || !data) {
+        return { success: false, error: error || 'Authentication failed.' };
       }
 
-      if (!res) {
-        return { success: false, error: 'Network error: could not contact auth server.' };
-      }
-
-      const { data, error: parseError } = await parseJsonResponse(res);
-      if (parseError) {
-        return { success: false, error: parseError };
-      }
-
-      if (!res.ok || data?.error) {
-        return { success: false, error: data?.error || 'Authentication failed.' };
-      }
+      // Normalize login_id → loginId for client-side compatibility
+      const user: AuthUser = {
+        id: data.user.id,
+        email: data.user.email,
+        name: data.user.name,
+        role: data.user.role,
+        phone: data.user.phone,
+        loginId: data.user.loginId || data.user.login_id || undefined
+      };
 
       // Save verified session
       this.currentSession = {
         token: data.token,
-        expiresAt: data.expiresAt,
-        user: data.user
+        expiresAt: data.expiresAt || '',
+        user
       };
 
       try {
         localStorage.setItem(STORAGE_TOKEN_KEY, data.token);
-        localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(data.user));
+        localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(user));
       } catch {
         // fallback
       }
 
-      return { success: true, user: data.user };
+      return { success: true, user };
     } catch (err: any) {
       return { success: false, error: err?.message || 'Authentication error.' };
     }
@@ -161,41 +231,14 @@ class AuthService {
     }
 
     try {
-      let res = await fetch(`${PRIMARY_AUTH_URL}?action=create-user`, {
+      const { data, error } = await safeApiCall('create-user', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify(input)
-      }).catch(() => null);
+        body: input,
+        token
+      });
 
-      if (!res || !res.ok) {
-        const fallbackRes = await fetch(`${REMOTE_AUTH_URL}?action=create-user`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`
-          },
-          body: JSON.stringify(input)
-        }).catch(() => null);
-
-        if (fallbackRes && fallbackRes.ok) {
-          res = fallbackRes;
-        }
-      }
-
-      if (!res) {
-        return { success: false, error: 'Network error: could not contact auth server.' };
-      }
-
-      const { data, error: parseError } = await parseJsonResponse(res);
-      if (parseError) {
-        return { success: false, error: parseError };
-      }
-
-      if (!res.ok || data?.error) {
-        return { success: false, error: data?.error || 'Could not create portal user.' };
+      if (error) {
+        return { success: false, error };
       }
 
       return { success: true };
@@ -209,53 +252,47 @@ class AuthService {
    */
   public async verifySession(): Promise<boolean> {
     const token = this.currentSession?.token || localStorage.getItem(STORAGE_TOKEN_KEY);
-    if (!token) return false;
+    if (!token && !this.currentSession && !localStorage.getItem(STORAGE_USER_KEY)) {
+      return false;
+    }
 
     try {
-      let res = await fetch(`${PRIMARY_AUTH_URL}?action=verify`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ token })
-      }).catch(() => null);
-
-      if (!res || !res.ok) {
-        const fallbackRes = await fetch(`${REMOTE_AUTH_URL}?action=verify`, {
+      if (token) {
+        const { data } = await safeApiCall('verify', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`
-          },
-          body: JSON.stringify({ token })
-        }).catch(() => null);
+          body: { token },
+          token
+        });
 
-        if (fallbackRes && fallbackRes.ok) {
-          res = fallbackRes;
-        }
-      }
-
-      if (res && res.ok) {
-        const { data } = await parseJsonResponse(res);
         if (data && data.valid && data.user) {
+          const normalizedUser: AuthUser = {
+            id: data.user.id,
+            email: data.user.email,
+            name: data.user.name,
+            role: data.user.role,
+            phone: data.user.phone,
+            loginId: data.user.loginId || data.user.login_id || undefined
+          };
           this.currentSession = {
             token,
-            expiresAt: data.expiresAt,
-            user: data.user
+            expiresAt: data.expiresAt || '',
+            user: normalizedUser
           };
-          localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(data.user));
+          try {
+            localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(normalizedUser));
+          } catch {
+            // fallback
+          }
           return true;
         }
       }
-
-      // If token invalid, clear local session
-      this.logout();
-      return false;
     } catch {
-      // In offline mode, preserve local session if present
-      return !!this.currentSession;
+      // In offline mode or temporary network disconnect, preserve session
     }
+
+    // PERSISTENCE RULE: NEVER auto-logout on background verify or network error.
+    // The user stays logged in until they explicitly tap the Logout button.
+    return !!this.currentSession || !!localStorage.getItem(STORAGE_USER_KEY);
   }
 
   /**
@@ -276,44 +313,17 @@ class AuthService {
     };
 
     try {
-      let res = await fetch(`${PRIMARY_AUTH_URL}?action=change-password`, {
+      const { data, error } = await safeApiCall('change-password', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify(payload)
-      }).catch(() => null);
+        body: payload,
+        token
+      });
 
-      if (!res || !res.ok) {
-        const fallbackRes = await fetch(`${REMOTE_AUTH_URL}?action=change-password`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {})
-          },
-          body: JSON.stringify(payload)
-        }).catch(() => null);
-
-        if (fallbackRes && fallbackRes.ok) {
-          res = fallbackRes;
-        }
+      if (error) {
+        return { success: false, error };
       }
 
-      if (!res) {
-        return { success: false, error: 'Network error: could not contact auth server.' };
-      }
-
-      const { data, error: parseError } = await parseJsonResponse(res);
-      if (parseError) {
-        return { success: false, error: parseError };
-      }
-
-      if (!res.ok || data?.error) {
-        return { success: false, error: data?.error || 'Password update failed.' };
-      }
-
-      return { success: true, message: data.message || 'Password changed successfully!' };
+      return { success: true, message: data?.message || 'Password changed successfully!' };
     } catch (err: any) {
       return { success: false, error: err?.message || 'Password change request failed.' };
     }
@@ -331,16 +341,18 @@ class AuthService {
       localStorage.removeItem(STORAGE_USER_KEY);
       localStorage.removeItem('jawan_admin_session_active_v1');
       localStorage.removeItem('jawan_admin_session_active_v2');
+      localStorage.removeItem('jawan_trainer_session_id_v1');
+      localStorage.removeItem('jawan_active_client_id_v1');
     } catch {
       // fallback
     }
 
     if (token) {
       try {
-        fetch(`${PRIMARY_AUTH_URL}?action=logout`, {
+        safeApiCall('logout', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token })
+          body: { token },
+          token
         }).catch(() => null);
       } catch {
         // ignore

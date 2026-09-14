@@ -1,6 +1,7 @@
 import React from 'react';
 import { Flame, ShieldCheck, Crown, User } from 'lucide-react';
 import { hapticTap } from '../../utils/audioHaptics';
+import { ThemeToggle } from '../common/ThemeToggle';
 
 export type UserRole = 'client' | 'trainer' | 'admin';
 
@@ -45,6 +46,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
         </div>
 
         <div className="flex items-center space-x-2">
+          <ThemeToggle className="scale-85" />
           {/* Workout Streak */}
           <div className="flex items-center space-x-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-orange-950/60 to-amber-950/60 border border-orange-500/30">
             <Flame className="w-3.5 h-3.5 text-orange-400 fill-orange-400 animate-pulse" />

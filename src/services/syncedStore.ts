@@ -4,7 +4,8 @@ import {
   WorkoutSession,
   LoggedMealItem,
   ChatMessage,
-  WeightRecord
+  WeightRecord,
+  FoodItem
 } from '../types';
 export interface ClientData {
   id: string;
@@ -67,11 +68,12 @@ export interface AppSyncState {
   weightHistory: WeightRecord[];
   messages: ChatMessage[];
   events: SyncEvent[];
+  customFoods: FoodItem[];
 }
 
 import { cloudDbService } from './cloudDatabaseService';
 
-const STORAGE_KEY = 'jawan_fitness_clean_slate_v4';
+const STORAGE_KEY = 'jawan_fitness_clean_slate_v5';
 
 const DEFAULT_STATE: AppSyncState = {
   clients: [],
@@ -88,7 +90,8 @@ const DEFAULT_STATE: AppSyncState = {
   googleFitSteps: 0,
   weightHistory: [],
   messages: [],
-  events: []
+  events: [],
+  customFoods: []
 };
 
 type Listener = (state: AppSyncState) => void;
@@ -110,6 +113,7 @@ class SyncedStore {
       localStorage.removeItem('jawan_fitness_scratch_clean_v1');
       localStorage.removeItem('jawan_fitness_clean_slate_v2');
       localStorage.removeItem('jawan_fitness_clean_slate_v3');
+      localStorage.removeItem('jawan_fitness_clean_slate_v4');
     } catch {
       // fallback
     }
@@ -123,7 +127,8 @@ class SyncedStore {
           ...this.state,
           ...cloudData,
           clients: Array.isArray(cloudData.clients) ? cloudData.clients : [],
-          trainers: Array.isArray(cloudData.trainers) ? cloudData.trainers : []
+          trainers: Array.isArray(cloudData.trainers) ? cloudData.trainers : [],
+          events: Array.isArray(cloudData.events) ? cloudData.events : []
         };
         this.persist();
         this.listeners.forEach((listener) => {
@@ -150,7 +155,8 @@ class SyncedStore {
           ...DEFAULT_STATE,
           ...parsed,
           clients: Array.isArray(parsed.clients) ? parsed.clients : [],
-          trainers: Array.isArray(parsed.trainers) ? parsed.trainers : []
+          trainers: Array.isArray(parsed.trainers) ? parsed.trainers : [],
+          customFoods: Array.isArray(parsed.customFoods) ? parsed.customFoods : []
         };
       }
     } catch {
@@ -171,7 +177,12 @@ class SyncedStore {
     if (this.cloudPushTimeout) clearTimeout(this.cloudPushTimeout);
     this.cloudPushTimeout = setTimeout(() => {
       cloudDbService.pushStateToCloud(this.state);
-    }, 400);
+    }, 250);
+  }
+
+  public async forcePushToCloud(): Promise<boolean> {
+    if (this.cloudPushTimeout) clearTimeout(this.cloudPushTimeout);
+    return await cloudDbService.pushStateToCloud(this.state);
   }
 
   private notify() {
@@ -357,6 +368,7 @@ class SyncedStore {
       `Admin created client ${newClient.name} (ID: ${newClient.loginId}) assigned to ${newClient.trainerName || 'Unassigned'}`,
       'Client'
     );
+    cloudDbService.pushStateToCloud(this.state);
     return newClient;
   }
 
@@ -370,6 +382,7 @@ class SyncedStore {
       activeClientId: client.id
     };
     this.notify();
+    cloudDbService.pushStateToCloud(this.state);
   }
 
   public updateTrainerCredentials(trainerId: string, loginId: string, temporaryPassword: string) {
@@ -486,6 +499,51 @@ class SyncedStore {
       }
     };
     this.notify();
+  }
+
+  // 2.5 CUSTOM FOOD CATALOG ACTIONS (ADMIN & TRAINER)
+  public addCustomFood(
+    food: Omit<FoodItem, 'id'> & { id?: string },
+    sourceRole: 'ADMIN' | 'TRAINER' = 'ADMIN'
+  ): FoodItem {
+    const newFood: FoodItem = {
+      ...food,
+      id: food.id || `custom-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      verified: true
+    };
+    this.state = {
+      ...this.state,
+      customFoods: [newFood, ...(this.state.customFoods || []).filter((f) => f.id !== newFood.id)]
+    };
+    this.logEvent(
+      sourceRole,
+      'Food Item Added',
+      `${sourceRole === 'ADMIN' ? 'Admin' : 'Trainer'} added "${newFood.name}" (${newFood.calories} kcal, ${newFood.protein}g protein, ${newFood.servingSize})`,
+      'Diet'
+    );
+    return newFood;
+  }
+
+  public deleteCustomFood(foodId: string, sourceRole: 'ADMIN' | 'TRAINER' = 'ADMIN') {
+    const food = (this.state.customFoods || []).find((f) => f.id === foodId);
+    this.state = {
+      ...this.state,
+      customFoods: (this.state.customFoods || []).filter((f) => f.id !== foodId)
+    };
+    if (food) {
+      this.logEvent(
+        sourceRole,
+        'Food Item Removed',
+        `${sourceRole === 'ADMIN' ? 'Admin' : 'Trainer'} removed "${food.name}" from catalog`,
+        'Diet'
+      );
+    } else {
+      this.notify();
+    }
+  }
+
+  public getCustomFoods(): FoodItem[] {
+    return this.state.customFoods || [];
   }
 
   // 3. CLIENT WORKOUT EXECUTION ACTIONS
@@ -675,7 +733,8 @@ class SyncedStore {
       googleFitSteps: 0,
       weightHistory: [],
       messages: [],
-      events: []
+      events: [],
+      customFoods: []
     };
     try {
       localStorage.removeItem(STORAGE_KEY);

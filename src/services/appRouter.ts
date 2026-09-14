@@ -22,15 +22,15 @@ import { Capacitor } from '@capacitor/core';
 export type AppRoleMode = 'admin' | 'trainer' | 'client' | 'dev-sync';
 
 export function detectAppRole(): AppRoleMode {
-  // 1. Android APK or iOS Native Wrapper: Always Client
-  if (Capacitor.isNativePlatform()) {
-    return 'client';
-  }
-
-  // 2. Build-time environment variable override (e.g. Vercel deployment variable)
+  // 1. Build-time environment variable override (e.g. Capacitor APK target or Vercel variable)
   const envRole = (import.meta as any).env?.VITE_APP_ROLE;
   if (envRole === 'admin' || envRole === 'trainer' || envRole === 'client' || envRole === 'dev-sync') {
     return envRole;
+  }
+
+  // 2. Android APK or iOS Native Wrapper: Default to Client (Member)
+  if (Capacitor.isNativePlatform()) {
+    return 'client';
   }
 
   // 3. Domain and Subdomain-based routing

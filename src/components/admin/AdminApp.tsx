@@ -12,7 +12,10 @@ import {
   EyeOff
 } from 'lucide-react';
 import { authService, AuthUser } from '../../services/authService';
+import { syncedStore } from '../../services/syncedStore';
 import { hapticTap } from '../../utils/audioHaptics';
+import { IOSInstallBanner } from '../common/IOSInstallBanner';
+import { ThemeToggle } from '../common/ThemeToggle';
 
 export const AdminApp: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => authService.getUser());
@@ -26,23 +29,23 @@ export const AdminApp: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
 
-  // On mount: Validate session token with backend Supabase database
+  // On mount: Validate session token with backend Cloudflare D1 database without auto-logging out
   useEffect(() => {
     let isMounted = true;
     async function checkBackendSession() {
       try {
-        const valid = await authService.verifySession();
-        if (isMounted) {
-          setIsAuthenticated(valid && authService.isAuthenticated('ADMIN'));
-          setCurrentUser(authService.getUser());
-        }
-      } catch {
-        if (isMounted) {
-          setIsAuthenticated(authService.isAuthenticated('ADMIN'));
-        }
+        await authService.verifySession();
+      } catch (err) {
+        console.warn('Backend session check error:', err);
       } finally {
         if (isMounted) {
+          const authed = authService.isAuthenticated('ADMIN');
+          setIsAuthenticated(authed);
+          setCurrentUser(authService.getUser());
           setIsVerifying(false);
+          if (authed) {
+            syncedStore.syncFromCloud();
+          }
         }
       }
     }
@@ -64,6 +67,7 @@ export const AdminApp: React.FC = () => {
     if (result.success && result.user) {
       setCurrentUser(result.user);
       setIsAuthenticated(true);
+      await syncedStore.syncFromCloud();
     } else {
       setLoginError(result.error || 'Authentication failed. Please check credentials.');
     }
@@ -97,21 +101,24 @@ export const AdminApp: React.FC = () => {
 
         <div className="relative w-full max-w-md bg-[#0a0e1a]/90 border border-amber-500/30 rounded-3xl p-6 sm:p-8 backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.8)] text-left animate-in fade-in zoom-in-95 duration-200">
           {/* Logo & Header */}
-          <div className="flex items-center space-x-3.5 mb-6">
-            <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 p-2 flex items-center justify-center shadow-lg shadow-amber-500/20 flex-shrink-0">
-              <img src="/logo-3d-tight.png" alt="Jawan Fitness" className="w-full h-full object-contain drop-shadow" />
-            </div>
-            <div>
-              <div className="flex items-center space-x-2">
-                <h1 className="font-display font-black text-xl tracking-wider text-white uppercase">
-                  JAWAN <span className="text-amber-500">ADMIN</span>
-                </h1>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 font-bold border border-amber-500/20">
-                  SECURE
-                </span>
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center space-x-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 p-2 flex items-center justify-center shadow-lg shadow-amber-500/20 flex-shrink-0">
+                <img src="/logo-3d-tight.png" alt="Jawan Fitness" className="w-full h-full object-contain drop-shadow" />
               </div>
-              <p className="text-xs text-neutral-400">Headquarters Management Portal</p>
+              <div>
+                <div className="flex items-center space-x-2">
+                  <h1 className="font-display font-black text-xl tracking-wider text-white uppercase">
+                    JAWAN <span className="text-amber-500">ADMIN</span>
+                  </h1>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 font-bold border border-amber-500/20">
+                    SECURE
+                  </span>
+                </div>
+                <p className="text-xs text-neutral-400">Headquarters Management Portal</p>
+              </div>
             </div>
+            <ThemeToggle />
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
@@ -231,6 +238,8 @@ export const AdminApp: React.FC = () => {
           <span>Enterprise Management Console • High Security</span>
         </div>
       </footer>
+
+      <IOSInstallBanner />
     </div>
   );
 };

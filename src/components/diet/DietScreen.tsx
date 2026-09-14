@@ -17,6 +17,7 @@ import {
 import { hapticTap } from '../../utils/audioHaptics';
 
 interface DietScreenProps {
+  trainerName?: string;
   loggedMeals: LoggedMealItem[];
   waterMl: number;
   goals: DailyNutritionGoals;
@@ -27,6 +28,7 @@ interface DietScreenProps {
 }
 
 export const DietScreen: React.FC<DietScreenProps> = ({
+  trainerName = 'Head Coach',
   loggedMeals,
   waterMl,
   goals,
@@ -125,7 +127,7 @@ export const DietScreen: React.FC<DietScreenProps> = ({
     dailyProtein: goals.protein,
     dailyCarbs: goals.carbs,
     dailyFat: goals.fat,
-    assignedBy: 'Coach Vignesh (Salem HQ)',
+    assignedBy: trainerName ? `Coach ${trainerName}` : 'Head Coach',
     meals: [
       {
         type: 'breakfast',
@@ -198,7 +200,7 @@ export const DietScreen: React.FC<DietScreenProps> = ({
         <div className="flex items-center justify-between mb-4">
           <div>
             <span className="text-[10px] font-tech uppercase tracking-widest text-amber-500 font-bold">
-              8,000+ INDIAN NUTRITION DIARY
+              NUTRITION & MEAL DIARY
             </span>
             <h2 className="text-xl font-black text-white font-display">Daily Intake Tracker</h2>
           </div>
@@ -417,7 +419,7 @@ export const DietScreen: React.FC<DietScreenProps> = ({
         </div>
       )}
 
-      {/* 6. Indian Food Search & Logger Modal (Searches 8,000+ foods) */}
+      {/* 6. Food Search & Logger Modal */}
       {activeMealCategory && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/85 backdrop-blur-md">
           <div className="relative w-full max-w-lg bg-[#0d121c] border border-white/10 rounded-t-3xl sm:rounded-3xl max-h-[85vh] flex flex-col overflow-hidden shadow-2xl">
@@ -428,7 +430,7 @@ export const DietScreen: React.FC<DietScreenProps> = ({
                   Log into {activeMealCategory}
                 </span>
                 <h3 className="text-base font-black text-white font-display">
-                  Search 8,000+ Indian Foods
+                  Food & Nutrition Catalog
                 </h3>
               </div>
               <button

@@ -1090,22 +1090,30 @@ BASE_FOOD_ITEMS.forEach((base, baseIdx) => {
 // Memory cache of total items
 export const MASTER_FOOD_DATABASE: FoodItem[] = GENERATED_EXPANDED_FOODS;
 
+import { syncedStore } from '../services/syncedStore';
+
 export const FoodService = {
   getAll(): FoodItem[] {
-    return MASTER_FOOD_DATABASE;
+    const custom = syncedStore.getCustomFoods();
+    return [...custom, ...MASTER_FOOD_DATABASE];
   },
 
   getCount(): number {
-    return MASTER_FOOD_DATABASE.length;
+    return MASTER_FOOD_DATABASE.length + (syncedStore.getCustomFoods()?.length || 0);
   },
 
   getById(id: string): FoodItem | undefined {
+    const custom = syncedStore.getCustomFoods().find((f) => f.id === id);
+    if (custom) return custom;
     return MASTER_FOOD_DATABASE.find((f) => f.id === id) || BASE_FOOD_ITEMS[0];
   },
 
   searchCurated(query: string, category: string = 'All'): FoodItem[] {
     const q = query.trim().toLowerCase();
-    return MASTER_FOOD_DATABASE.filter((food) => {
+    const customFoods = syncedStore.getCustomFoods();
+    const combined = [...customFoods, ...MASTER_FOOD_DATABASE];
+
+    return combined.filter((food) => {
       if (category !== 'All' && food.category !== category) {
         return false;
       }

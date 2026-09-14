@@ -39,7 +39,39 @@ export const Live3SyncView: React.FC<Live3SyncViewProps> = ({ onSelectFullView }
     return unsub;
   }, []);
 
-  const activeClient = syncState.clients.find((c) => c.id === syncState.activeClientId) || syncState.clients[0];
+  const activeClient = syncState.clients.find((c) => c.id === syncState.activeClientId) || syncState.clients[0] || {
+    id: 'demo-client',
+    name: 'New Member',
+    email: '',
+    phone: '',
+    heightCm: 170,
+    startingWeightKg: 0,
+    currentWeightKg: 0,
+    goal: 'General Fitness',
+    goalWeightKg: 0,
+    trainerId: '',
+    trainerName: 'Unassigned',
+    status: 'Active',
+    firstLoginCompleted: false,
+    gymId: 'JAWAN-SALEM-01',
+    workoutAdherence: 0,
+    dietAdherence: 0,
+    lastWorkout: 'Ready'
+  };
+  const assignedTrainer = activeClient.trainerId
+    ? syncState.trainers.find((t) => t.id === activeClient.trainerId)
+    : (activeClient.trainerName && activeClient.trainerName !== 'Unassigned' && activeClient.trainerName !== 'Head Coach'
+      ? syncState.trainers.find((t) => t.name.toLowerCase() === activeClient.trainerName.toLowerCase())
+      : null);
+  const isCoachAssigned = Boolean(
+    assignedTrainer || 
+    (activeClient.trainerId && activeClient.trainerId.trim() !== '') ||
+    (activeClient.trainerName && activeClient.trainerName !== 'Unassigned' && activeClient.trainerName !== 'Head Coach')
+  );
+  const currentTrainerName = isCoachAssigned ? (assignedTrainer?.name || activeClient.trainerName) : 'Unassigned';
+  const currentTrainerRole = isCoachAssigned ? (assignedTrainer?.role || 'Fitness Coach') : 'No Trainer Assigned';
+  const currentTrainerPhone = isCoachAssigned ? (assignedTrainer?.phone || '') : '';
+
   const assignedWorkout = syncState.assignedWorkouts[activeClient.id];
   const assignedDiet = syncState.assignedDietPlans[activeClient.id];
 
@@ -188,11 +220,11 @@ export const Live3SyncView: React.FC<Live3SyncViewProps> = ({ onSelectFullView }
               </div>
             </div>
 
-            {/* Quick 1,324 & Tamil Food DB Stat */}
+            {/* Exercise & Nutrition DB Stat */}
             <div className="bg-slate-900/80 border border-white/5 rounded-2xl p-3.5 space-y-1">
               <div className="flex justify-between text-slate-300">
-                <span>1,324 Exercise Master DB:</span>
-                <span className="font-bold text-white">100% 3D Loopable</span>
+                <span>Exercise Master DB:</span>
+                <span className="font-bold text-white">3D Biomechanics</span>
               </div>
               <div className="flex justify-between text-slate-300">
                 <span>Tamil Nadu Gym Foods:</span>
@@ -430,6 +462,9 @@ export const Live3SyncView: React.FC<Live3SyncViewProps> = ({ onSelectFullView }
                 startWeightKg={activeClient.startingWeightKg}
                 goalWeightKg={activeClient.goalWeightKg}
                 currentWeightKg={activeClient.currentWeightKg}
+                trainerName={currentTrainerName}
+                trainerRole={currentTrainerRole}
+                trainerPhone={currentTrainerPhone}
                 assignedWorkout={assignedWorkout}
                 assignedMealPlan={assignedDiet}
                 activeWorkoutSession={syncState.activeWorkoutSession}
@@ -443,12 +478,8 @@ export const Live3SyncView: React.FC<Live3SyncViewProps> = ({ onSelectFullView }
                   waterMl: 3000
                 }}
                 waterMl={syncState.waterMl}
-                stepsCount={syncState.isGoogleFitConnected ? syncState.googleFitSteps : 0}
-                stepsGoal={10000}
                 weightHistory={syncState.weightHistory}
                 latestMessage={syncState.messages[syncState.messages.length - 1] || null}
-                isGoogleFitConnected={syncState.isGoogleFitConnected}
-                onToggleGoogleFit={() => syncedStore.toggleGoogleFit(!syncState.isGoogleFitConnected)}
                 onStartWorkout={handleStartAssignedWorkout}
                 onResumeWorkout={() => setIsWorkoutModalOpen(true)}
                 onDiscardWorkout={() => syncedStore.discardWorkoutSession()}
