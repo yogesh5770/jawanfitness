@@ -23,7 +23,7 @@ const STORAGE_USER_KEY = 'jawan_auth_user_v1';
 
 // Base API endpoints (local serverless route or remote admin domain for PWA/APK)
 const PRIMARY_AUTH_URL = '/api/auth';
-const REMOTE_AUTH_URL = 'https://jawan-fitness-admin.vercel.app/api/auth';
+const REMOTE_AUTH_URL = 'https://jawan-fitness-admin.pages.dev/api/auth';
 
 async function parseJsonResponse(res: Response | null): Promise<{ data: any; error?: string }> {
   if (!res) return { data: null, error: 'Network error: server unreachable.' };

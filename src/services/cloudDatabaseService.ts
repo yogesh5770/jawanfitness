@@ -13,7 +13,7 @@ export const SUPABASE_PROJECT_URL = `https://${SUPABASE_PROJECT_REF}.supabase.co
 
 // Local and remote serverless API routes
 const PRIMARY_API_ENDPOINT = '/api/sync';
-const FALLBACK_REMOTE_API = 'https://jawan-fitness-admin.vercel.app/api/sync';
+const FALLBACK_REMOTE_API = 'https://jawan-fitness-admin.pages.dev/api/sync';
 
 export interface CloudDbConfig {
   enabled: boolean;
