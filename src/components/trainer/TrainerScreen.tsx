@@ -828,108 +828,72 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
             </div>
           )}
 
-          {/* SUB-VIEW 5: COMPLETED WORKOUT INSPECTOR */}
+          {/* SUB-VIEW 5: DYNAMIC WORKOUT LOGS & PRS */}
           {activeTab === 'history' && (
             <div className="space-y-5 animate-fadeIn">
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-lg font-black text-white font-display">
-                    Workout Execution & Adherence Review
+                    Member Workout Logs & Telemetry
                   </h2>
                   <p className="text-xs text-slate-400">
-                    Live member telemetry, recorded reps, weights and set logs.
+                    Live recorded workout sessions, sets, completed reps, and weights for {activeClient.name}.
                   </p>
                 </div>
               </div>
 
-              {/* Arun's Logged Workout Details */}
-              <div className="bg-[#0b0f1a] border border-amber-500/30 rounded-2xl p-5 shadow-lg space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-[10px] font-tech uppercase text-amber-400 font-bold block">
-                      TODAY'S WORKOUT COMPLETED
-                    </span>
-                    <h3 className="text-base font-black text-white font-display">
-                      Chest + Triceps • 47 min • 15 / 15 Sets
-                    </h3>
+              {syncState.workoutHistory.length === 0 ? (
+                <div className="bg-[#0b0f1a] border border-white/10 rounded-2xl p-8 text-center space-y-3">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 mx-auto">
+                    <Dumbbell className="w-6 h-6" />
                   </div>
-                  <span className="text-xs bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-full font-tech font-bold border border-emerald-500/30">
-                    92% Adherence
-                  </span>
+                  <h3 className="text-sm font-bold text-white font-display">No Completed Workouts Recorded Yet</h3>
+                  <p className="text-xs text-slate-400 max-w-sm mx-auto leading-relaxed">
+                    When {activeClient.name} completes an active workout session in the member app, full set logs, weights, reps, and duration will automatically synchronize here in real-time.
+                  </p>
                 </div>
+              ) : (
+                <div className="space-y-4">
+                  {syncState.workoutHistory.map((session) => (
+                    <div key={session.id} className="bg-[#0b0f1a] border border-amber-500/30 rounded-2xl p-5 shadow-lg space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] font-tech uppercase text-amber-400 font-bold block">
+                            WORKOUT COMPLETED • {new Date(session.startTime).toLocaleDateString()}
+                          </span>
+                          <h3 className="text-base font-black text-white font-display">
+                            {session.routineName} • {Math.round(session.durationSeconds / 60)} min • {session.exercises.length} Exercises
+                          </h3>
+                        </div>
+                        <span className="text-xs bg-amber-500/20 text-amber-400 px-3 py-1 rounded-full font-tech font-bold border border-amber-500/30">
+                          {session.totalVolumeKg.toLocaleString()} kg Total Volume
+                        </span>
+                      </div>
 
-                {/* Performed Set Details */}
-                <div className="space-y-3 pt-2">
-                  <div className="bg-slate-900/80 p-3.5 rounded-xl border border-white/5 space-y-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-bold text-white">1. Incline Dumbbell Press</span>
-                      <span className="text-amber-400 font-tech font-bold">Target: 12 kg × 10 (3 sets)</span>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2 text-center text-xs font-tech">
-                      <div className="bg-black/40 p-2 rounded-lg border border-white/5">
-                        <span className="text-slate-400 block text-[10px]">Set 1</span>
-                        <span className="text-emerald-400 font-bold">12 kg × 10 reps ✓</span>
-                      </div>
-                      <div className="bg-black/40 p-2 rounded-lg border border-white/5">
-                        <span className="text-slate-400 block text-[10px]">Set 2</span>
-                        <span className="text-emerald-400 font-bold">12 kg × 10 reps ✓</span>
-                      </div>
-                      <div className="bg-black/40 p-2 rounded-lg border border-white/5">
-                        <span className="text-slate-400 block text-[10px]">Set 3 (Actual)</span>
-                        <span className="text-amber-400 font-bold">10 kg × 8 reps ✓</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-slate-900/80 p-3.5 rounded-xl border border-white/5 space-y-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-bold text-white">2. Machine Chest Press</span>
-                      <span className="text-amber-400 font-tech font-bold">Target: 40 kg × 12 (3 sets)</span>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2 text-center text-xs font-tech">
-                      <div className="bg-black/40 p-2 rounded-lg border border-white/5">
-                        <span className="text-slate-400 block text-[10px]">Set 1</span>
-                        <span className="text-emerald-400 font-bold">40 kg × 12 reps ✓</span>
-                      </div>
-                      <div className="bg-black/40 p-2 rounded-lg border border-white/5">
-                        <span className="text-slate-400 block text-[10px]">Set 2</span>
-                        <span className="text-emerald-400 font-bold">40 kg × 12 reps ✓</span>
-                      </div>
-                      <div className="bg-black/40 p-2 rounded-lg border border-white/5">
-                        <span className="text-slate-400 block text-[10px]">Set 3 (Actual)</span>
-                        <span className="text-emerald-400 font-bold">40 kg × 10 reps ✓</span>
+                      <div className="space-y-3 pt-2">
+                        {session.exercises.map((ex, exIdx) => (
+                          <div key={ex.exercise.id || exIdx} className="bg-slate-900/80 p-3.5 rounded-xl border border-white/5 space-y-2">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="font-bold text-white">{exIdx + 1}. {ex.exercise.name}</span>
+                              <span className="text-amber-400 font-tech font-bold">{ex.sets.length} Sets</span>
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs font-tech">
+                              {ex.sets.map((set, sIdx) => (
+                                <div key={set.id || sIdx} className="bg-black/40 p-2 rounded-lg border border-white/5">
+                                  <span className="text-slate-400 block text-[10px]">Set {set.setNumber}</span>
+                                  <span className={set.completed ? "text-emerald-400 font-bold" : "text-slate-300 font-bold"}>
+                                    {set.weightKg} kg × {set.reps} reps {set.completed ? '✓' : ''}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  </div>
+                  ))}
                 </div>
-
-                {/* Trainer Next Decision Adjuster (Step 18) */}
-                <div className="pt-3 border-t border-white/10 space-y-2">
-                  <span className="text-xs font-bold text-amber-400 block">
-                    Coach Decision: Adjust Next Workout Target
-                  </span>
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => {
-                        hapticTap();
-                        alert('Updated Arun’s next Incline DB Press target to 14 kg × 10!');
-                      }}
-                      className="flex-1 py-2 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-bold"
-                    >
-                      Progress (+2.5 kg next session)
-                    </button>
-                    <button
-                      onClick={() => {
-                        hapticTap();
-                        alert('Updated Arun’s next Incline DB Press target to 10 kg × 10 for form mastery!');
-                      }}
-                      className="flex-1 py-2 rounded-xl bg-slate-800 text-slate-300 border border-white/10 text-xs font-bold"
-                    >
-                      Deload / Consolidate
-                    </button>
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
           )}
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FoodItem, LoggedMealItem, DailyNutritionGoals, AssignedMealPlan } from '../../types';
+import { FoodItem, LoggedMealItem, DailyNutritionGoals } from '../../types';
 import { FoodService, CURATED_INDIAN_FOODS } from '../../data/foodDatabase';
 import {
   Plus,
@@ -10,8 +10,6 @@ import {
   Check,
   Flame,
   Award,
-  CalendarCheck,
-  ClipboardList,
   Sparkles
 } from 'lucide-react';
 import { hapticTap } from '../../utils/audioHaptics';
@@ -21,7 +19,7 @@ interface DietScreenProps {
   loggedMeals: LoggedMealItem[];
   waterMl: number;
   goals: DailyNutritionGoals;
-  assignedMealPlan?: AssignedMealPlan | null;
+  assignedMealPlan?: any;
   onAddMealItem: (item: LoggedMealItem) => void;
   onRemoveMealItem: (id: string) => void;
   onUpdateWater: (deltaMl: number) => void;
@@ -32,12 +30,10 @@ export const DietScreen: React.FC<DietScreenProps> = ({
   loggedMeals,
   waterMl,
   goals,
-  assignedMealPlan,
   onAddMealItem,
   onRemoveMealItem,
   onUpdateWater
 }) => {
-  const [activeTab, setActiveTab] = useState<'log' | 'assigned'>('log');
   const [activeMealCategory, setActiveMealCategory] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack' | null>(null);
   const [foodSearchQuery, setFoodSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<FoodItem[]>(CURATED_INDIAN_FOODS);
@@ -119,83 +115,9 @@ export const DietScreen: React.FC<DietScreenProps> = ({
     setFoodSearchQuery('');
   };
 
-  // Default fallback assigned plan if none set by trainer
-  const currentPlan: AssignedMealPlan = assignedMealPlan || {
-    id: 'default-plan',
-    title: 'High Protein Indian Lean Bulk / Fat Loss Plan',
-    dailyCalories: goals.calories,
-    dailyProtein: goals.protein,
-    dailyCarbs: goals.carbs,
-    dailyFat: goals.fat,
-    assignedBy: (trainerName && trainerName !== 'Unassigned' && trainerName !== 'Head Coach') ? `Coach ${trainerName}` : 'Jawan Nutrition System',
-    meals: [
-      {
-        type: 'breakfast',
-        title: 'High Protein South Indian Breakfast',
-        items: ['3 Steamed Idlis', '4 Boiled Egg Whites', '1 bowl Vegetable Sambar'],
-        suggestedCalories: 380,
-        suggestedProtein: 28
-      },
-      {
-        type: 'lunch',
-        title: 'Clean Indian Power Lunch',
-        items: ['150g Cooked Ponni Rice', '150g Grilled / Country Chicken Breast', '1 cup Fresh Curd', 'Green salad'],
-        suggestedCalories: 580,
-        suggestedProtein: 52
-      },
-      {
-        type: 'snack',
-        title: 'Pre/Post Workout Boost',
-        items: ['1 Scoop Whey Protein Isolate (water)', '1 Fresh Tender Coconut Water (Elaneer)'],
-        suggestedCalories: 170,
-        suggestedProtein: 26
-      },
-      {
-        type: 'dinner',
-        title: 'Slow Digestion Night Fuel',
-        items: ['2 Whole Wheat Phulkas / Rotis', '1 bowl Moong Dal Tadka', '100g Fresh Raw/Grilled Paneer'],
-        suggestedCalories: 580,
-        suggestedProtein: 33
-      }
-    ]
-  };
-
   return (
     <div className="space-y-4 pb-28 text-left">
-      {/* 1. Sub-tab Navigation: Actual Food Log vs Assigned Plan */}
-      <div className="flex bg-[#0e1422] p-1 rounded-2xl border border-white/10">
-        <button
-          onClick={() => {
-            hapticTap();
-            setActiveTab('log');
-          }}
-          className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center space-x-1.5 ${
-            activeTab === 'log'
-              ? 'bg-amber-500 text-black shadow-[0_0_12px_rgba(245,158,11,0.3)]'
-              : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          <ClipboardList className="w-3.5 h-3.5" />
-          <span>Today's Food Log</span>
-        </button>
-
-        <button
-          onClick={() => {
-            hapticTap();
-            setActiveTab('assigned');
-          }}
-          className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center space-x-1.5 ${
-            activeTab === 'assigned'
-              ? 'bg-amber-500 text-black shadow-[0_0_12px_rgba(245,158,11,0.3)]'
-              : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          <CalendarCheck className="w-3.5 h-3.5" />
-          <span>Assigned Meal Plan</span>
-        </button>
-      </div>
-
-      {/* 2. Daily Calories & Macro Target Dashboard */}
+      {/* 1. Daily Calories & Macro Target Dashboard */}
       <div className="bg-[#0c101a] border border-white/10 rounded-3xl p-5 shadow-lg relative overflow-hidden">
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -261,7 +183,7 @@ export const DietScreen: React.FC<DietScreenProps> = ({
         </div>
       </div>
 
-      {/* 3. Water Hydration Card */}
+      {/* 2. Water Hydration Card */}
       <div className="bg-[#0c101a] border border-cyan-500/30 rounded-3xl p-4 flex items-center justify-between shadow-md">
         <div className="flex items-center space-x-3">
           <div className="w-11 h-11 rounded-2xl bg-cyan-950/40 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
@@ -303,121 +225,73 @@ export const DietScreen: React.FC<DietScreenProps> = ({
         </div>
       </div>
 
-      {/* 4. Tab Content A: TODAY'S ACTUAL FOOD LOG */}
-      {activeTab === 'log' && (
-        <div className="space-y-3">
-          {mealTypes.map((meal) => {
-            const items = loggedMeals.filter((m) => m.mealType === meal.type);
-            const mealCalories = items.reduce((acc, i) => acc + i.calories, 0);
-            const mealProtein = items.reduce((acc, i) => acc + i.protein, 0);
+      {/* 3. TODAY'S DYNAMIC MEAL LOGS */}
+      <div className="space-y-3">
+        {mealTypes.map((meal) => {
+          const items = loggedMeals.filter((m) => m.mealType === meal.type);
+          const mealCalories = items.reduce((acc, i) => acc + i.calories, 0);
+          const mealProtein = items.reduce((acc, i) => acc + i.protein, 0);
 
-            return (
-              <div key={meal.type} className="rounded-2xl bg-[#0c101a] border border-white/5 p-4 shadow-md">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-base">{meal.icon}</span>
-                    <div>
-                      <h4 className="text-sm font-black text-white font-display leading-none">
-                        {meal.label}
-                      </h4>
-                      <span className="text-[11px] text-slate-400 font-tech">
-                        {mealCalories} kcal • {mealProtein}g protein
-                      </span>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      hapticTap();
-                      setActiveMealCategory(meal.type);
-                    }}
-                    className="flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-400 hover:text-amber-300 text-xs font-bold border border-white/5 transition-all"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Add Food</span>
-                  </button>
-                </div>
-
-                {/* Logged Food Items */}
-                {items.length > 0 ? (
-                  <div className="divide-y divide-white/5 pt-1">
-                    {items.map((item) => (
-                      <div key={item.id} className="py-2 flex items-center justify-between text-xs">
-                        <div>
-                          <span className="text-slate-200 font-medium">{item.name}</span>
-                          <span className="text-[10px] text-slate-500 font-tech block">
-                            {item.protein}g P • {item.carbs}g C • {item.fat}g F • {item.time}
-                          </span>
-                        </div>
-                        <div className="flex items-center space-x-2.5">
-                          <span className="font-tech font-bold text-amber-400">
-                            {item.calories} kcal
-                          </span>
-                          <button
-                            onClick={() => {
-                              hapticTap();
-                              onRemoveMealItem(item.id);
-                            }}
-                            className="p-1 text-slate-600 hover:text-red-400 transition-colors"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs text-slate-500 italic pt-1">No items logged yet.</p>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* 5. Tab Content B: ASSIGNED MEAL PLAN (From Coach Vignesh) */}
-      {activeTab === 'assigned' && (
-        <div className="space-y-3 animate-fadeIn">
-          <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-3.5">
-            <div className="flex items-center justify-between mb-1">
-              <h4 className="text-xs font-bold text-amber-400 font-display">
-                {currentPlan.title}
-              </h4>
-              <span className="text-[10px] font-tech text-amber-400/80">
-                Prescribed by {currentPlan.assignedBy}
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-300 leading-relaxed">
-              Target: {currentPlan.dailyCalories} kcal • {currentPlan.dailyProtein}g protein • {currentPlan.dailyCarbs}g carbs • {currentPlan.dailyFat}g fats.
-            </p>
-          </div>
-
-          {currentPlan.meals.map((m, idx) => (
-            <div key={idx} className="rounded-2xl bg-[#0c101a] border border-white/5 p-4 shadow-md">
+          return (
+            <div key={meal.type} className="rounded-2xl bg-[#0c101a] border border-white/5 p-4 shadow-md">
               <div className="flex items-center justify-between mb-2">
-                <div>
-                  <span className="text-[10px] font-tech uppercase text-amber-400 font-bold tracking-wider">
-                    {m.type}
-                  </span>
-                  <h4 className="text-sm font-bold text-white font-display">{m.title}</h4>
+                <div className="flex items-center space-x-2">
+                  <span className="text-base">{meal.icon}</span>
+                  <div>
+                    <h4 className="text-sm font-black text-white font-display leading-none">
+                      {meal.label}
+                    </h4>
+                    <span className="text-[10px] text-slate-400 font-tech">
+                      {mealCalories} kcal • {mealProtein}g P
+                    </span>
+                  </div>
                 </div>
-                <span className="text-xs text-slate-400 font-tech font-bold">
-                  {m.suggestedCalories} kcal • {m.suggestedProtein}g P
-                </span>
+
+                <button
+                  onClick={() => {
+                    hapticTap();
+                    setActiveMealCategory(meal.type);
+                  }}
+                  className="flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-400 hover:text-amber-300 text-xs font-bold border border-white/5 transition-all"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add Food</span>
+                </button>
               </div>
 
-              <ul className="space-y-1 my-2">
-                {m.items.map((item, i) => (
-                  <li key={i} className="text-xs text-slate-300 flex items-center space-x-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
+              {/* Logged Food Items */}
+              {items.length > 0 && (
+                <div className="divide-y divide-white/5 pt-1">
+                  {items.map((item) => (
+                    <div key={item.id} className="py-2 flex items-center justify-between text-xs">
+                      <div>
+                        <span className="text-slate-200 font-medium">{item.name}</span>
+                        <span className="text-[10px] text-slate-500 font-tech block">
+                          {item.protein}g P • {item.carbs}g C • {item.fat}g F • {item.time}
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-2.5">
+                        <span className="font-tech font-bold text-amber-400">
+                          {item.calories} kcal
+                        </span>
+                        <button
+                          onClick={() => {
+                            hapticTap();
+                            onRemoveMealItem(item.id);
+                          }}
+                          className="p-1 text-slate-600 hover:text-red-400 transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          ))}
-        </div>
-      )}
+          );
+        })}
+      </div>
 
       {/* 6. Food Search & Logger Modal */}
       {activeMealCategory && (

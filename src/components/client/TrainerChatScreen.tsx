@@ -38,9 +38,6 @@ export const TrainerChatScreen: React.FC<TrainerChatScreenProps> = ({ client, tr
       )
     : undefined;
 
-  const assignedWorkout = syncState.assignedWorkouts[client.id];
-  const assignedDiet = syncState.assignedDietPlans[client.id];
-
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -193,29 +190,6 @@ export const TrainerChatScreen: React.FC<TrainerChatScreenProps> = ({ client, tr
               <span className="hidden sm:inline">WhatsApp</span>
             </a>
           )}
-        </div>
-
-        {/* Prescription Summary Pills */}
-        <div className="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-white/10 text-xs">
-          <div className="p-2.5 rounded-2xl bg-slate-900/60 border border-white/5 space-y-1">
-            <div className="flex items-center space-x-1 text-amber-400 text-[10px] font-bold font-tech uppercase">
-              <Dumbbell className="w-3 h-3" />
-              <span>Assigned Split</span>
-            </div>
-            <p className="font-bold text-white text-xs truncate">
-              {assignedWorkout ? assignedWorkout.title : 'Personalized Routine'}
-            </p>
-          </div>
-
-          <div className="p-2.5 rounded-2xl bg-slate-900/60 border border-white/5 space-y-1">
-            <div className="flex items-center space-x-1 text-cyan-400 text-[10px] font-bold font-tech uppercase">
-              <Apple className="w-3 h-3" />
-              <span>Nutrition Plan</span>
-            </div>
-            <p className="font-bold text-white text-xs truncate">
-              {assignedDiet ? `${assignedDiet.dailyCalories} kcal / ${assignedDiet.dailyProtein}g P` : 'Custom Calorie Targets'}
-            </p>
-          </div>
         </div>
       </div>
 

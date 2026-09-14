@@ -273,7 +273,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 <div className="space-y-2 mb-4">
                   <div className="flex items-center space-x-2 text-xs text-slate-600 dark:text-slate-300">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
-                    <span>{assignedWorkout.exercises.length} Exercises prescribed by {trainerName}</span>
+                    <span>{assignedWorkout.exercises.length} Exercises Planned</span>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {assignedWorkout.exercises.slice(0, 4).map((ex, idx) => (
@@ -306,7 +306,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             ) : (
               <div className="space-y-3">
                 <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Your workout hasn't been assigned yet. Your coach {trainerName} will prepare your personalized split.
+                  Ready to train? Select any movement from the 1,300+ 3D exercise catalog to log sets, reps, and volume dynamically.
                 </p>
                 <button
                   onClick={() => {
@@ -315,7 +315,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                   }}
                   className="w-full py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-amber-600 dark:text-amber-400 border border-slate-200 dark:border-white/10 font-tech font-bold text-xs flex items-center justify-center space-x-1.5 transition-all"
                 >
-                  <span>Explore Exercise Library</span>
+                  <span>Explore Exercise Library & Train</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>

@@ -40,7 +40,6 @@ type AdminTab =
   | 'trainers'
   | 'exercises'
   | 'foods'
-  | 'templates'
   | 'audit';
 
 interface AdminScreenProps {
@@ -314,17 +313,12 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
 
   const allFoods = FoodService.searchCurated(foodSearch, foodCategory);
 
-  const avgAdherence = syncState.clients.length > 0
-    ? Math.round(syncState.clients.reduce((sum, c) => sum + (c.workoutAdherence || 0), 0) / syncState.clients.length)
-    : 0;
-
   const MODULE_ITEMS = [
     { id: 'dashboard', label: 'Dashboard', icon: Activity },
     { id: 'clients', label: `Clients (${syncState.clients.length})`, icon: Users },
     { id: 'trainers', label: `Trainers (${syncState.trainers.length})`, icon: ShieldCheck },
     { id: 'exercises', label: 'Exercises', icon: Dumbbell },
     { id: 'foods', label: 'Food & Nutrition', icon: Apple },
-    { id: 'templates', label: 'Templates', icon: ClipboardList },
     { id: 'audit', label: `Audit (${syncState.events.length})`, icon: FileText }
   ];
 
@@ -508,7 +502,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
           {activeTab === 'dashboard' && (
             <div className="space-y-4 sm:space-y-6 animate-fadeIn">
               {/* Stat Cards Grid (100% Real Live State) */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                 <div className="bg-[#0b0f1a] border border-white/10 rounded-2xl p-3.5 sm:p-5 shadow-lg">
                   <div className="flex items-center justify-between text-[10px] sm:text-xs text-slate-400 font-tech uppercase">
                     <span>Total Members</span>
@@ -547,19 +541,6 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                   </div>
                   <div className="text-[10px] sm:text-xs text-slate-400 font-tech mt-0.5">
                     Live Gym Sessions Logged
-                  </div>
-                </div>
-
-                <div className="bg-[#0b0f1a] border border-white/10 rounded-2xl p-3.5 sm:p-5 shadow-lg">
-                  <div className="flex items-center justify-between text-[10px] sm:text-xs text-slate-400 font-tech uppercase">
-                    <span>Avg Adherence</span>
-                    <Activity className="w-4 h-4 text-cyan-400" />
-                  </div>
-                  <div className="text-2xl sm:text-3xl font-black text-cyan-400 font-display mt-1">
-                    {avgAdherence}%
-                  </div>
-                  <div className="text-[10px] sm:text-xs text-slate-400 font-tech mt-0.5">
-                    Overall Member Compliance
                   </div>
                 </div>
               </div>
@@ -937,7 +918,6 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                           <th className="p-4">Member Name</th>
                           <th className="p-4">Assigned Coach</th>
                           <th className="p-4">Biometrics & Goal</th>
-                          <th className="p-4">Workout Adherence</th>
                           <th className="p-4">Status</th>
                           <th className="p-4 text-right">Actions</th>
                         </tr>
@@ -978,17 +958,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                                   Goal: {client.goalWeightKg} kg ({client.goal})
                                 </div>
                               </td>
-                              <td className="p-4">
-                                <div className="flex items-center space-x-2">
-                                  <span className="font-bold text-amber-400 font-tech">{client.workoutAdherence}%</span>
-                                  <div className="w-16 bg-slate-800 rounded-full h-1.5 overflow-hidden">
-                                    <div
-                                      className="bg-amber-400 h-full rounded-full"
-                                      style={{ width: `${client.workoutAdherence}%` }}
-                                    />
-                                  </div>
-                                </div>
-                              </td>
+
                               <td className="p-4">
                                 <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded font-tech font-bold">
                                   {client.status}
@@ -1235,59 +1205,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
             </div>
           )}
 
-          {/* TAB 6: TEMPLATES */}
-          {activeTab === 'templates' && (
-            <div className="space-y-4 animate-fadeIn">
-              <div>
-                <h2 className="text-base sm:text-lg font-black text-white font-display">
-                  Master Program Templates
-                </h2>
-                <p className="text-xs text-slate-400">
-                  Reusable training blocks available to trainers for 1-click assignment to members.
-                </p>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {[
-                  {
-                    title: 'Push-Pull-Legs (Hypertrophy Split)',
-                    days: '6 Days / Week',
-                    focus: 'Maximum muscle hypertrophy and volume density',
-                    level: 'Intermediate - Advanced'
-                  },
-                  {
-                    title: 'Upper / Lower Power & Mass',
-                    days: '4 Days / Week',
-                    focus: 'Heavy compound strength + progressive overload',
-                    level: 'All Levels'
-                  },
-                  {
-                    title: 'Full Body Conditioning & Core',
-                    days: '3 Days / Week',
-                    focus: 'Metabolic conditioning, stamina & fat burn',
-                    level: 'Beginner - Intermediate'
-                  },
-                  {
-                    title: 'Functional Mobility & Core Shred',
-                    days: '3 Days / Week',
-                    focus: 'Joint health, posture correction & rotational power',
-                    level: 'All Levels'
-                  }
-                ].map((tmpl, idx) => (
-                  <div key={idx} className="p-4 bg-[#0b0f1a] border border-white/10 rounded-2xl space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-bold text-white text-sm">{tmpl.title}</h4>
-                      <span className="text-[10px] font-tech text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded">
-                        {tmpl.days}
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-400">{tmpl.focus}</p>
-                    <div className="text-[10px] font-tech text-slate-500">Target: {tmpl.level}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* TAB 7: AUDIT LOG */}
           {activeTab === 'audit' && (
