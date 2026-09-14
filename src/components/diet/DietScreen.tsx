@@ -13,6 +13,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { hapticTap } from '../../utils/audioHaptics';
+import { syncedStore } from '../../services/syncedStore';
 
 interface DietScreenProps {
   trainerName?: string;
@@ -42,6 +43,13 @@ export const DietScreen: React.FC<DietScreenProps> = ({
   const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
   const [servings, setServings] = useState(1);
   const [foodFilterCategory, setFoodFilterCategory] = useState<string>('All');
+
+  // Fallback to store's assigned meal plan if not directly passed in props
+  const effectivePlan = assignedMealPlan || (() => {
+    const plans = syncedStore.getState().assignedDietPlans || {};
+    const keys = Object.keys(plans).filter((k) => plans[k] != null);
+    return keys.length > 0 ? plans[keys[0]] : null;
+  })();
 
   // Search dynamically with debounce across 8000+ foods
   useEffect(() => {
@@ -185,47 +193,47 @@ export const DietScreen: React.FC<DietScreenProps> = ({
       </div>
 
       {/* 1.5. COACH PRESCRIBED DIET PLAN */}
-      {assignedMealPlan ? (
-        <div className="bg-gradient-to-br from-[#0e1628] to-[#0a101d] border-2 border-amber-500/40 rounded-3xl p-5 shadow-xl relative overflow-hidden text-left space-y-4">
+      {effectivePlan ? (
+        <div className="bg-gradient-to-br from-[#0e1628] to-[#0a101d] border-2 border-amber-500/40 rounded-3xl p-3.5 sm:p-5 shadow-xl relative overflow-hidden text-left space-y-3.5">
           <div className="absolute top-0 right-0 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-white/10 pb-3">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 font-bold shadow-inner">
-                <Sparkles className="w-5 h-5" />
+          <div className="flex items-center justify-between border-b border-white/10 pb-3 gap-2">
+            <div className="flex items-center space-x-2.5 sm:space-x-3 min-w-0 flex-1">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 font-bold shadow-inner flex-shrink-0">
+                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
-              <div>
-                <span className="text-[10px] font-tech uppercase tracking-widest text-amber-400 font-bold block">
-                  Prescribed by Coach {assignedMealPlan.assignedBy || trainerName}
+              <div className="min-w-0 flex-1">
+                <span className="text-[10px] font-tech uppercase tracking-widest text-amber-400 font-bold block truncate">
+                  Prescribed by Coach {effectivePlan.assignedBy || trainerName}
                 </span>
-                <h3 className="text-lg font-black text-white font-display">
-                  {assignedMealPlan.title}
+                <h3 className="text-base sm:text-lg font-black text-white font-display truncate">
+                  {effectivePlan.title}
                 </h3>
               </div>
             </div>
-            <span className="text-xs font-tech font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 rounded-full">
+            <span className="text-[10px] sm:text-xs font-tech font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full flex-shrink-0">
               Active Plan
             </span>
           </div>
 
           {/* Prescribed Macro Targets */}
-          <div className="grid grid-cols-4 gap-2 text-center">
-            <div className="bg-slate-900/80 p-2 rounded-xl border border-white/5">
-              <span className="text-[9px] uppercase font-tech text-slate-400">Calories</span>
-              <p className="text-xs sm:text-sm font-black text-white font-display mt-0.5">{assignedMealPlan.dailyCalories} kcal</p>
+          <div className="grid grid-cols-4 gap-1.5 sm:gap-2 text-center">
+            <div className="bg-slate-900/80 p-1.5 sm:p-2 rounded-xl border border-white/5">
+              <span className="text-[8px] sm:text-[9px] uppercase font-tech text-slate-400 block">Calories</span>
+              <p className="text-[11px] sm:text-sm font-black text-white font-display mt-0.5 truncate">{effectivePlan.dailyCalories} kcal</p>
             </div>
-            <div className="bg-slate-900/80 p-2 rounded-xl border border-white/5">
-              <span className="text-[9px] uppercase font-tech text-amber-400">Protein</span>
-              <p className="text-xs sm:text-sm font-black text-amber-400 font-display mt-0.5">{assignedMealPlan.dailyProtein}g</p>
+            <div className="bg-slate-900/80 p-1.5 sm:p-2 rounded-xl border border-white/5">
+              <span className="text-[8px] sm:text-[9px] uppercase font-tech text-amber-400 block">Protein</span>
+              <p className="text-[11px] sm:text-sm font-black text-amber-400 font-display mt-0.5 truncate">{effectivePlan.dailyProtein}g</p>
             </div>
-            <div className="bg-slate-900/80 p-2 rounded-xl border border-white/5">
-              <span className="text-[9px] uppercase font-tech text-cyan-400">Carbs</span>
-              <p className="text-xs sm:text-sm font-black text-cyan-400 font-display mt-0.5">{assignedMealPlan.dailyCarbs}g</p>
+            <div className="bg-slate-900/80 p-1.5 sm:p-2 rounded-xl border border-white/5">
+              <span className="text-[8px] sm:text-[9px] uppercase font-tech text-cyan-400 block">Carbs</span>
+              <p className="text-[11px] sm:text-sm font-black text-cyan-400 font-display mt-0.5 truncate">{effectivePlan.dailyCarbs}g</p>
             </div>
-            <div className="bg-slate-900/80 p-2 rounded-xl border border-white/5">
-              <span className="text-[9px] uppercase font-tech text-rose-400">Fat</span>
-              <p className="text-xs sm:text-sm font-black text-rose-400 font-display mt-0.5">{assignedMealPlan.dailyFat}g</p>
+            <div className="bg-slate-900/80 p-1.5 sm:p-2 rounded-xl border border-white/5">
+              <span className="text-[8px] sm:text-[9px] uppercase font-tech text-rose-400 block">Fat</span>
+              <p className="text-[11px] sm:text-sm font-black text-rose-400 font-display mt-0.5 truncate">{effectivePlan.dailyFat}g</p>
             </div>
           </div>
 
@@ -235,8 +243,8 @@ export const DietScreen: React.FC<DietScreenProps> = ({
               <span>Prescribed Daily Meals</span>
             </h4>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {assignedMealPlan.meals?.map((m: any, idx: number) => {
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5">
+              {effectivePlan.meals?.map((m: any, idx: number) => {
                 const mealIcons: Record<string, string> = {
                   breakfast: '🌅',
                   lunch: '☀️',
@@ -245,12 +253,12 @@ export const DietScreen: React.FC<DietScreenProps> = ({
                 };
                 return (
                   <div key={idx} className="bg-slate-900/90 rounded-2xl p-3 border border-white/10 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-base">{mealIcons[m.type] || '🍽️'}</span>
-                        <div>
-                          <p className="text-xs font-bold text-white capitalize">{m.title || m.type}</p>
-                          <span className="text-[10px] text-amber-400 font-tech">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center space-x-2 min-w-0 flex-1">
+                        <span className="text-base flex-shrink-0">{mealIcons[m.type] || '🍽️'}</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold text-white capitalize truncate">{m.title || m.type}</p>
+                          <span className="text-[10px] text-amber-400 font-tech block truncate">
                             {m.suggestedCalories} kcal • {m.suggestedProtein}g Protein
                           </span>
                         </div>
@@ -272,7 +280,7 @@ export const DietScreen: React.FC<DietScreenProps> = ({
                             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                           });
                         }}
-                        className="px-2.5 py-1 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 text-[10px] font-bold border border-amber-500/30 transition-colors flex items-center space-x-1"
+                        className="px-2 sm:px-2.5 py-1 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 text-[10px] font-bold border border-amber-500/30 transition-colors flex items-center space-x-1 flex-shrink-0"
                       >
                         <Plus className="w-3 h-3" />
                         <span>Log Meal</span>
@@ -280,11 +288,11 @@ export const DietScreen: React.FC<DietScreenProps> = ({
                     </div>
 
                     {/* Food Items Pills */}
-                    <div className="flex flex-wrap gap-1.5 pt-1">
+                    <div className="flex flex-wrap gap-1 sm:gap-1.5 pt-1">
                       {(Array.isArray(m.items) ? m.items : [m.items]).map((item: string, iIdx: number) => (
                         <span
                           key={iIdx}
-                          className="text-[10px] px-2 py-0.5 rounded-lg bg-slate-800 text-slate-200 border border-white/5 font-medium"
+                          className="text-[10px] px-2 py-0.5 rounded-lg bg-slate-800 text-slate-200 border border-white/5 font-medium break-words"
                         >
                           {item}
                         </span>

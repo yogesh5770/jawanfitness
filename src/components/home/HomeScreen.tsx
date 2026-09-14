@@ -25,6 +25,7 @@ import {
   ChatMessage 
 } from '../../types';
 import { hapticTap } from '../../utils/audioHaptics';
+import { syncedStore } from '../../services/syncedStore';
 
 interface HomeScreenProps {
   clientName?: string;
@@ -85,6 +86,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     if (hour < 17) return 'Good afternoon';
     return 'Good evening';
   };
+
+  // Safe fallback to store's assigned workout and diet if not passed directly
+  const effectiveWorkout = assignedWorkout || (() => {
+    const workouts = syncedStore.getState().assignedWorkouts || {};
+    const keys = Object.keys(workouts).filter((k) => workouts[k] != null);
+    return keys.length > 0 ? workouts[keys[0]] : null;
+  })();
+
+  const effectiveDiet = assignedMealPlan || (() => {
+    const diets = syncedStore.getState().assignedDietPlans || {};
+    const keys = Object.keys(diets).filter((k) => diets[k] != null);
+    return keys.length > 0 ? diets[keys[0]] : null;
+  })();
 
   // Calculate dynamic initials
   const clientInitials = clientName
@@ -250,36 +264,36 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
           {/* 3. TODAY'S WORKOUT COMMAND CARD */}
           <div className="bg-white dark:bg-[#0e1422] rounded-2xl p-4 border border-slate-200 dark:border-white/10 shadow-sm dark:shadow-md">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400">
+            <div className="flex items-center justify-between mb-3 gap-2">
+              <div className="flex items-center space-x-2 min-w-0 flex-1">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400 flex-shrink-0">
                   <Dumbbell className="w-4 h-4" />
                 </div>
-                <div>
-                  <h3 className="text-xs uppercase font-tech font-bold tracking-widest text-slate-500 dark:text-slate-400">
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-xs uppercase font-tech font-bold tracking-widest text-slate-500 dark:text-slate-400 truncate">
                     Today's Workout
                   </h3>
-                  <p className="text-base font-black text-slate-900 dark:text-white font-display">
-                    {assignedWorkout ? assignedWorkout.title : 'No Workout Assigned Yet'}
+                  <p className="text-sm sm:text-base font-black text-slate-900 dark:text-white font-display truncate">
+                    {effectiveWorkout ? effectiveWorkout.title : 'No Workout Assigned Yet'}
                   </p>
                 </div>
               </div>
-              {assignedWorkout && (
-                <span className="text-[11px] font-tech text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-white/5 px-2 py-0.5 rounded-full">
-                  {assignedWorkout.estimatedMinutes} min
+              {effectiveWorkout && (
+                <span className="text-[10px] sm:text-[11px] font-tech text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-white/5 px-2 py-0.5 rounded-full flex-shrink-0">
+                  {effectiveWorkout.estimatedMinutes} min
                 </span>
               )}
             </div>
 
-            {assignedWorkout ? (
+            {effectiveWorkout ? (
               <>
                 <div className="space-y-2 mb-4">
                   <div className="flex items-center space-x-2 text-xs text-slate-600 dark:text-slate-300">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
-                    <span>{assignedWorkout.exercises.length} Exercises Planned</span>
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400 flex-shrink-0" />
+                    <span>{effectiveWorkout.exercises.length} Exercises Planned</span>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
-                    {assignedWorkout.exercises.slice(0, 4).map((ex, idx) => (
+                    {effectiveWorkout.exercises.slice(0, 4).map((ex, idx) => (
                       <span
                         key={idx}
                         className="text-[11px] px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-white/5 text-slate-700 dark:text-slate-300"
@@ -287,9 +301,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                         {ex.exerciseName}
                       </span>
                     ))}
-                    {assignedWorkout.exercises.length > 4 && (
+                    {effectiveWorkout.exercises.length > 4 && (
                       <span className="text-[11px] px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800/50 text-slate-500">
-                        +{assignedWorkout.exercises.length - 4} more
+                        +{effectiveWorkout.exercises.length - 4} more
                       </span>
                     )}
                   </div>
@@ -327,24 +341,24 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
           {/* 4. TODAY'S NUTRITION COMMAND CARD */}
           <div className="bg-white dark:bg-[#0e1422] rounded-2xl p-4 border border-slate-200 dark:border-white/10 shadow-sm dark:shadow-md">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 rounded-xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center text-orange-600 dark:text-orange-400">
+            <div className="flex items-center justify-between mb-3 gap-2">
+              <div className="flex items-center space-x-2 min-w-0 flex-1">
+                <div className="w-8 h-8 rounded-xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center text-orange-600 dark:text-orange-400 flex-shrink-0">
                   <Flame className="w-4 h-4" />
                 </div>
-                <div>
-                  <div className="flex items-center space-x-2">
-                    <h3 className="text-xs uppercase font-tech font-bold tracking-widest text-slate-500 dark:text-slate-400">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center space-x-1.5">
+                    <h3 className="text-xs uppercase font-tech font-bold tracking-widest text-slate-500 dark:text-slate-400 truncate">
                       Today's Nutrition
                     </h3>
-                    {assignedMealPlan && (
-                      <span className="text-[9px] font-tech font-bold uppercase px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-500 border border-amber-500/20 truncate max-w-[130px]">
-                        {assignedMealPlan.title}
+                    {effectiveDiet && (
+                      <span className="text-[9px] font-tech font-bold uppercase px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-500 border border-amber-500/20 truncate max-w-[120px] sm:max-w-[150px]">
+                        {effectiveDiet.title}
                       </span>
                     )}
                   </div>
-                  <p className="text-base font-black text-slate-900 dark:text-white font-display">
-                    {totalCalories} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">/ {assignedMealPlan ? assignedMealPlan.dailyCalories : goals.calories} kcal</span>
+                  <p className="text-sm sm:text-base font-black text-slate-900 dark:text-white font-display truncate">
+                    {totalCalories} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">/ {effectiveDiet ? effectiveDiet.dailyCalories : goals.calories} kcal</span>
                   </p>
                 </div>
               </div>
@@ -353,7 +367,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                   hapticTap();
                   onNavigateToDiet();
                 }}
-                className="text-xs text-amber-600 dark:text-amber-400 font-bold hover:underline flex items-center space-x-1"
+                className="text-xs text-amber-600 dark:text-amber-400 font-bold hover:underline flex items-center space-x-1 flex-shrink-0"
               >
                 <span>View Diet</span>
                 <ArrowRight className="w-3 h-3" />
@@ -361,12 +375,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             </div>
 
             {/* Coach Prescribed Meal Plan Prompt */}
-            {assignedMealPlan && (
-              <div className="mb-3 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between text-xs">
-                <div className="flex items-center space-x-2">
+            {effectiveDiet && (
+              <div className="mb-3 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between text-xs gap-2">
+                <div className="flex items-center space-x-2 min-w-0 flex-1">
                   <Apple className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
-                  <span className="text-slate-700 dark:text-slate-300 font-medium text-[11px] truncate max-w-[200px] sm:max-w-xs">
-                    Prescribed: <strong className="text-amber-500 dark:text-amber-400 font-bold">{assignedMealPlan.title}</strong> ({assignedMealPlan.meals?.length || 0} meals)
+                  <span className="text-slate-700 dark:text-slate-300 font-medium text-[11px] truncate">
+                    Prescribed: <strong className="text-amber-500 dark:text-amber-400 font-bold">{effectiveDiet.title}</strong> ({effectiveDiet.meals?.length || 0} meals)
                   </span>
                 </div>
                 <button
@@ -382,50 +396,50 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             )}
 
             {/* Macros Breakdown Bar Grid */}
-            <div className="grid grid-cols-4 gap-2 text-center pt-1">
-              <div className="bg-slate-50 dark:bg-slate-900/90 rounded-xl p-2 border border-slate-200 dark:border-white/5">
-                <span className="text-[10px] font-tech text-slate-500 dark:text-slate-400 uppercase">Protein</span>
-                <div className="text-xs font-bold text-amber-600 dark:text-amber-400 mt-0.5">
-                  {totalProtein} <span className="text-[10px] text-slate-500">/ {assignedMealPlan ? assignedMealPlan.dailyProtein : goals.protein}g</span>
+            <div className="grid grid-cols-4 gap-1.5 sm:gap-2 text-center pt-1">
+              <div className="bg-slate-50 dark:bg-slate-900/90 rounded-xl p-1.5 sm:p-2 border border-slate-200 dark:border-white/5">
+                <span className="text-[9px] font-tech text-slate-500 dark:text-slate-400 uppercase block">Protein</span>
+                <div className="text-[11px] sm:text-xs font-bold text-amber-600 dark:text-amber-400 mt-0.5 truncate">
+                  {totalProtein} <span className="text-[9px] text-slate-500">/ {effectiveDiet ? effectiveDiet.dailyProtein : goals.protein}g</span>
                 </div>
                 <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-1 mt-1 overflow-hidden">
                   <div
                     className="bg-amber-500 dark:bg-amber-400 h-full rounded-full"
-                    style={{ width: `${Math.min(100, (totalProtein / (assignedMealPlan ? assignedMealPlan.dailyProtein : goals.protein)) * 100)}%` }}
+                    style={{ width: `${Math.min(100, (totalProtein / (effectiveDiet ? effectiveDiet.dailyProtein : goals.protein)) * 100)}%` }}
                   />
                 </div>
               </div>
 
-              <div className="bg-slate-50 dark:bg-slate-900/90 rounded-xl p-2 border border-slate-200 dark:border-white/5">
-                <span className="text-[10px] font-tech text-slate-500 dark:text-slate-400 uppercase">Carbs</span>
-                <div className="text-xs font-bold text-cyan-600 dark:text-cyan-400 mt-0.5">
-                  {totalCarbs} <span className="text-[10px] text-slate-500">/ {assignedMealPlan ? assignedMealPlan.dailyCarbs : goals.carbs}g</span>
+              <div className="bg-slate-50 dark:bg-slate-900/90 rounded-xl p-1.5 sm:p-2 border border-slate-200 dark:border-white/5">
+                <span className="text-[9px] font-tech text-slate-500 dark:text-slate-400 uppercase block">Carbs</span>
+                <div className="text-[11px] sm:text-xs font-bold text-cyan-600 dark:text-cyan-400 mt-0.5 truncate">
+                  {totalCarbs} <span className="text-[9px] text-slate-500">/ {effectiveDiet ? effectiveDiet.dailyCarbs : goals.carbs}g</span>
                 </div>
                 <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-1 mt-1 overflow-hidden">
                   <div
                     className="bg-cyan-500 dark:bg-cyan-400 h-full rounded-full"
-                    style={{ width: `${Math.min(100, (totalCarbs / (assignedMealPlan ? assignedMealPlan.dailyCarbs : goals.carbs)) * 100)}%` }}
+                    style={{ width: `${Math.min(100, (totalCarbs / (effectiveDiet ? effectiveDiet.dailyCarbs : goals.carbs)) * 100)}%` }}
                   />
                 </div>
               </div>
 
-              <div className="bg-slate-50 dark:bg-slate-900/90 rounded-xl p-2 border border-slate-200 dark:border-white/5">
-                <span className="text-[10px] font-tech text-slate-500 dark:text-slate-400 uppercase">Fat</span>
-                <div className="text-xs font-bold text-rose-600 dark:text-rose-400 mt-0.5">
-                  {totalFat} <span className="text-[10px] text-slate-500">/ {assignedMealPlan ? assignedMealPlan.dailyFat : goals.fat}g</span>
+              <div className="bg-slate-50 dark:bg-slate-900/90 rounded-xl p-1.5 sm:p-2 border border-slate-200 dark:border-white/5">
+                <span className="text-[9px] font-tech text-slate-500 dark:text-slate-400 uppercase block">Fat</span>
+                <div className="text-[11px] sm:text-xs font-bold text-rose-600 dark:text-rose-400 mt-0.5 truncate">
+                  {totalFat} <span className="text-[9px] text-slate-500">/ {effectiveDiet ? effectiveDiet.dailyFat : goals.fat}g</span>
                 </div>
                 <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-1 mt-1 overflow-hidden">
                   <div
                     className="bg-rose-500 dark:bg-rose-400 h-full rounded-full"
-                    style={{ width: `${Math.min(100, (totalFat / (assignedMealPlan ? assignedMealPlan.dailyFat : goals.fat)) * 100)}%` }}
+                    style={{ width: `${Math.min(100, (totalFat / (effectiveDiet ? effectiveDiet.dailyFat : goals.fat)) * 100)}%` }}
                   />
                 </div>
               </div>
 
-              <div className="bg-slate-50 dark:bg-slate-900/90 rounded-xl p-2 border border-slate-200 dark:border-white/5">
-                <span className="text-[10px] font-tech text-slate-500 dark:text-slate-400 uppercase">Fiber</span>
-                <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
-                  {totalFiber} <span className="text-[10px] text-slate-500">/ {goals.fiber}g</span>
+              <div className="bg-slate-50 dark:bg-slate-900/90 rounded-xl p-1.5 sm:p-2 border border-slate-200 dark:border-white/5">
+                <span className="text-[9px] font-tech text-slate-500 dark:text-slate-400 uppercase block">Fiber</span>
+                <div className="text-[11px] sm:text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-0.5 truncate">
+                  {totalFiber} <span className="text-[9px] text-slate-500">/ {goals.fiber}g</span>
                 </div>
                 <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-1 mt-1 overflow-hidden">
                   <div
@@ -488,34 +502,34 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             const isAssigned = Boolean(trainerName && trainerName.trim() !== '' && trainerName !== 'Unassigned');
             return (
               <div className="bg-white dark:bg-[#0e1422] rounded-2xl p-4 border border-slate-200 dark:border-white/10 shadow-sm">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center space-x-2.5">
-                    <div className="w-9 h-9 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-600 dark:text-amber-400 text-xs font-black font-display shadow-sm overflow-hidden">
+                <div className="flex items-center justify-between mb-3 gap-2">
+                  <div className="flex items-center space-x-2.5 min-w-0 flex-1">
+                    <div className="w-9 h-9 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-600 dark:text-amber-400 text-xs font-black font-display shadow-sm overflow-hidden flex-shrink-0">
                       {isAssigned && trainerAvatarUrl ? (
                         <img src={trainerAvatarUrl} alt={trainerName} className="w-full h-full object-cover" />
                       ) : (
                         isAssigned ? coachInitials : '—'
                       )}
                     </div>
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <div className="flex items-center space-x-1.5">
-                        <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">
                           {isAssigned ? `Coach: ${trainerName}` : 'Coach: Unassigned'}
                         </h4>
                         {isAssigned && (
-                          <span className="text-[9px] px-1.5 py-0.2 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-tech font-bold rounded border border-emerald-500/20">
+                          <span className="text-[9px] px-1.5 py-0.2 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-tech font-bold rounded border border-emerald-500/20 flex-shrink-0">
                             LIVE
                           </span>
                         )}
                       </div>
-                      <span className="text-[10px] text-slate-500 dark:text-slate-400 block">
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 block truncate">
                         {isAssigned ? trainerRole : 'No coach assigned by director'}
                       </span>
                     </div>
                   </div>
 
                   {isAssigned && (
-                    <div className="flex items-center space-x-1.5">
+                    <div className="flex items-center space-x-1.5 flex-shrink-0">
                       {cleanPhone && (
                         <a
                           href={`https://wa.me/${cleanPhone}`}
