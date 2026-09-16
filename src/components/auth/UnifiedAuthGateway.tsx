@@ -13,7 +13,9 @@ import {
   AlertCircle,
   Loader2,
   Phone,
-  Mail
+  Mail,
+  KeyRound,
+  Zap
 } from 'lucide-react';
 import { authService, AuthUser } from '../../services/authService';
 import { syncedStore, AppSyncState } from '../../services/syncedStore';
@@ -23,6 +25,52 @@ interface UnifiedAuthGatewayProps {
   onLoginSuccess: (user: AuthUser, role: 'CLIENT' | 'TRAINER' | 'ADMIN') => void;
   initialRole?: 'CLIENT' | 'TRAINER' | 'ADMIN';
 }
+
+interface QuickCredential {
+  role: 'CLIENT' | 'TRAINER' | 'ADMIN';
+  name: string;
+  identifier: string;
+  pass: string;
+  badge: string;
+}
+
+const QUICK_CREDENTIALS: QuickCredential[] = [
+  {
+    role: 'CLIENT',
+    name: 'Yogesh',
+    identifier: 'JWM-5200',
+    pass: 'Fit@5200',
+    badge: 'Member'
+  },
+  {
+    role: 'CLIENT',
+    name: 'Jaikishore',
+    identifier: 'JWM-8459',
+    pass: 'Fit@8459',
+    badge: 'Member'
+  },
+  {
+    role: 'TRAINER',
+    name: 'PIRANAV',
+    identifier: 'JWT-7195',
+    pass: 'Fit@7195',
+    badge: 'Head Coach'
+  },
+  {
+    role: 'TRAINER',
+    name: 'Akash',
+    identifier: 'JWT-2239',
+    pass: 'Fit@2239',
+    badge: 'Strength Coach'
+  },
+  {
+    role: 'ADMIN',
+    name: 'Gym Director',
+    identifier: 'admin@jawan.fit',
+    pass: 'Admin@123',
+    badge: 'HQ Director'
+  }
+];
 
 export const UnifiedAuthGateway: React.FC<UnifiedAuthGatewayProps> = ({
   onLoginSuccess,
@@ -36,7 +84,7 @@ export const UnifiedAuthGateway: React.FC<UnifiedAuthGatewayProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [syncState, setSyncState] = useState<AppSyncState>(() => syncedStore.getState());
-  const [showQuickList, setShowQuickList] = useState(false);
+  const [showQuickCredentials, setShowQuickCredentials] = useState(true);
 
   useEffect(() => {
     const unsub = syncedStore.subscribe((newState) => {
@@ -52,13 +100,20 @@ export const UnifiedAuthGateway: React.FC<UnifiedAuthGatewayProps> = ({
     setErrorMessage(null);
     setIdentifier('');
     setPassword('');
-    setShowQuickList(false);
+  };
+
+  const applyQuickCredential = (cred: QuickCredential) => {
+    hapticTap();
+    setSelectedRole(cred.role);
+    setIdentifier(cred.identifier);
+    setPassword(cred.pass);
+    setErrorMessage(null);
   };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!identifier.trim() || !password) {
-      setErrorMessage('Please enter both your ID / email and password.');
+      setErrorMessage('Please enter both your User ID / Email and Master Password.');
       return;
     }
 
@@ -67,7 +122,7 @@ export const UnifiedAuthGateway: React.FC<UnifiedAuthGatewayProps> = ({
     setErrorMessage(null);
 
     try {
-      // 1. Authenticate with backend API
+      // 1. Authenticate against Cloudflare D1 PBKDF2 Web Crypto API
       const result = await authService.login(
         identifier.trim(),
         password,
@@ -76,13 +131,13 @@ export const UnifiedAuthGateway: React.FC<UnifiedAuthGatewayProps> = ({
       );
 
       if (result.success && result.user) {
-        // Sync cloud database after successful login
+        // Instant sync latest cloud changes
         syncedStore.syncFromCloud(true);
         onLoginSuccess(result.user, selectedRole);
         return;
       }
 
-      // 2. Offline / Local fallback validation
+      // 2. Offline / Local state fallback validation
       const cleanDigits = identifier.replace(/\D/g, '');
       if (selectedRole === 'CLIENT') {
         const client = syncState.clients.find((c) => {
@@ -140,7 +195,7 @@ export const UnifiedAuthGateway: React.FC<UnifiedAuthGatewayProps> = ({
         ) {
           const fallbackUser: AuthUser = {
             id: 'usr_admin_master',
-            email: 'admin@jawanfitness.com',
+            email: 'admin@jawan.fit',
             name: 'Gym Director',
             role: 'ADMIN'
           };
@@ -150,13 +205,18 @@ export const UnifiedAuthGateway: React.FC<UnifiedAuthGatewayProps> = ({
         }
       }
 
-      setErrorMessage(result.error || 'Invalid credentials for this role. Please try again.');
+      setErrorMessage(
+        result.error ||
+          'Invalid credentials. Please verify your ID or tap one of the Quick Access badges below.'
+      );
     } catch (err: any) {
-      setErrorMessage(err?.message || 'Connection error. Please try again.');
+      setErrorMessage(err?.message || 'Authentication error. Please check connection and try again.');
     } finally {
       setIsLoading(false);
     }
   };
+
+  const currentRoleCreds = QUICK_CREDENTIALS.filter((c) => c.role === selectedRole);
 
   return (
     <div className="min-h-screen bg-[#04060a] text-slate-100 flex flex-col justify-center items-center p-4 sm:p-6 relative overflow-hidden font-sans selection:bg-amber-500 selection:text-black">
@@ -165,78 +225,61 @@ export const UnifiedAuthGateway: React.FC<UnifiedAuthGatewayProps> = ({
       <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-cyan-500/5 rounded-full blur-[100px] pointer-events-none" />
       <div className="absolute -bottom-20 -right-20 w-80 h-80 bg-amber-600/5 rounded-full blur-[100px] pointer-events-none" />
 
-      {/* Subtle Geometric Background Grid */}
+      {/* Subtle Grid Background */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_40%,#000_70%,transparent_100%)] pointer-events-none" />
 
-      {/* Main Luxury Gateway Card */}
-      <div className="relative w-full max-w-[440px] bg-gradient-to-b from-[#0f1422]/95 via-[#0b0e18]/95 to-[#080a12]/98 border border-white/10 rounded-[32px] p-7 sm:p-9 backdrop-blur-2xl shadow-[0_25px_70px_rgba(0,0,0,0.85)] text-left animate-in fade-in zoom-in-95 duration-300">
+      {/* Master Luxury Auth Portal Card */}
+      <div className="relative w-full max-w-[460px] bg-gradient-to-b from-[#0f1422]/95 via-[#0b0e18]/95 to-[#080a12]/98 border border-white/10 rounded-[32px] p-6 sm:p-8 backdrop-blur-2xl shadow-[0_25px_70px_rgba(0,0,0,0.85)] text-left animate-in fade-in zoom-in-95 duration-300">
         
-        {/* Top Gold Accent Rim */}
+        {/* Top Gold Accent Bar */}
         <div className="absolute top-0 left-12 right-12 h-[1px] bg-gradient-to-r from-transparent via-amber-500/60 to-transparent" />
 
         {/* Brand Showcase Header */}
-        <div className="flex items-center justify-between mb-7">
+        <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-3.5">
             <div className="relative group">
-              <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-700 opacity-30 blur-sm group-hover:opacity-60 transition duration-300" />
-              <div className="relative w-13 h-13 rounded-2xl bg-gradient-to-b from-slate-900 to-black border border-amber-500/40 p-2 flex items-center justify-center shadow-xl">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500/20 to-amber-600/10 border border-amber-500/40 p-2 flex items-center justify-center shadow-[0_0_25px_rgba(245,158,11,0.25)] flex-shrink-0 transition-transform group-hover:scale-105 duration-300">
                 <img
                   src="/logo-3d-tight.png"
                   alt="Jawan Fitness"
-                  className="w-full h-full object-contain drop-shadow"
-                  onError={(e) => {
-                    (e.currentTarget as HTMLElement).style.display = 'none';
-                  }}
+                  className="w-full h-full object-contain drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]"
                 />
-                <Dumbbell className="w-6 h-6 text-amber-400" />
               </div>
+              <div className="absolute -inset-1 bg-amber-500/20 rounded-2xl blur-sm -z-10 group-hover:bg-amber-500/30 transition-all" />
             </div>
 
             <div>
               <div className="flex items-center space-x-2">
-                <h1 className="text-lg font-black tracking-wider font-display text-white uppercase">
-                  JAWAN <span className="text-amber-400">FITNESS</span>
+                <h1 className="font-display font-black text-xl tracking-wider text-white uppercase leading-none">
+                  JAWAN <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-amber-500">FITNESS</span>
                 </h1>
-                <span className="text-[9px] font-tech font-extrabold px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-400 border border-amber-500/30 tracking-widest uppercase">
-                  PRO
-                </span>
               </div>
-              <p className="text-[11px] text-slate-400 font-medium tracking-wide">
-                Unified High-Performance Portal
+              <p className="text-[11px] font-tech text-slate-400 mt-1 uppercase tracking-widest flex items-center space-x-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span>Executive Gateway Portal</span>
               </p>
             </div>
           </div>
 
-          {/* Real-time Cloud Connection Badge */}
-          <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-[10px] font-tech font-bold">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span>LIVE SYNC</span>
+          <div className="px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-[10px] font-tech font-bold text-amber-400 uppercase tracking-wider">
+            PBKDF2 Cloud
           </div>
         </div>
 
-        {/* 3-WAY ROLE SELECTOR (Executive Segmented Control) */}
-        <div className="mb-6 space-y-2.5">
-          <div className="flex items-center justify-between px-0.5">
-            <span className="text-[11px] font-tech uppercase tracking-widest text-slate-400 font-bold">
-              Account Privilege
-            </span>
-            <span className="text-[10px] text-amber-400/90 font-tech font-medium tracking-wider">
-              {selectedRole === 'CLIENT' ? 'Member • Athlete' : selectedRole === 'TRAINER' ? 'Certified Coach' : 'HQ Executive'}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-3 p-1.5 rounded-2xl bg-[#06080f] border border-white/10 shadow-inner">
-            {/* Member Tab */}
+        {/* Triple Role Selector */}
+        <div className="mb-6 p-1.5 rounded-2xl bg-[#060810]/90 border border-white/10 shadow-inner">
+          <div className="grid grid-cols-3 gap-1">
+            {/* Athlete Tab */}
             <button
               type="button"
               onClick={() => handleRoleChange('CLIENT')}
-              className={`py-2.5 px-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center justify-center space-x-1.5 ${
+              className={`py-2.5 px-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center justify-center space-x-1.5 cursor-pointer ${
                 selectedRole === 'CLIENT'
                   ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-black shadow-[0_2px_15px_rgba(245,158,11,0.35)] font-black scale-[1.02]'
-                  : 'text-slate-400 hover:text-white hover:bg-white/[0.03]'
+                  : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
               }`}
             >
-              <User className="w-3.5 h-3.5" />
+              <Dumbbell className="w-3.5 h-3.5" />
               <span>Athlete</span>
             </button>
 
@@ -244,10 +287,10 @@ export const UnifiedAuthGateway: React.FC<UnifiedAuthGatewayProps> = ({
             <button
               type="button"
               onClick={() => handleRoleChange('TRAINER')}
-              className={`py-2.5 px-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center justify-center space-x-1.5 ${
+              className={`py-2.5 px-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center justify-center space-x-1.5 cursor-pointer ${
                 selectedRole === 'TRAINER'
                   ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-black shadow-[0_2px_15px_rgba(245,158,11,0.35)] font-black scale-[1.02]'
-                  : 'text-slate-400 hover:text-white hover:bg-white/[0.03]'
+                  : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
               }`}
             >
               <Users className="w-3.5 h-3.5" />
@@ -258,10 +301,10 @@ export const UnifiedAuthGateway: React.FC<UnifiedAuthGatewayProps> = ({
             <button
               type="button"
               onClick={() => handleRoleChange('ADMIN')}
-              className={`py-2.5 px-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center justify-center space-x-1.5 ${
+              className={`py-2.5 px-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center justify-center space-x-1.5 cursor-pointer ${
                 selectedRole === 'ADMIN'
                   ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-black shadow-[0_2px_15px_rgba(245,158,11,0.35)] font-black scale-[1.02]'
-                  : 'text-slate-400 hover:text-white hover:bg-white/[0.03]'
+                  : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
               }`}
             >
               <ShieldCheck className="w-3.5 h-3.5" />
@@ -270,8 +313,8 @@ export const UnifiedAuthGateway: React.FC<UnifiedAuthGatewayProps> = ({
           </div>
         </div>
 
-        {/* Dynamic Context Card */}
-        <div className="mb-6 p-3.5 rounded-2xl bg-gradient-to-r from-white/[0.04] to-white/[0.01] border border-white/10 flex items-center space-x-3 text-left shadow-sm">
+        {/* Dynamic Context Header */}
+        <div className="mb-5 p-3 rounded-2xl bg-gradient-to-r from-white/[0.04] to-white/[0.01] border border-white/10 flex items-center space-x-3 text-left">
           <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 flex-shrink-0">
             {selectedRole === 'CLIENT' && <Dumbbell className="w-4 h-4" />}
             {selectedRole === 'TRAINER' && <Users className="w-4 h-4" />}
@@ -284,42 +327,33 @@ export const UnifiedAuthGateway: React.FC<UnifiedAuthGatewayProps> = ({
               {selectedRole === 'ADMIN' && 'Director Console & Operations Command'}
             </span>
             <span className="text-[11px] text-slate-400 truncate block mt-0.5">
-              {selectedRole === 'CLIENT' && 'Access tailored splits, 3D form guides, and nutrition'}
-              {selectedRole === 'TRAINER' && 'Build custom splits, assign meal macros, and review client logs'}
-              {selectedRole === 'ADMIN' && 'Master gym control, trainer dispatch, and biometric audits'}
+              {selectedRole === 'CLIENT' && 'Real-time splits, 3D biomechanics motion, and diet'}
+              {selectedRole === 'TRAINER' && 'Member roster, daily compliance, and split creator'}
+              {selectedRole === 'ADMIN' && 'Gym administration, coach assignor, and member telemetry'}
             </span>
           </div>
         </div>
 
-        {/* Error Banner */}
+        {/* Error Notification */}
         {errorMessage && (
-          <div className="mb-5 p-3.5 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs flex items-start space-x-2.5 animate-in fade-in">
-            <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+          <div className="mb-5 p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-start space-x-2.5 animate-in fade-in">
+            <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
             <span className="flex-1 font-medium leading-relaxed">{errorMessage}</span>
           </div>
         )}
 
-        {/* Login Form */}
+        {/* Unified Login Form */}
         <form onSubmit={handleLogin} className="space-y-4">
-          {/* Identity Field */}
-          <div className="space-y-2">
+          {/* Identity Input */}
+          <div className="space-y-1.5">
             <div className="flex items-center justify-between text-xs px-0.5">
               <label className="text-slate-300 font-semibold tracking-wide">
                 {selectedRole === 'CLIENT'
-                  ? 'Member ID, Phone, or Email'
+                  ? 'Member ID / Phone / Email'
                   : selectedRole === 'TRAINER'
-                  ? 'Trainer ID or Registered Email'
-                  : 'Director Credentials'}
+                  ? 'Trainer ID / Phone / Email'
+                  : 'Director Email or ID'}
               </label>
-              {selectedRole === 'CLIENT' && syncState.clients.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setShowQuickList(!showQuickList)}
-                  className="text-[11px] text-amber-400 hover:text-amber-300 font-tech font-bold transition-colors"
-                >
-                  {showQuickList ? 'Close Roster' : 'Quick Access ▾'}
-                </button>
-              )}
             </div>
 
             <div className="relative group">
@@ -330,56 +364,27 @@ export const UnifiedAuthGateway: React.FC<UnifiedAuthGatewayProps> = ({
                 onChange={(e) => setIdentifier(e.target.value)}
                 placeholder={
                   selectedRole === 'CLIENT'
-                    ? 'e.g. JWM-5200 or 9876543210'
+                    ? 'e.g. JWM-5200 or 8248345770'
                     : selectedRole === 'TRAINER'
-                    ? 'e.g. JWT-7195 or trainer@jawan.fit'
-                    : 'admin@jawanfitness.com'
+                    ? 'e.g. JWT-7195 or 9360345770'
+                    : 'admin@jawan.fit'
                 }
-                className="w-full bg-[#060810]/80 border border-white/10 focus:border-amber-500 focus:bg-[#0a0d18] rounded-2xl px-4 py-3.5 text-sm text-white outline-none transition-all duration-200 placeholder-slate-500 shadow-inner focus:shadow-[0_0_20px_rgba(245,158,11,0.15)] pr-11"
+                className="w-full bg-[#060810]/90 border border-white/10 focus:border-amber-500 focus:bg-[#0a0d18] rounded-2xl px-4 py-3 text-sm text-white outline-none transition-all duration-200 placeholder-slate-500 shadow-inner focus:shadow-[0_0_20px_rgba(245,158,11,0.15)] pr-11"
               />
               <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none group-focus-within:text-amber-400 transition-colors">
                 {selectedRole === 'CLIENT' ? <Phone className="w-4 h-4" /> : <Mail className="w-4 h-4" />}
               </div>
             </div>
-
-            {/* Quick Select Drawer */}
-            {showQuickList && selectedRole === 'CLIENT' && (
-              <div className="mt-2 space-y-1.5 max-h-48 overflow-y-auto p-2.5 bg-[#05070e] border border-amber-500/30 rounded-2xl text-xs shadow-2xl">
-                <span className="text-[10px] font-tech text-amber-400/90 font-bold uppercase tracking-wider block px-2 py-1">
-                  Active Roster Members
-                </span>
-                {syncState.clients.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => {
-                      hapticTap();
-                      setIdentifier(c.loginId || c.phone || c.email);
-                      setShowQuickList(false);
-                    }}
-                    className="w-full text-left p-2.5 rounded-xl hover:bg-amber-500/15 text-slate-300 hover:text-white flex items-center justify-between border border-transparent hover:border-amber-500/20 transition-all"
-                  >
-                    <div>
-                      <span className="font-bold text-white block">{c.name}</span>
-                      <span className="text-[10px] text-slate-400">{c.email || 'Member Profile'}</span>
-                    </div>
-                    <span className="text-[10px] font-tech font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md">
-                      {c.loginId || c.phone}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
 
-          {/* Password Field */}
-          <div className="space-y-2">
+          {/* Password Input */}
+          <div className="space-y-1.5">
             <div className="flex items-center justify-between text-xs px-0.5">
               <label className="text-slate-300 font-semibold tracking-wide">
-                Master Password
+                Password
               </label>
               <span className="text-[10px] text-slate-500 font-tech">
-                PBKDF2 SHA-256
+                Secure Hash
               </span>
             </div>
 
@@ -389,13 +394,15 @@ export const UnifiedAuthGateway: React.FC<UnifiedAuthGatewayProps> = ({
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter password"
-                className="w-full bg-[#060810]/80 border border-white/10 focus:border-amber-500 focus:bg-[#0a0d18] rounded-2xl px-4 py-3.5 text-sm text-white outline-none transition-all duration-200 placeholder-slate-500 shadow-inner focus:shadow-[0_0_20px_rgba(245,158,11,0.15)] pr-11"
+                placeholder={
+                  selectedRole === 'ADMIN' ? 'Admin@123' : 'Fit@••••'
+                }
+                className="w-full bg-[#060810]/90 border border-white/10 focus:border-amber-500 focus:bg-[#0a0d18] rounded-2xl px-4 py-3 text-sm text-white outline-none transition-all duration-200 placeholder-slate-500 shadow-inner focus:shadow-[0_0_20px_rgba(245,158,11,0.15)] pr-11"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1 transition-colors"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1 transition-colors cursor-pointer"
                 aria-label="Toggle password visibility"
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -403,11 +410,24 @@ export const UnifiedAuthGateway: React.FC<UnifiedAuthGatewayProps> = ({
             </div>
           </div>
 
-          {/* Launch Action Button */}
+          {/* Keep me signed in */}
+          <div className="flex items-center justify-between pt-1 text-xs">
+            <label className="flex items-center space-x-2 text-slate-400 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={keepSignedIn}
+                onChange={(e) => setKeepSignedIn(e.target.checked)}
+                className="w-4 h-4 rounded bg-black/60 border-white/20 text-amber-500 focus:ring-amber-500 accent-amber-500 cursor-pointer"
+              />
+              <span>Remember session on this device</span>
+            </label>
+          </div>
+
+          {/* Primary Action Button */}
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-4 px-5 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-black font-display font-black text-sm tracking-widest uppercase shadow-[0_4px_25px_rgba(245,158,11,0.35)] flex items-center justify-center space-x-2 transition-all duration-200 active:scale-[0.98] disabled:opacity-50 cursor-pointer mt-3"
+            className="w-full py-3.5 px-5 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-black font-display font-black text-xs tracking-widest uppercase shadow-[0_4px_25px_rgba(245,158,11,0.35)] flex items-center justify-center space-x-2 transition-all duration-200 active:scale-[0.98] disabled:opacity-50 cursor-pointer mt-3"
           >
             {isLoading ? (
               <>
@@ -417,7 +437,7 @@ export const UnifiedAuthGateway: React.FC<UnifiedAuthGatewayProps> = ({
             ) : (
               <>
                 <span>
-                  Enter {selectedRole === 'CLIENT' ? 'Member Portal' : selectedRole === 'TRAINER' ? 'Trainer Terminal' : 'Admin Console'}
+                  Log In as {selectedRole === 'CLIENT' ? 'Athlete' : selectedRole === 'TRAINER' ? 'Trainer' : 'Director'}
                 </span>
                 <ArrowRight className="w-4 h-4 stroke-[3]" />
               </>
@@ -425,13 +445,47 @@ export const UnifiedAuthGateway: React.FC<UnifiedAuthGatewayProps> = ({
           </button>
         </form>
 
-        {/* Security & System Integrity Footer */}
-        <div className="mt-7 pt-4 border-t border-white/10 flex items-center justify-between text-[11px] text-slate-500 font-tech">
+        {/* Quick Credentials / Demo One-Tap Helper */}
+        <div className="mt-6 pt-4 border-t border-white/10">
+          <div className="flex items-center justify-between mb-2.5">
+            <div className="flex items-center space-x-1.5 text-amber-400 text-xs font-bold font-tech uppercase tracking-wide">
+              <Zap className="w-3.5 h-3.5" />
+              <span>One-Tap Quick Credentials</span>
+            </div>
+            <span className="text-[10px] text-slate-500 font-tech">Tap to fill & login</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {currentRoleCreds.map((cred) => (
+              <button
+                key={cred.identifier}
+                type="button"
+                onClick={() => applyQuickCredential(cred)}
+                className="p-2.5 rounded-xl bg-white/[0.03] hover:bg-amber-500/15 border border-white/5 hover:border-amber-500/30 text-left transition-all group flex items-center justify-between cursor-pointer"
+              >
+                <div className="min-w-0 pr-2">
+                  <span className="text-white text-xs font-bold block truncate group-hover:text-amber-400 transition-colors">
+                    {cred.name}
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-mono block truncate">
+                    {cred.identifier} • {cred.pass}
+                  </span>
+                </div>
+                <span className="text-[9px] font-tech font-bold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 whitespace-nowrap">
+                  {cred.badge}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Footer info */}
+        <div className="mt-6 pt-3 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-500 font-tech">
           <div className="flex items-center space-x-1.5">
             <Lock className="w-3 h-3 text-amber-500/80" />
-            <span>Encrypted Session</span>
+            <span>End-to-End Verified</span>
           </div>
-          <span className="text-slate-400 font-medium">Jawan Fitness OS v2.4</span>
+          <span className="text-slate-400 font-medium">Jawan Fitness OS • 2026</span>
         </div>
       </div>
     </div>

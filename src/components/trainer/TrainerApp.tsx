@@ -12,33 +12,35 @@ import {
   LogOut,
   Eye,
   EyeOff,
-  KeyRound
+  KeyRound,
+  Loader2
 } from 'lucide-react';
 import { navigateToRole } from '../../services/appRouter';
 import { syncedStore, AppSyncState } from '../../services/syncedStore';
-import { authService } from '../../services/authService';
+import { authService, AuthUser } from '../../services/authService';
 import { hapticTap } from '../../utils/audioHaptics';
 import { ChangePasswordModal } from '../common/ChangePasswordModal';
 import { IOSInstallBanner } from '../common/IOSInstallBanner';
 import { ThemeToggle } from '../common/ThemeToggle';
 
-interface TrainerAppProps {
+export interface TrainerAppProps {
+  currentUser?: AuthUser | null;
   onLogout?: () => void;
 }
 
-export const TrainerApp: React.FC<TrainerAppProps> = ({ onLogout }) => {
+export const TrainerApp: React.FC<TrainerAppProps> = ({ currentUser: initialUser, onLogout }) => {
   const [syncState, setSyncState] = useState<AppSyncState>(() => syncedStore.getState());
   const [activeTrainerId, setActiveTrainerId] = useState<string>(() => {
     return localStorage.getItem('jawan_trainer_session_id_v1') || '';
   });
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => initialUser || authService.getUser());
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
-  const [loginIdentifier, setLoginIdentifier] = useState('');
-  const [loginPassword, setLoginPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [loginError, setLoginError] = useState<string | null>(null);
-  const [showQuickList, setShowQuickList] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  useEffect(() => {
+    if (initialUser) {
+      setCurrentUser(initialUser);
+    }
+  }, [initialUser]);
 
   useEffect(() => {
     const unsub = syncedStore.subscribe((newState) => {
@@ -47,7 +49,27 @@ export const TrainerApp: React.FC<TrainerAppProps> = ({ onLogout }) => {
     return unsub;
   }, []);
 
-  const activeTrainer = syncState.trainers.find((t) => t.id === activeTrainerId);
+  const user = currentUser || authService.getUser();
+  const activeTrainer = syncState.trainers.find((t) => {
+    if (user?.id && t.id === user.id) return true;
+    if (user?.loginId && t.loginId && t.loginId.toLowerCase() === user.loginId.toLowerCase()) return true;
+    if (user?.email && t.email && t.email.toLowerCase() === user.email.toLowerCase()) return true;
+    if (user?.phone && t.phone && t.phone.replace(/\D/g, '').endsWith(user.phone.replace(/\D/g, '').slice(-10))) return true;
+    if (activeTrainerId && t.id === activeTrainerId) return true;
+    return false;
+  }) || (user && user.role === 'TRAINER' ? {
+    id: user.id,
+    name: user.name || 'Coach',
+    email: user.email || '',
+    phone: user.phone || '',
+    role: 'Fitness Coach',
+    status: 'Active',
+    clientsCount: 0,
+    avgAdherence: 95,
+    loginId: user.loginId,
+    avatarUrl: ''
+  } : null);
+
   const myClients = activeTrainer
     ? syncState.clients.filter((c) => c.trainerId === activeTrainer.id)
     : [];
@@ -59,225 +81,28 @@ export const TrainerApp: React.FC<TrainerAppProps> = ({ onLogout }) => {
     syncedStore.setActiveTrainer(id);
   };
 
-  const handleTrainerLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoginError(null);
-    const identifier = loginIdentifier.trim();
-    const password = loginPassword;
-
-    if (!identifier || !password) {
-      setLoginError('Please enter both your User ID / Email and Password.');
-      return;
-    }
-
-    setIsLoading(true);
-    const result = await authService.login(identifier, password, 'TRAINER', true);
-    setIsLoading(false);
-
-    if (!result.success || !result.user) {
-      setLoginError(result.error || 'Trainer login failed. Please verify the credentials sent on WhatsApp.');
-      return;
-    }
-
-    const verifiedUser = result.user;
-    const latestState = await syncedStore.syncFromCloud();
-    const state = latestState || syncedStore.getState();
-    const cleanDigits = identifier.replace(/\D/g, '');
-    const matched = state.trainers.find((t) => {
-      // Match by loginId from verified user
-      const matchLoginId = t.loginId && verifiedUser.loginId && t.loginId.toLowerCase() === verifiedUser.loginId.toLowerCase();
-      // Match by raw identifier against loginId (fallback)
-      const matchRawId = t.loginId && t.loginId.toLowerCase() === identifier.trim().toLowerCase();
-      // Match by email
-      const matchEmail = t.email && verifiedUser.email && t.email.toLowerCase() === verifiedUser.email.toLowerCase();
-      // Match by phone digits
-      const matchPhone = cleanDigits.length >= 10 && t.phone && t.phone.replace(/\D/g, '').endsWith(cleanDigits.slice(-10));
-      return matchLoginId || matchRawId || matchEmail || matchPhone;
-    });
-
-    let activeMatched = matched;
-    if (!activeMatched) {
-      // Auth succeeded but no trainer profile in sync state — create one so trainer can access UI
-      activeMatched = {
-        id: verifiedUser.id,
-        name: verifiedUser.name || 'Coach',
-        email: verifiedUser.email || '',
-        phone: verifiedUser.phone || cleanDigits || '',
-        role: 'Fitness Coach',
-        status: 'Active',
-        clientsCount: 0,
-        avgAdherence: 0,
-        loginId: verifiedUser.loginId || identifier
-      };
-      // Add to sync state so it persists
-      const updatedState = syncedStore.getState();
-      const exists = updatedState.trainers.some((t) => t.id === activeMatched!.id);
-      if (!exists) {
-        syncedStore.createTrainer({
-          name: activeMatched.name,
-          email: activeMatched.email,
-          phone: activeMatched.phone,
-          role: activeMatched.role,
-          status: 'Active',
-          loginId: activeMatched.loginId
-        });
-        // Re-fetch to get the created trainer with proper id
-        const refreshedState = syncedStore.getState();
-        const justCreated = refreshedState.trainers.find((t) =>
-          t.loginId && activeMatched!.loginId && t.loginId.toLowerCase() === activeMatched!.loginId!.toLowerCase()
-        );
-        if (justCreated) activeMatched = justCreated;
-      }
-    }
-
-    hapticTap();
-    setActiveTrainerId(activeMatched.id);
-    localStorage.setItem('jawan_trainer_session_id_v1', activeMatched.id);
-    syncedStore.setActiveTrainer(activeMatched.id);
-  };
-
   const handleLogout = () => {
     hapticTap();
     authService.logout();
     setActiveTrainerId('');
+    localStorage.removeItem('jawan_auth_session_token_v1');
+    localStorage.removeItem('jawan_auth_user_v1');
     localStorage.removeItem('jawan_trainer_session_id_v1');
     if (onLogout) onLogout();
   };
 
-  // If no trainer profile selected or session is not active, render Trainer Login Gate
+  // If no trainer profile selected or session is not active, redirect to Gateway
   if (!activeTrainer) {
+    if (onLogout) {
+      setTimeout(() => onLogout(), 50);
+    }
     return (
-      <div className="min-h-screen bg-[#05070d] text-white flex flex-col justify-center items-center p-4 relative overflow-hidden font-sans selection:bg-amber-500 selection:text-black">
-        {/* Ambient glow */}
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="relative w-full max-w-md bg-[#0a0e1a]/95 border border-amber-500/30 rounded-3xl p-6 sm:p-8 backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.85)] text-left animate-in fade-in zoom-in-95 duration-200">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 p-2 flex items-center justify-center shadow-lg shadow-amber-500/20 flex-shrink-0">
-                <img src="/logo-3d-tight.png" alt="Jawan Fitness" className="w-full h-full object-contain drop-shadow" />
-              </div>
-              <div>
-                <div className="flex items-center space-x-2">
-                  <h1 className="font-display font-black text-xl tracking-wider text-white uppercase">
-                    JAWAN <span className="text-amber-500">TRAINER</span>
-                  </h1>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">
-                    COACH PWA
-                  </span>
-                </div>
-                <p className="text-xs text-neutral-400">Personal Coach Command Center</p>
-              </div>
-            </div>
-            <ThemeToggle />
-          </div>
-
-          <div className="mb-5 bg-slate-900/60 border border-white/5 p-3 rounded-2xl text-xs text-slate-300 space-y-1">
-            <div className="flex items-center space-x-1.5 text-amber-400 font-bold font-tech uppercase text-[10px]">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Coach Secure Access</span>
-            </div>
-            <p className="text-[11px] text-slate-400 leading-relaxed">
-              Enter your official Trainer ID or Email and Password provided by the Gym Director via WhatsApp.
-            </p>
-          </div>
-
-          <form onSubmit={handleTrainerLogin} className="space-y-3.5">
-            {loginError && (
-              <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-300 text-xs flex items-start space-x-2">
-                <span className="font-bold">Error:</span>
-                <span>{loginError}</span>
-              </div>
-            )}
-
-              <div>
-                <label className="text-[10px] font-tech uppercase tracking-wider text-slate-400 font-bold block mb-1">
-                  Trainer User ID / Email / Phone
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={loginIdentifier}
-                  onChange={(e) => setLoginIdentifier(e.target.value)}
-                  placeholder=""
-                  className="w-full bg-slate-900 border border-white/10 focus:border-amber-500 rounded-xl px-3.5 py-2.5 text-white text-xs outline-none transition-colors"
-                />
-              </div>
-
-              <div>
-                <label className="text-[10px] font-tech uppercase tracking-wider text-slate-400 font-bold block mb-1">
-                  Password
-                </label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    required
-                    value={loginPassword}
-                    onChange={(e) => setLoginPassword(e.target.value)}
-                    placeholder=""
-                    className="w-full bg-slate-900 border border-white/10 focus:border-amber-500 rounded-xl px-3.5 py-2.5 pr-11 text-white text-xs outline-none transition-colors"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      hapticTap();
-                      setShowPassword(!showPassword);
-                    }}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-amber-400 p-1 transition-colors"
-                    title={showPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-black font-display font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg shadow-amber-500/20 active:scale-[0.99] mt-2"
-              >
-                {isLoading ? 'Verifying Coach...' : 'Sign In to Coach Portal'}
-              </button>
-
-              {/* Quick Select Accordion for testing */}
-              <div className="pt-3 border-t border-white/5">
-                {import.meta.env.DEV && (
-                  <button
-                    type="button"
-                    onClick={() => setShowQuickList(!showQuickList)}
-                    className="w-full text-center text-[11px] text-slate-400 hover:text-amber-400 transition-colors flex items-center justify-center space-x-1"
-                  >
-                    <span>{showQuickList ? '▲ Hide Registered Coaches' : '▼ Quick One-Tap Sign In (Testing)'}</span>
-                  </button>
-                )}
-
-                {import.meta.env.DEV && showQuickList && (
-                  <div className="mt-2 space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                    {syncState.trainers.map((t) => (
-                      <button
-                        key={t.id}
-                        type="button"
-                        onClick={() => handleSelectTrainer(t.id)}
-                        className="w-full p-2.5 bg-slate-900/90 hover:bg-slate-800 border border-white/10 hover:border-amber-500/40 rounded-xl flex items-center justify-between text-left transition-all"
-                      >
-                        <div>
-                          <div className="text-white text-xs font-bold">{t.name}</div>
-                          <div className="text-[10px] text-slate-400 font-tech">ID: {t.loginId || t.phone}</div>
-                        </div>
-                        <span className="text-[10px] font-tech text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded">
-                          Enter &rarr;
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </form>
-
-          <div className="mt-5 pt-3 border-t border-white/5 text-center text-[10px] text-neutral-500">
-            Jawan Fitness Platform &copy; 2026 • Verified Coach Session
-          </div>
+      <div className="min-h-screen bg-[#05070d] text-white flex flex-col justify-center items-center p-4">
+        <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 p-2 flex items-center justify-center shadow-lg shadow-amber-500/20 mb-4 animate-pulse">
+          <img src="/logo-3d-tight.png" alt="Jawan Fitness" className="w-full h-full object-contain" />
         </div>
+        <Loader2 className="w-6 h-6 text-amber-500 animate-spin mb-2" />
+        <span className="text-xs text-slate-400 font-tech tracking-wider">Accessing Coach Terminal...</span>
       </div>
     );
   }

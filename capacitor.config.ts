@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.jawanfitness.app',
-  appName: 'Jawan Member',
+  appName: 'Jawan Fitness',
   webDir: 'dist',
   server: {
     androidScheme: 'https'

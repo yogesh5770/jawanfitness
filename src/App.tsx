@@ -10,25 +10,40 @@ import { authService, AuthUser } from './services/authService';
 import { syncedStore } from './services/syncedStore';
 
 export const App: React.FC = () => {
-  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => authService.getUser());
-  const [activeRole, setActiveRole] = useState<'CLIENT' | 'TRAINER' | 'ADMIN' | null>(() => {
+  // Only restore authenticated user if token is actually present
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => {
+    const token = authService.getToken();
     const user = authService.getUser();
-    if (user && user.role) return user.role;
-    // URL or domain override if explicitly visited
-    const detected = detectAppRole();
-    if (detected === 'admin') return 'ADMIN';
-    if (detected === 'trainer') return 'TRAINER';
+    return token && user ? user : null;
+  });
+  
+  const [activeRole, setActiveRole] = useState<'CLIENT' | 'TRAINER' | 'ADMIN' | null>(() => {
+    const token = authService.getToken();
+    const user = authService.getUser();
+    if (token && user && user.role) return user.role;
     return null;
   });
 
   // Verify backend session on mount
   useEffect(() => {
     async function verifyAuth() {
-      await authService.verifySession();
-      const verified = authService.getUser();
-      setCurrentUser(verified);
-      if (verified && verified.role) {
-        setActiveRole(verified.role);
+      const token = authService.getToken();
+      if (!token) {
+        setCurrentUser(null);
+        setActiveRole(null);
+        return;
+      }
+      const isValid = await authService.verifySession();
+      if (isValid) {
+        const verified = authService.getUser();
+        setCurrentUser(verified);
+        if (verified && verified.role) {
+          setActiveRole(verified.role);
+        }
+      } else {
+        authService.logout();
+        setCurrentUser(null);
+        setActiveRole(null);
       }
     }
     verifyAuth();
@@ -57,6 +72,8 @@ export const App: React.FC = () => {
     authService.logout();
     setCurrentUser(null);
     setActiveRole(null);
+    localStorage.removeItem('jawan_auth_session_token_v1');
+    localStorage.removeItem('jawan_auth_user_v1');
     localStorage.removeItem('jawan_active_client_id_v1');
     localStorage.removeItem('jawan_trainer_session_id_v1');
     window.location.hash = '';
@@ -79,16 +96,16 @@ export const App: React.FC = () => {
 
   // 2. ADMIN INTERFACE
   if (activeRole === 'ADMIN') {
-    return <AdminApp onLogout={handleUniversalLogout} />;
+    return <AdminApp currentUser={currentUser} onLogout={handleUniversalLogout} />;
   }
 
   // 3. TRAINER INTERFACE
   if (activeRole === 'TRAINER') {
-    return <TrainerApp onLogout={handleUniversalLogout} />;
+    return <TrainerApp currentUser={currentUser} onLogout={handleUniversalLogout} />;
   }
 
   // 4. MEMBER INTERFACE (Default)
-  return <ClientApp onLogout={handleUniversalLogout} />;
+  return <ClientApp currentUser={currentUser} onLogout={handleUniversalLogout} />;
 };
 
 export default App;
