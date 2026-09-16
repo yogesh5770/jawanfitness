@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Android 12+ (API 31) Overrides
+    ================================
+    On Android 12+ the system enforces the SplashScreen API.
+    We override here to ensure the splash icon background colour and
+    the edge-to-edge navigation bar handling matches the app perfectly.
+    
+    On Android 12+, the navigation bar colour is automatically handled
+    by the edge-to-edge API and gestural navigation — we set it transparent
+    so the WebView content shows through the gesture handle area.
+-->
+<resources>
+
+    <style name="AppTheme.NoActionBar" parent="AppTheme">
+        <item name="android:windowBackground">#07090e</item>
+        <item name="android:fitsSystemWindows">false</item>
+        <item name="android:hardwareAccelerated">true</item>
+        <!-- Android 12+ enforces transparent nav bar in edge-to-edge mode -->
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <!-- Keep status bar icons white (dark background) -->
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+
+    <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
+        <item name="android:windowBackground">@drawable/splash</item>
+        <item name="android:statusBarColor">#07090e</item>
+        <item name="android:navigationBarColor">#07090e</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="windowSplashScreenBackground">#07090e</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="windowSplashScreenAnimationDuration">800</item>
+        <item name="windowSplashScreenIconBackgroundColor">#07090e</item>
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
+    </style>
+
+</resources>

@@ -1,20 +1,24 @@
 import React from 'react';
-import { RoutineTemplate, WorkoutSession, Exercise } from '../../types';
+import { RoutineTemplate, WorkoutSession, Exercise, AssignedWorkout } from '../../types';
 import { DEFAULT_ROUTINES } from '../../data/defaultRoutines';
 import { EXERCISE_DATABASE } from '../../data/exercises';
-import { Play, Plus, Clock, Dumbbell, Calendar, Flame, ChevronRight, Trophy } from 'lucide-react';
+import { Play, Plus, Clock, Dumbbell, Calendar, Flame, ChevronRight, Trophy, Sparkles } from 'lucide-react';
 import { hapticTap } from '../../utils/audioHaptics';
 
 interface WorkoutHubScreenProps {
   workoutHistory: WorkoutSession[];
+  assignedWorkout?: AssignedWorkout | null;
   onStartRoutine: (routine: RoutineTemplate) => void;
+  onStartAssignedWorkout?: () => void;
   onStartCustomWorkout: () => void;
   onViewExerciseDetail?: (exercise: Exercise) => void;
 }
 
 export const WorkoutHubScreen: React.FC<WorkoutHubScreenProps> = ({
   workoutHistory,
+  assignedWorkout,
   onStartRoutine,
+  onStartAssignedWorkout,
   onStartCustomWorkout
 }) => {
   const recommendedRoutine = DEFAULT_ROUTINES[0]; // Push Day
@@ -23,44 +27,65 @@ export const WorkoutHubScreen: React.FC<WorkoutHubScreenProps> = ({
   const totalWorkouts = workoutHistory.length;
   const totalVolumeAllTime = workoutHistory.reduce((acc, curr) => acc + curr.totalVolumeKg, 0);
 
+  const heroTitle = assignedWorkout ? assignedWorkout.title : recommendedRoutine.title;
+  const heroDescription = assignedWorkout
+    ? (assignedWorkout.notes || 'Personalized routine prescribed by your fitness coach.')
+    : recommendedRoutine.description;
+  const heroExerciseCount = assignedWorkout
+    ? assignedWorkout.exercises.length
+    : recommendedRoutine.exerciseIds.length;
+
   return (
     <div className="space-y-5 pb-28 text-left">
-      {/* Hero: Today's Recommended Workout Banner */}
+      {/* Hero: Today's Assigned / Recommended Workout Banner */}
       <div className="relative rounded-3xl overflow-hidden border border-amber-500/40 p-5 bg-gradient-to-br from-amber-950/40 via-[#0e1320] to-[#07090e] shadow-[0_10px_30px_rgba(245,158,11,0.15)]">
         {/* Background ambient lighting */}
         <div className="absolute top-0 right-0 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="flex items-center space-x-2 text-xs font-tech text-amber-400 font-bold uppercase tracking-wider mb-2">
-          <Flame className="w-4 h-4 fill-amber-400 text-amber-400" />
-          <span>TODAY'S MISSION</span>
+          {assignedWorkout ? (
+            <>
+              <Sparkles className="w-4 h-4 fill-amber-400 text-amber-400" />
+              <span>COACH ASSIGNED WORKOUT</span>
+            </>
+          ) : (
+            <>
+              <Flame className="w-4 h-4 fill-amber-400 text-amber-400" />
+              <span>RECOMMENDED SPLIT</span>
+            </>
+          )}
         </div>
 
         <h2 className="text-2xl font-black text-white font-display tracking-tight leading-tight">
-          {recommendedRoutine.title}
+          {heroTitle}
         </h2>
 
         <p className="text-xs text-slate-300 mt-1.5 leading-relaxed max-w-sm">
-          {recommendedRoutine.description}
+          {heroDescription}
         </p>
 
         <div className="flex items-center space-x-4 text-xs font-tech text-slate-400 mt-4 mb-5">
           <div className="flex items-center space-x-1.5">
             <Clock className="w-3.5 h-3.5 text-amber-400" />
-            <span>~{recommendedRoutine.estimatedMinutes} Mins</span>
+            <span>~45-55 Mins</span>
           </div>
           <div className="flex items-center space-x-1.5">
             <Dumbbell className="w-3.5 h-3.5 text-amber-400" />
-            <span>{recommendedRoutine.exerciseIds.length} Movements</span>
+            <span>{heroExerciseCount} Movements</span>
           </div>
           <span className="px-2 py-0.5 rounded bg-white/10 text-[10px] text-white font-bold">
-            {recommendedRoutine.level}
+            Hypertrophy
           </span>
         </div>
 
         <button
           onClick={() => {
             hapticTap();
-            onStartRoutine(recommendedRoutine);
+            if (assignedWorkout && onStartAssignedWorkout) {
+              onStartAssignedWorkout();
+            } else {
+              onStartRoutine(recommendedRoutine);
+            }
           }}
           className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-black text-sm uppercase font-display tracking-wider flex items-center justify-center space-x-2 shadow-[0_0_20px_rgba(245,158,11,0.4)] active:scale-[0.98] transition-all"
         >

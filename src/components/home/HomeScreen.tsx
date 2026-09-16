@@ -13,7 +13,9 @@ import {
   Calendar,
   Phone,
   MessageCircle,
-  Apple
+  Apple,
+  RotateCcw,
+  Bell
 } from 'lucide-react';
 import { 
   AssignedWorkout, 
@@ -25,7 +27,9 @@ import {
   ChatMessage 
 } from '../../types';
 import { hapticTap } from '../../utils/audioHaptics';
-import { syncedStore } from '../../services/syncedStore';
+import { syncedStore, getTodayDateKey } from '../../services/syncedStore';
+import { TodayMissionCard } from './TodayMissionCard';
+import { calculateWeightProgress } from '../../utils/weightProgress';
 
 interface HomeScreenProps {
   clientName?: string;
@@ -44,6 +48,7 @@ interface HomeScreenProps {
   waterMl: number;
   weightHistory: WeightRecord[];
   latestMessage?: ChatMessage | null;
+  unreadNotificationsCount?: number;
   onStartWorkout: () => void;
   onResumeWorkout?: () => void;
   onDiscardWorkout?: () => void;
@@ -51,6 +56,9 @@ interface HomeScreenProps {
   onNavigateToDiet: () => void;
   onNavigateToProgress: () => void;
   onNavigateToTrainer: () => void;
+  onNavigateToWorkout?: () => void;
+  onOpenNotifications?: () => void;
+  onOpenProfile?: () => void;
   onAddWater: (amountMl: number) => void;
 }
 
@@ -69,7 +77,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   loggedMeals,
   goals,
   waterMl,
+  weightHistory = [],
   latestMessage,
+  unreadNotificationsCount = 0,
   onStartWorkout,
   onResumeWorkout,
   onDiscardWorkout,
@@ -77,6 +87,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onNavigateToDiet,
   onNavigateToProgress,
   onNavigateToTrainer,
+  onNavigateToWorkout,
+  onOpenNotifications,
+  onOpenProfile,
   onAddWater
 }) => {
   // Time-aware greeting
@@ -121,17 +134,55 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         .toUpperCase()
     : 'YT';
 
-  // Calculate actual daily consumed calories & macros
-  const totalCalories = loggedMeals.reduce((sum, m) => sum + m.calories, 0);
-  const totalProtein = Math.round(loggedMeals.reduce((sum, m) => sum + m.protein, 0));
-  const totalCarbs = Math.round(loggedMeals.reduce((sum, m) => sum + m.carbs, 0));
-  const totalFat = Math.round(loggedMeals.reduce((sum, m) => sum + m.fat, 0));
-  const totalFiber = Math.round(loggedMeals.reduce((sum, m) => sum + (m.fiber || 0), 0));
+  // Calculate actual daily consumed calories & macros strictly for TODAY
+  const todayKey = getTodayDateKey();
+  const todayLoggedMeals = loggedMeals.filter((m) => (m.date || todayKey) === todayKey);
+  const totalCalories = todayLoggedMeals.reduce((sum, m) => sum + m.calories, 0);
+  const totalProtein = Math.round(todayLoggedMeals.reduce((sum, m) => sum + m.protein, 0));
+  const totalCarbs = Math.round(todayLoggedMeals.reduce((sum, m) => sum + m.carbs, 0));
+  const totalFat = Math.round(todayLoggedMeals.reduce((sum, m) => sum + m.fat, 0));
+  const totalFiber = Math.round(todayLoggedMeals.reduce((sum, m) => sum + (m.fiber || 0), 0));
 
-  // Goal weight calculations
-  const totalWeightToLose = Math.max(0.1, startWeightKg - goalWeightKg);
-  const weightLostSoFar = Math.max(0, startWeightKg - currentWeightKg);
-  const progressPercent = Math.min(100, Math.round((weightLostSoFar / totalWeightToLose) * 100));
+  // Check if a workout was completed TODAY
+  const workoutHistory = syncedStore.getState().workoutHistory || [];
+  const completedWorkoutToday = workoutHistory.find((w) => {
+    if (!w.startTime && !w.endTime) return false;
+    const sessionTime = w.endTime || w.startTime;
+    const sessionDate = new Date(sessionTime);
+    const now = new Date();
+    return (
+      sessionDate.getFullYear() === now.getFullYear() &&
+      sessionDate.getMonth() === now.getMonth() &&
+      sessionDate.getDate() === now.getDate()
+    );
+  });
+
+  // Goal weight calculations (Universal Engine for both Weight Loss & Muscle Gain)
+  const weightProgress = calculateWeightProgress(startWeightKg, currentWeightKg, goalWeightKg);
+  const progressPercent = weightProgress.progressPercent;
+
+  // Today's Mission Telemetry
+  const weightLoggedToday = (weightHistory || []).some((w) => {
+    if (!w.date) return false;
+    const d = new Date(w.date);
+    const n = new Date();
+    return (
+      d.getFullYear() === n.getFullYear() &&
+      d.getMonth() === n.getMonth() &&
+      d.getDate() === n.getDate()
+    );
+  });
+
+  const coachCheckinDone = latestMessage
+    ? new Date(latestMessage.timestamp).toDateString() === new Date().toDateString()
+    : false;
+
+  const workoutTotalExercises = effectiveWorkout?.exercises?.length || 6;
+  const workoutLoggedExercises = completedWorkoutToday
+    ? workoutTotalExercises
+    : (activeWorkoutSession
+        ? activeWorkoutSession.exercises.filter((e) => e.sets.some((s) => s.completed)).length
+        : 0);
 
   const todayStr = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
@@ -143,7 +194,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
   return (
     <div className="space-y-4 pb-20 text-left animate-fadeIn">
-      {/* 1. Header Greeting & Date */}
+      {/* 1. Header Greeting & Date with Notifications & Profile Actions */}
       <div className="flex items-center justify-between pt-1">
         <div>
           <div className="flex items-center space-x-1.5 text-xs text-amber-500 dark:text-amber-400 font-tech font-bold uppercase tracking-wider">
@@ -154,16 +205,65 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             {getGreeting()}, {clientName}
           </h1>
         </div>
-        <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400 font-black text-sm shadow-sm">
-          {clientInitials}
+
+        <div className="flex items-center space-x-2">
+          {/* Notification Center Bell */}
+          <button
+            onClick={() => {
+              hapticTap();
+              if (onOpenNotifications) onOpenNotifications();
+            }}
+            title="Notifications"
+            aria-label="Notifications"
+            className="relative p-2.5 rounded-2xl bg-white dark:bg-[#0c101a] border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:text-amber-500 dark:hover:text-amber-400 hover:border-amber-500/30 shadow-sm transition-all active:scale-95"
+          >
+            <Bell className="w-5 h-5" />
+            {unreadNotificationsCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-amber-500 text-black font-tech font-black text-[10px] flex items-center justify-center border-2 border-white dark:border-[#04060a] shadow-sm animate-pulse">
+                {unreadNotificationsCount}
+              </span>
+            )}
+          </button>
+
+          {/* Member Profile Avatar button */}
+          <button
+            onClick={() => {
+              hapticTap();
+              if (onOpenProfile) onOpenProfile();
+            }}
+            title="My Profile & Settings"
+            aria-label="Profile and Settings"
+            className="w-10 h-10 rounded-2xl bg-amber-500/15 border border-amber-500/40 flex items-center justify-center text-amber-600 dark:text-amber-400 font-black text-sm shadow-sm hover:scale-105 active:scale-95 transition-all"
+          >
+            {clientInitials}
+          </button>
         </div>
       </div>
 
       {/* Responsive Grid: 1 column on Mobile, 12 columns on Desktop / Laptop */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         
-        {/* LEFT COLUMN: Target Physique Mission, Unfinished Workout, Today's Workout & Nutrition (7 cols on desktop) */}
+        {/* LEFT COLUMN: Today's Mission Focus, Target Physique Mission, Unfinished Workout, Today's Workout & Nutrition */}
         <div className="lg:col-span-7 space-y-4">
+          
+          {/* JAWAN 2.0 HERO: What should I do right now? -> TODAY'S MISSION CHECKLIST */}
+          <TodayMissionCard
+            workoutCompleted={!!completedWorkoutToday}
+            workoutTotalExercises={workoutTotalExercises}
+            workoutLoggedExercises={workoutLoggedExercises}
+            consumedCalories={totalCalories}
+            targetCalories={goals.calories}
+            waterMl={waterMl}
+            targetWaterMl={goals.waterMl || 3000}
+            weightLoggedToday={weightLoggedToday}
+            coachCheckinDone={coachCheckinDone}
+            onNavigateToWorkout={onNavigateToWorkout || onStartWorkout}
+            onNavigateToDiet={onNavigateToDiet}
+            onNavigateToProgress={onNavigateToProgress}
+            onOpenCoachChat={onNavigateToTrainer}
+            onAddWater={onAddWater}
+          />
+
           {/* 2. Target Goal Hero Banner - Light Theme & Dark Theme Flawless */}
           <div className="bg-white dark:bg-gradient-to-br dark:from-[#121929] dark:via-[#0d1322] dark:to-[#0a0e1a] rounded-2xl p-4 border border-slate-200 dark:border-white/10 relative overflow-hidden shadow-sm dark:shadow-lg">
             <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
@@ -202,7 +302,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             </div>
 
             <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-slate-100 dark:border-white/5 text-[11px] text-slate-500 dark:text-slate-400">
-              <span>↓ {weightLostSoFar.toFixed(1)} kg dropped since joining</span>
+              <span>{weightProgress.displayChangeLabel} since joining</span>
               <button
                 onClick={() => {
                   hapticTap();
@@ -285,7 +385,51 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               )}
             </div>
 
-            {effectiveWorkout ? (
+            {completedWorkoutToday ? (
+              <div className="space-y-3 p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                      <CheckCircle2 className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-tech font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                        CRUSHED TODAY'S WORKOUT 🎉
+                      </span>
+                      <h4 className="text-sm font-black text-slate-900 dark:text-white font-display">
+                        {completedWorkoutToday.routineName}
+                      </h4>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-tech font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                    Done Today
+                  </span>
+                </div>
+
+                <div className="flex items-center space-x-3 text-xs text-slate-600 dark:text-slate-300 pt-1 border-t border-emerald-500/20 font-tech">
+                  <div>
+                    Volume: <strong className="text-emerald-600 dark:text-emerald-400 font-bold">{completedWorkoutToday.totalVolumeKg.toLocaleString()} kg</strong>
+                  </div>
+                  <div>•</div>
+                  <div>
+                    Duration: <strong className="text-slate-900 dark:text-white font-bold">{Math.round(completedWorkoutToday.durationSeconds / 60)} min</strong>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2 pt-1">
+                  <button
+                    onClick={() => {
+                      hapticTap();
+                      onStartWorkout();
+                    }}
+                    className="flex-1 py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-amber-600 dark:text-amber-400 font-tech font-bold text-xs border border-slate-200 dark:border-white/10 transition-all flex items-center justify-center space-x-1.5"
+                  >
+                    <Play className="w-3.5 h-3.5 fill-amber-500" />
+                    <span>Train Another Session / Repeat</span>
+                  </button>
+                </div>
+              </div>
+            ) : effectiveWorkout ? (
               <>
                 <div className="space-y-2 mb-4">
                   <div className="flex items-center space-x-2 text-xs text-slate-600 dark:text-slate-300">

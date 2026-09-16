@@ -2,24 +2,128 @@
 <html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/logo-3d-tight.png" />
-    <link rel="shortcut icon" type="image/png" href="/logo-3d-tight.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+
+    <!-- ===================================================================
+         VIEWPORT — critical for all phone sizes (320px iPhone SE → 428px)
+         viewport-fit=cover enables edge-to-edge on iPhone notch & Dynamic Island
+         =================================================================== -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
+
+    <!-- Primary SEO & Description -->
     <title>Jawan Fitness | 3D Workout Tracker & Indian Diet</title>
-    
-    <!-- PWA & Mobile Web App Meta Tags -->
+    <meta name="description" content="Commercial-grade fitness training with 3D animated exercises, active workout set logger, and Indian calorie & macro counter. Built for Salem's top gym." />
+    <meta name="keywords" content="fitness app, workout tracker, Indian diet, calorie counter, gym app, 3D exercises, Salem gym, Jawan Fitness" />
+    <meta name="author" content="Jawan Fitness" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://jawan-fitness.pages.dev/" />
+
+    <!-- ===================================================================
+         FAVICON — multi-format for all browsers
+         =================================================================== -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon.png" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+
+    <!-- ===================================================================
+         PWA MANIFEST LINK — Firefox, Samsung Internet, and older browsers
+         that don't auto-detect the injected manifest need this explicit link
+         =================================================================== -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <!-- ===================================================================
+         THEME COLORS — per-OS adaptive
+         Chrome/Edge/Samsung Internet Android: dark obsidian
+         =================================================================== -->
     <meta name="theme-color" content="#07090e" />
+    <!-- Light mode fallback for browsers supporting media query on theme-color -->
+    <meta name="theme-color" content="#f4f6fb" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#07090e" media="(prefers-color-scheme: dark)" />
+    <meta name="color-scheme" content="dark light" />
+
+    <!-- ===================================================================
+         ANDROID / CHROME META
+         =================================================================== -->
     <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="Jawan Fitness" />
+
+    <!-- ===================================================================
+         APPLE / iOS / iPadOS / macOS Safari META
+         Full set required for proper home-screen PWA behaviour on all Apple devices
+         =================================================================== -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
+    <!-- black-translucent = true edge-to-edge on iPhone notch/Dynamic Island -->
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Jawan Fitness" />
-    <link rel="apple-touch-icon" href="/logo-3d-tight.png" />
-    <meta name="description" content="Commercial-grade fitness training, 3D animated exercises, active workout set logger, and Indian calorie counter." />
-    
-    <!-- Preconnect & Fonts: Outfit (Display) + Plus Jakarta Sans (Body) -->
+    <!-- Standard 180×180 touch icon (iPhone 6 Plus and later) -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!-- Additional sizes for older iPhones and iPads -->
+    <link rel="apple-touch-icon" sizes="152x152" href="/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="167x167" href="/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <!-- iPad Pro splash screens (portrait) -->
+    <link rel="apple-touch-startup-image"
+      media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+      href="/pwa-512x512.png" />
+    <!-- iPhone 14 Pro Max splash screen -->
+    <link rel="apple-touch-startup-image"
+      media="screen and (device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+      href="/pwa-512x512.png" />
+    <!-- iPhone 14 / 13 / 12 splash screen -->
+    <link rel="apple-touch-startup-image"
+      media="screen and (device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+      href="/pwa-512x512.png" />
+    <!-- iPhone SE 3rd gen / iPhone 8 -->
+    <link rel="apple-touch-startup-image"
+      media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+      href="/pwa-512x512.png" />
+
+    <!-- ===================================================================
+         MICROSOFT / WINDOWS META
+         Pins the PWA to the Windows taskbar and Start menu correctly
+         =================================================================== -->
+    <meta name="msapplication-TileColor" content="#07090e" />
+    <meta name="msapplication-TileImage" content="/pwa-512x512.png" />
+    <meta name="msapplication-config" content="none" />
+    <meta name="msapplication-starturl" content="/" />
+    <meta name="msapplication-navbutton-color" content="#f59e0b" />
+    <meta name="msapplication-tap-highlight" content="no" />
+
+    <!-- ===================================================================
+         OPEN GRAPH — Facebook, WhatsApp, LinkedIn, Telegram previews
+         =================================================================== -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Jawan Fitness" />
+    <meta property="og:title" content="Jawan Fitness | 3D Workout Tracker & Indian Diet" />
+    <meta property="og:description" content="Commercial-grade fitness training with 3D animated exercises, active workout set logger, and Indian calorie counter." />
+    <meta property="og:image" content="/pwa-512x512.png" />
+    <meta property="og:image:width" content="512" />
+    <meta property="og:image:height" content="512" />
+    <meta property="og:image:alt" content="Jawan Fitness App Logo" />
+    <meta property="og:url" content="https://jawan-fitness.pages.dev/" />
+    <meta property="og:locale" content="en_IN" />
+
+    <!-- ===================================================================
+         TWITTER / X CARD — for Twitter / X link previews
+         =================================================================== -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Jawan Fitness | 3D Workout & Diet" />
+    <meta name="twitter:description" content="Elite workout tracking with 3D biomechanics and Indian macro counter." />
+    <meta name="twitter:image" content="/pwa-512x512.png" />
+
+    <!-- ===================================================================
+         PERFORMANCE — preconnect to 3rd-party origins before browser needs them
+         =================================================================== -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+    <!-- DNS prefetch for the API backend -->
+    <link rel="dns-prefetch" href="https://jawan-fitness-admin.pages.dev" />
+
+    <!-- Fonts: Outfit (Display) + Plus Jakarta Sans (Body) + Space Grotesk (Tech/Mono) -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
   </head>
   <body class="bg-[#07090e] text-slate-100 antialiased selection:bg-amber-500 selection:text-black min-h-screen overflow-x-hidden font-['Plus_Jakarta_Sans',sans-serif]">
     <div id="root"></div>

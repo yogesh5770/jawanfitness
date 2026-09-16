@@ -10,10 +10,16 @@ import {
   Check,
   Flame,
   Award,
-  Sparkles
+  Sparkles,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  RotateCcw,
+  Clock,
+  AlertCircle
 } from 'lucide-react';
 import { hapticTap } from '../../utils/audioHaptics';
-import { syncedStore } from '../../services/syncedStore';
+import { syncedStore, getTodayDateKey } from '../../services/syncedStore';
 
 interface DietScreenProps {
   trainerName?: string;
@@ -36,6 +42,32 @@ export const DietScreen: React.FC<DietScreenProps> = ({
   onRemoveMealItem,
   onUpdateWater
 }) => {
+  const todayKey = getTodayDateKey();
+  const [selectedDate, setSelectedDate] = useState<string>(todayKey);
+  const [viewScope, setViewScope] = useState<'today' | 'yesterday' | 'all'>('today');
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+
+  const yesterdayDateObj = new Date();
+  yesterdayDateObj.setDate(yesterdayDateObj.getDate() - 1);
+  const yesterdayKey = getTodayDateKey(yesterdayDateObj);
+
+  const formatDisplayDate = (key: string) => {
+    try {
+      const [y, m, d] = key.split('-').map(Number);
+      const date = new Date(y, m - 1, d);
+      return date.toLocaleDateString('en-IN', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric'
+      });
+    } catch {
+      return key;
+    }
+  };
+
+  const isViewingToday = selectedDate === todayKey && viewScope !== 'all';
+  const isViewingYesterday = selectedDate === yesterdayKey && viewScope !== 'all';
+
   const [activeMealCategory, setActiveMealCategory] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack' | null>(null);
   const [foodSearchQuery, setFoodSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<FoodItem[]>(CURATED_INDIAN_FOODS);
@@ -78,19 +110,29 @@ export const DietScreen: React.FC<DietScreenProps> = ({
     };
   }, [foodSearchQuery, foodFilterCategory]);
 
-  // Compute live intake totals
-  const totalCalories = Math.round(loggedMeals.reduce((acc, m) => acc + m.calories, 0));
-  const totalProtein = Math.round(loggedMeals.reduce((acc, m) => acc + m.protein, 0));
-  const totalCarbs = Math.round(loggedMeals.reduce((acc, m) => acc + m.carbs, 0));
-  const totalFat = Math.round(loggedMeals.reduce((acc, m) => acc + m.fat, 0));
-  const totalFiber = Math.round(loggedMeals.reduce((acc, m) => acc + (m.fiber || 0), 0));
+  // Compute live intake totals strictly for the selected view scope
+  const displayedMeals = loggedMeals.filter((m) => {
+    if (viewScope === 'all') return true;
+    const mealDate = m.date || todayKey;
+    return mealDate === selectedDate;
+  });
+
+  const totalCalories = Math.round(displayedMeals.reduce((acc, m) => acc + m.calories, 0));
+  const totalProtein = Math.round(displayedMeals.reduce((acc, m) => acc + m.protein, 0));
+  const totalCarbs = Math.round(displayedMeals.reduce((acc, m) => acc + m.carbs, 0));
+  const totalFat = Math.round(displayedMeals.reduce((acc, m) => acc + m.fat, 0));
+  const totalFiber = Math.round(displayedMeals.reduce((acc, m) => acc + (m.fiber || 0), 0));
+
+  const effectiveWater = isViewingToday
+    ? waterMl
+    : (syncedStore.getState().dailyWaterLog?.[selectedDate] ?? (selectedDate === todayKey ? waterMl : 0));
 
   // Percentages
   const caloriePercent = Math.min(100, Math.round((totalCalories / goals.calories) * 100));
   const proteinPercent = Math.min(100, Math.round((totalProtein / goals.protein) * 100));
   const carbsPercent = Math.min(100, Math.round((totalCarbs / goals.carbs) * 100));
   const fatPercent = Math.min(100, Math.round((totalFat / goals.fat) * 100));
-  const waterPercent = Math.min(100, Math.round((waterMl / goals.waterMl) * 100));
+  const waterPercent = Math.min(100, Math.round((effectiveWater / goals.waterMl) * 100));
 
   const mealTypes: { type: 'breakfast' | 'lunch' | 'dinner' | 'snack'; label: string; icon: string }[] = [
     { type: 'breakfast', label: 'Breakfast', icon: '🌅' },
@@ -114,7 +156,8 @@ export const DietScreen: React.FC<DietScreenProps> = ({
       carbs: Math.round(selectedFood.carbs * servings),
       fat: Math.round(selectedFood.fat * servings),
       fiber: Math.round((selectedFood.fiber || 0) * servings),
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      date: isViewingToday ? todayKey : selectedDate
     };
 
     onAddMealItem(newLogItem);
@@ -126,14 +169,174 @@ export const DietScreen: React.FC<DietScreenProps> = ({
 
   return (
     <div className="space-y-4 pb-28 text-left">
+      {/* 0. Daily Date Navigator & Cycle Refresh Controller */}
+      <div className="bg-[#0c101a] border border-white/10 rounded-3xl p-4 shadow-lg space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => {
+                hapticTap();
+                const d = new Date(selectedDate);
+                d.setDate(d.getDate() - 1);
+                const prevKey = getTodayDateKey(d);
+                setSelectedDate(prevKey);
+                setViewScope('custom' as any);
+              }}
+              title="Previous Day"
+              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            <div className="flex items-center space-x-1.5">
+              <Calendar className="w-4 h-4 text-amber-500" />
+              <span className="text-xs sm:text-sm font-black text-white font-display">
+                {isViewingToday
+                  ? `Today (${formatDisplayDate(todayKey)})`
+                  : isViewingYesterday
+                  ? `Yesterday (${formatDisplayDate(yesterdayKey)})`
+                  : viewScope === 'all'
+                  ? 'All History Records'
+                  : formatDisplayDate(selectedDate)}
+              </span>
+              {isViewingToday && (
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              )}
+            </div>
+
+            <button
+              disabled={isViewingToday}
+              onClick={() => {
+                hapticTap();
+                const d = new Date(selectedDate);
+                d.setDate(d.getDate() + 1);
+                const nextKey = getTodayDateKey(d);
+                if (nextKey <= todayKey) {
+                  setSelectedDate(nextKey);
+                  setViewScope(nextKey === todayKey ? 'today' : ('custom' as any));
+                }
+              }}
+              title="Next Day"
+              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+
+          <button
+            onClick={() => {
+              hapticTap();
+              setIsResetConfirmOpen(true);
+            }}
+            title="Reset today's meal diary"
+            className="px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs font-tech font-bold flex items-center space-x-1.5 transition-all active:scale-95"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Refresh Today</span>
+          </button>
+        </div>
+
+        {/* Quick Scope Filter Tabs */}
+        <div className="flex items-center justify-between pt-1 border-t border-white/5">
+          <div className="flex items-center space-x-1.5">
+            <button
+              onClick={() => {
+                hapticTap();
+                setSelectedDate(todayKey);
+                setViewScope('today');
+              }}
+              className={`px-3 py-1 rounded-xl text-xs font-tech font-bold transition-all ${
+                viewScope === 'today' && selectedDate === todayKey
+                  ? 'bg-amber-500 text-black shadow-md'
+                  : 'bg-slate-800/80 text-slate-400 hover:text-white'
+              }`}
+            >
+              Today
+            </button>
+            <button
+              onClick={() => {
+                hapticTap();
+                setSelectedDate(yesterdayKey);
+                setViewScope('yesterday');
+              }}
+              className={`px-3 py-1 rounded-xl text-xs font-tech font-bold transition-all ${
+                viewScope === 'yesterday' || (selectedDate === yesterdayKey && viewScope !== 'all')
+                  ? 'bg-amber-500 text-black shadow-md'
+                  : 'bg-slate-800/80 text-slate-400 hover:text-white'
+              }`}
+            >
+              Yesterday
+            </button>
+            <button
+              onClick={() => {
+                hapticTap();
+                setViewScope('all');
+              }}
+              className={`px-3 py-1 rounded-xl text-xs font-tech font-bold transition-all ${
+                viewScope === 'all'
+                  ? 'bg-amber-500 text-black shadow-md'
+                  : 'bg-slate-800/80 text-slate-400 hover:text-white'
+              }`}
+            >
+              All Logs
+            </button>
+          </div>
+
+          <div className="flex items-center space-x-1 text-[10px] text-slate-400 font-tech">
+            <Clock className="w-3 h-3 text-amber-400" />
+            <span className="hidden sm:inline">Daily Rollover at 12:00 AM</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Reset Confirmation Modal */}
+      {isResetConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+          <div className="bg-[#0e131f] border border-amber-500/30 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl animate-scaleUp">
+            <div className="flex items-center space-x-3 text-amber-400">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-500">
+                <RotateCcw className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-white font-display">Refresh Today's Diary?</h3>
+                <p className="text-xs text-slate-400">Clear today's meals and water</p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              This will clear meals logged for <strong>Today ({formatDisplayDate(todayKey)})</strong> and reset today's water to 0. All past days' records will remain preserved in your history.
+            </p>
+            <div className="flex items-center space-x-2 pt-2">
+              <button
+                onClick={() => setIsResetConfirmOpen(false)}
+                className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold font-tech"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  hapticTap();
+                  syncedStore.refreshTodayDiet();
+                  setIsResetConfirmOpen(false);
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black text-xs font-black font-display uppercase tracking-wider shadow-lg"
+              >
+                Confirm Refresh
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 1. Daily Calories & Macro Target Dashboard */}
       <div className="bg-[#0c101a] border border-white/10 rounded-3xl p-5 shadow-lg relative overflow-hidden">
         <div className="flex items-center justify-between mb-4">
           <div>
             <span className="text-[10px] font-tech uppercase tracking-widest text-amber-500 font-bold">
-              NUTRITION & MEAL DIARY
+              {isViewingToday ? "TODAY'S INTAKE DIARY" : `NUTRITION • ${formatDisplayDate(selectedDate).toUpperCase()}`}
             </span>
-            <h2 className="text-xl font-black text-white font-display">Daily Intake Tracker</h2>
+            <h2 className="text-xl font-black text-white font-display">
+              {isViewingToday ? 'Daily Intake Tracker' : `Intake Log (${formatDisplayDate(selectedDate)})`}
+            </h2>
           </div>
           <div className="flex items-center space-x-1 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-full text-xs font-bold text-amber-400 font-tech">
             <Flame className="w-3.5 h-3.5 fill-amber-400" />
@@ -328,7 +531,7 @@ export const DietScreen: React.FC<DietScreenProps> = ({
               </span>
             </div>
             <p className="text-xs text-slate-400 font-tech">
-              {(waterMl / 1000).toFixed(2)}L / {(goals.waterMl / 1000).toFixed(1)}L goal
+              {(effectiveWater / 1000).toFixed(2)}L / {(goals.waterMl / 1000).toFixed(1)}L goal
             </p>
           </div>
         </div>
@@ -356,10 +559,10 @@ export const DietScreen: React.FC<DietScreenProps> = ({
         </div>
       </div>
 
-      {/* 3. TODAY'S DYNAMIC MEAL LOGS */}
+      {/* 3. DYNAMIC MEAL LOGS FOR SELECTED DATE */}
       <div className="space-y-3">
         {mealTypes.map((meal) => {
-          const items = loggedMeals.filter((m) => m.mealType === meal.type);
+          const items = displayedMeals.filter((m) => m.mealType === meal.type);
           const mealCalories = items.reduce((acc, i) => acc + i.calories, 0);
           const mealProtein = items.reduce((acc, i) => acc + i.protein, 0);
 

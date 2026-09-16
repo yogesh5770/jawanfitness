@@ -69,9 +69,18 @@ export interface AppSyncState {
   messages: ChatMessage[];
   events: SyncEvent[];
   customFoods: FoodItem[];
+  dailyWaterLog?: Record<string, number>;
+  lastActiveDate?: string; // YYYY-MM-DD
 }
 
 import { cloudDbService } from './cloudDatabaseService';
+
+export function getTodayDateKey(dateObj: Date = new Date()): string {
+  const year = dateObj.getFullYear();
+  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const day = String(dateObj.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 const STORAGE_KEY = 'jawan_fitness_clean_slate_v5';
 
@@ -86,6 +95,8 @@ const DEFAULT_STATE: AppSyncState = {
   workoutHistory: [],
   loggedMeals: [],
   waterMl: 0,
+  dailyWaterLog: {},
+  lastActiveDate: '',
   isGoogleFitConnected: false,
   googleFitSteps: 0,
   weightHistory: [],
@@ -108,6 +119,7 @@ class SyncedStore {
   constructor() {
     this.purgeLegacyKeys();
     this.state = this.loadInitialState();
+    this.checkDailyRollover();
     this.initBroadcastBus();
     this.startLiveHeartbeat();
     this.syncFromCloud(true);
@@ -144,16 +156,19 @@ class SyncedStore {
     if (typeof window === 'undefined') return;
 
     window.addEventListener('focus', () => {
+      this.checkDailyRollover();
       this.syncFromCloud(true);
     });
 
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
+        this.checkDailyRollover();
         this.syncFromCloud(true);
       }
     });
 
     window.addEventListener('online', () => {
+      this.checkDailyRollover();
       this.syncFromCloud(true);
     });
 
@@ -823,11 +838,67 @@ class SyncedStore {
     );
   }
 
-  // 4. DIET & ACTIVITY ACTIONS
+  // 4. DIET, ACTIVITY & DAILY ROLLOVER ACTIONS
+  public checkDailyRollover(): boolean {
+    const today = getTodayDateKey();
+    if (!this.state.lastActiveDate) {
+      this.state = {
+        ...this.state,
+        lastActiveDate: today,
+        dailyWaterLog: {
+          ...(this.state.dailyWaterLog || {}),
+          [today]: this.state.waterMl || 0
+        }
+      };
+      this.persist();
+      return false;
+    }
+
+    if (this.state.lastActiveDate !== today) {
+      const prevDate = this.state.lastActiveDate;
+      const prevWater = this.state.waterMl || 0;
+      const updatedWaterLog = {
+        ...(this.state.dailyWaterLog || {}),
+        [prevDate]: prevWater,
+        [today]: 0
+      };
+
+      // Discard active workout session if it's stale from yesterday (older than 6h)
+      let updatedSession = this.state.activeWorkoutSession;
+      if (updatedSession && (Date.now() - (updatedSession.startTime || 0) > 6 * 3600 * 1000)) {
+        updatedSession = null;
+      }
+
+      this.state = {
+        ...this.state,
+        lastActiveDate: today,
+        waterMl: 0,
+        dailyWaterLog: updatedWaterLog,
+        activeWorkoutSession: updatedSession
+      };
+
+      this.logEvent(
+        'CLIENT',
+        'Daily Tracker Refreshed 🌅',
+        `New day started (${today}). Daily calories, macros, water, and workout schedule refreshed for today.`,
+        'Diet'
+      );
+      this.notify();
+      return true;
+    }
+    return false;
+  }
+
   public logMeal(item: LoggedMealItem) {
+    const today = getTodayDateKey();
+    const itemWithDate: LoggedMealItem = {
+      ...item,
+      date: item.date || today
+    };
+
     this.state = {
       ...this.state,
-      loggedMeals: [...this.state.loggedMeals, item]
+      loggedMeals: [...this.state.loggedMeals, itemWithDate]
     };
 
     const client = this.state.clients.find((c) => c.id === this.state.activeClientId);
@@ -848,9 +919,92 @@ class SyncedStore {
   }
 
   public updateWater(deltaMl: number) {
+    const today = getTodayDateKey();
+    const currentWater = (this.state.dailyWaterLog && this.state.dailyWaterLog[today] !== undefined)
+      ? this.state.dailyWaterLog[today]
+      : (this.state.lastActiveDate === today ? this.state.waterMl : 0);
+    const newWater = Math.max(0, currentWater + deltaMl);
+
     this.state = {
       ...this.state,
-      waterMl: Math.max(0, this.state.waterMl + deltaMl)
+      lastActiveDate: today,
+      waterMl: newWater,
+      dailyWaterLog: {
+        ...(this.state.dailyWaterLog || {}),
+        [today]: newWater
+      }
+    };
+    this.notify();
+  }
+
+  // --- MANUAL / ON-DEMAND DAILY REFRESH ACTIONS ---
+  public refreshTodayDiet() {
+    const today = getTodayDateKey();
+    // Keep past days intact in history, only remove today's logged meals!
+    const retainedMeals = (this.state.loggedMeals || []).filter((m) => m.date && m.date !== today);
+
+    this.state = {
+      ...this.state,
+      loggedMeals: retainedMeals,
+      waterMl: 0,
+      dailyWaterLog: {
+        ...(this.state.dailyWaterLog || {}),
+        [today]: 0
+      },
+      lastActiveDate: today
+    };
+
+    this.logEvent(
+      'CLIENT',
+      'Daily Diet Refreshed 🥗',
+      `Today's meal diary and water tracker have been reset for a fresh start today.`,
+      'Diet'
+    );
+    this.notify();
+  }
+
+  public refreshTodayWorkout() {
+    this.state = {
+      ...this.state,
+      activeWorkoutSession: null
+    };
+
+    this.logEvent(
+      'CLIENT',
+      'Daily Workout Refreshed 💪',
+      `Workout tracker refreshed. Ready to start today's assigned workout routine.`,
+      'Session'
+    );
+    this.notify();
+  }
+
+  public refreshTodayChat(clientName?: string, trainerName?: string) {
+    const coachName = trainerName || 'Coach';
+    const cName = clientName || 'Champion';
+    const todayStr = new Date().toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'short',
+      day: 'numeric'
+    });
+    const greetingText = `🌅 Good morning, ${cName}! Today's coach check-in (${todayStr}): Ready for your workout and nutrition goals today? Let me know if you need any adjustments or form tips!`;
+
+    // Only post if not already posted today
+    const alreadyPosted = (this.state.messages || []).some(
+      (m) => m.text.includes(todayStr) && m.sender === 'trainer'
+    );
+    if (!alreadyPosted) {
+      this.sendMessage('trainer', greetingText, undefined, undefined, coachName);
+    }
+  }
+
+  public clearClientChat(clientId?: string) {
+    const targetId = clientId || this.state.activeClientId;
+    this.state = {
+      ...this.state,
+      messages: (this.state.messages || []).filter((m) => {
+        if (!targetId) return false;
+        return m.clientId !== targetId;
+      })
     };
     this.notify();
   }

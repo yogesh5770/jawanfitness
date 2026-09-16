@@ -23,6 +23,10 @@ import { navigateToRole } from '../../services/appRouter';
 import { authService, AuthUser } from '../../services/authService';
 import { ChangePasswordModal } from '../common/ChangePasswordModal';
 import { ThemeToggle } from '../common/ThemeToggle';
+import { WorkoutHubScreen } from '../workout/WorkoutHubScreen';
+import { ProfileScreen } from '../profile/ProfileScreen';
+import { FloatingCoachButton } from '../common/FloatingCoachButton';
+import { NotificationCenterModal, NotificationItem } from '../common/NotificationCenterModal';
 
 export interface ClientAppProps {
   currentUser?: AuthUser | null;
@@ -39,6 +43,37 @@ export const ClientApp: React.FC<ClientAppProps> = ({ currentUser: initialUser, 
   });
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => initialUser || authService.getUser());
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [workoutSubTab, setWorkoutSubTab] = useState<'assigned' | 'library'>('assigned');
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([
+    {
+      id: 'n-1',
+      title: 'Workout Prescribed',
+      description: 'Your coach configured your training session. Review movements and crush today!',
+      type: 'workout',
+      timestamp: Date.now() - 1000 * 60 * 35,
+      read: false,
+      actionTab: 'workout'
+    },
+    {
+      id: 'n-2',
+      title: 'Hydration Target',
+      description: 'Keep your daily water intake on track to support recovery and performance.',
+      type: 'water',
+      timestamp: Date.now() - 1000 * 60 * 120,
+      read: false,
+      actionTab: 'diet'
+    },
+    {
+      id: 'n-3',
+      title: 'Transformation Momentum',
+      description: 'Consistent adherence logged this week! Check your updated body telemetry.',
+      type: 'achievement',
+      timestamp: Date.now() - 1000 * 60 * 360,
+      read: true,
+      actionTab: 'progress'
+    }
+  ]);
 
   useEffect(() => {
     if (initialUser) {
@@ -313,6 +348,64 @@ export const ClientApp: React.FC<ClientAppProps> = ({ currentUser: initialUser, 
     setIsWorkoutModalOpen(true);
   };
 
+  const handleStartRoutineTemplate = (routine: any) => {
+    hapticTap();
+    const exercises: ActiveWorkoutExercise[] = (routine.exerciseIds || []).map((exId: string, idx: number) => {
+      const baseEx = ExerciseService.getById(exId) || ExerciseService.getAll()[idx % ExerciseService.getAll().length];
+      return {
+        exercise: baseEx,
+        sets: [
+          { id: `s-1-${Date.now()}-${idx}`, setNumber: 1, weightKg: 20, reps: 10, completed: false },
+          { id: `s-2-${Date.now()}-${idx}`, setNumber: 2, weightKg: 20, reps: 10, completed: false },
+          { id: `s-3-${Date.now()}-${idx}`, setNumber: 3, weightKg: 20, reps: 10, completed: false }
+        ]
+      };
+    });
+
+    const session: WorkoutSession = {
+      id: `session-${Date.now()}`,
+      routineName: routine.title,
+      startTime: Date.now(),
+      durationSeconds: 0,
+      totalVolumeKg: 0,
+      exercises
+    };
+
+    syncedStore.startWorkoutSession(session);
+    setIsWorkoutModalOpen(true);
+  };
+
+  const handleStartCustomWorkout = () => {
+    hapticTap();
+    const firstEx = ExerciseService.getAll()[0];
+    const session: WorkoutSession = {
+      id: `session-${Date.now()}`,
+      routineName: 'Custom Session',
+      startTime: Date.now(),
+      durationSeconds: 0,
+      totalVolumeKg: 0,
+      exercises: [
+        {
+          exercise: firstEx,
+          sets: [
+            { id: `s-1-${Date.now()}`, setNumber: 1, weightKg: 15, reps: 10, completed: false }
+          ]
+        }
+      ]
+    };
+    syncedStore.startWorkoutSession(session);
+    setIsWorkoutModalOpen(true);
+  };
+
+  const handleSelectNotificationAction = (tab: 'home' | 'workout' | 'diet' | 'progress' | 'trainer') => {
+    setIsNotificationOpen(false);
+    setClientTab(tab as TabType);
+  };
+
+  const handleMarkAllNotificationsRead = () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  };
+
   const isTrainerIdValid = Boolean(activeClient?.trainerId && activeClient.trainerId.trim() !== '' && activeClient.trainerId !== 'Unassigned');
   const isTrainerNameValid = Boolean(activeClient?.trainerName && activeClient.trainerName.trim() !== '' && activeClient.trainerName !== 'Unassigned');
 
@@ -426,19 +519,72 @@ export const ClientApp: React.FC<ClientAppProps> = ({ currentUser: initialUser, 
                 if (syncState.clients.length <= 1) return true;
                 return false;
               }).slice(-1)[0] || null}
+              unreadNotificationsCount={notifications.filter((n) => !n.read).length}
               onStartWorkout={handleStartAssignedWorkout}
               onResumeWorkout={() => setIsWorkoutModalOpen(true)}
               onDiscardWorkout={() => syncedStore.discardWorkoutSession()}
-              onExploreExercises={() => setClientTab('exercises')}
+              onExploreExercises={() => {
+                setWorkoutSubTab('library');
+                setClientTab('workout');
+              }}
+              onNavigateToWorkout={() => setClientTab('workout')}
               onNavigateToDiet={() => setClientTab('diet')}
               onNavigateToProgress={() => setClientTab('progress')}
               onNavigateToTrainer={() => setClientTab('trainer')}
+              onOpenNotifications={() => setIsNotificationOpen(true)}
+              onOpenProfile={() => setClientTab('profile')}
               onAddWater={(ml) => syncedStore.updateWater(ml)}
             />
           )}
 
-          {clientTab === 'exercises' && (
-            <ExercisesScreen onStartExercise={handleStartSingleExercise} clientId={activeClient.id} />
+          {/* WORKOUT TAB: Combines Coach's Assigned Routine and 1,300+ Exercise Library */}
+          {(clientTab === 'workout' || clientTab === 'exercises') && (
+            <div className="space-y-4 animate-fadeIn">
+              {/* Dual Sub-Tabs: Today's Routine vs 1,300+ Exercise Library */}
+              <div className="flex p-1 bg-slate-200/80 dark:bg-white/5 rounded-2xl max-w-md mx-auto border border-slate-300/40 dark:border-white/5">
+                <button
+                  onClick={() => {
+                    hapticTap();
+                    setWorkoutSubTab('assigned');
+                  }}
+                  className={`flex-1 py-2 rounded-xl text-xs font-bold font-display uppercase tracking-wider transition-all ${
+                    workoutSubTab === 'assigned'
+                      ? 'bg-amber-500 text-black shadow-md font-black'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  Today's Workout
+                </button>
+                <button
+                  onClick={() => {
+                    hapticTap();
+                    setWorkoutSubTab('library');
+                  }}
+                  className={`flex-1 py-2 rounded-xl text-xs font-bold font-display uppercase tracking-wider transition-all ${
+                    workoutSubTab === 'library'
+                      ? 'bg-amber-500 text-black shadow-md font-black'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  1,300+ Exercises
+                </button>
+              </div>
+
+              {workoutSubTab === 'assigned' ? (
+                <WorkoutHubScreen
+                  workoutHistory={syncState.workoutHistory || []}
+                  assignedWorkout={assignedWorkout}
+                  onStartRoutine={handleStartRoutineTemplate}
+                  onStartAssignedWorkout={handleStartAssignedWorkout}
+                  onStartCustomWorkout={handleStartCustomWorkout}
+                />
+              ) : (
+                <ExercisesScreen
+                  onStartExercise={handleStartSingleExercise}
+                  clientId={activeClient.id}
+                />
+              )}
+            </div>
           )}
 
           {clientTab === 'diet' && (
@@ -471,13 +617,49 @@ export const ClientApp: React.FC<ClientAppProps> = ({ currentUser: initialUser, 
             />
           )}
 
+          {/* PROFILE TAB: Biometrics, Assigned Coach Card, Theme, Password & App Stats */}
+          {clientTab === 'profile' && (
+            <ProfileScreen
+              client={activeClient}
+              assignedTrainer={assignedTrainer}
+              onOpenChangePassword={() => setIsChangePasswordOpen(true)}
+              onLogout={handleLogoutClient}
+            />
+          )}
+
+          {/* COACH CHAT SCREEN: Real-time 2-Way Messaging & Daily Check-in Chips */}
           {clientTab === 'trainer' && (
             <TrainerChatScreen
               client={activeClient}
               trainerName={currentTrainerName}
+              onBack={() => setClientTab('home')}
             />
           )}
         </main>
+
+        {/* Floating Coach Action Button - Jawan 2.0 UX */}
+        {clientTab !== 'trainer' && (
+          <FloatingCoachButton
+            trainerName={currentTrainerName}
+            trainerAvatarUrl={currentTrainerAvatarUrl}
+            isOnline={true}
+            unreadCount={
+              syncState.messages.filter(
+                (m) => m.sender === 'trainer' && (!m.clientId || m.clientId === activeClient.id)
+              ).length > 0 ? 1 : 0
+            }
+            onClick={() => setClientTab('trainer')}
+          />
+        )}
+
+        {/* Notification Center Modal */}
+        <NotificationCenterModal
+          isOpen={isNotificationOpen}
+          onClose={() => setIsNotificationOpen(false)}
+          notifications={notifications}
+          onMarkAllRead={handleMarkAllNotificationsRead}
+          onSelectNotificationAction={handleSelectNotificationAction}
+        />
 
         {/* Bottom Navigation */}
         <BottomNav

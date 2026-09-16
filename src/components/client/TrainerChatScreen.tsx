@@ -1,14 +1,31 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Phone, MessageSquare, Award, Sparkles, Dumbbell, Apple, Clock, ShieldCheck, UserX, AlertCircle } from 'lucide-react';
+import { 
+  Send, 
+  Phone, 
+  MessageSquare, 
+  Award, 
+  Sparkles, 
+  Dumbbell, 
+  Apple, 
+  Clock, 
+  ShieldCheck, 
+  UserX, 
+  AlertCircle,
+  Calendar,
+  RotateCcw,
+  CheckCircle2,
+  ArrowLeft
+} from 'lucide-react';
 import { syncedStore, AppSyncState, ClientData, TrainerData } from '../../services/syncedStore';
 import { hapticTap } from '../../utils/audioHaptics';
 
 interface TrainerChatScreenProps {
   client: ClientData;
   trainerName: string;
+  onBack?: () => void;
 }
 
-export const TrainerChatScreen: React.FC<TrainerChatScreenProps> = ({ client, trainerName }) => {
+export const TrainerChatScreen: React.FC<TrainerChatScreenProps> = ({ client, trainerName, onBack }) => {
   const [syncState, setSyncState] = useState<AppSyncState>(() => syncedStore.getState());
   const [inputText, setInputText] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -84,6 +101,19 @@ export const TrainerChatScreen: React.FC<TrainerChatScreenProps> = ({ client, tr
   if (!isAssigned || !trainer) {
     return (
       <div className="space-y-4 pb-6 animate-fadeIn text-left max-w-xl mx-auto">
+        {onBack && (
+          <button
+            onClick={() => {
+              hapticTap();
+              onBack();
+            }}
+            className="flex items-center space-x-1.5 text-xs font-bold text-amber-500 hover:text-amber-400 font-tech uppercase tracking-wider"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Return to Dashboard</span>
+          </button>
+        )}
+
         {/* Status Notice Card */}
         <div className="bg-[#0b0f1a] border border-amber-500/20 rounded-3xl p-6 shadow-xl relative overflow-hidden text-center space-y-4">
           <div className="mx-auto w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-500 shadow-inner">
@@ -177,6 +207,19 @@ export const TrainerChatScreen: React.FC<TrainerChatScreenProps> = ({ client, tr
 
   return (
     <div className="space-y-4 pb-4 animate-fadeIn text-left max-w-xl mx-auto">
+      {onBack && (
+        <button
+          onClick={() => {
+            hapticTap();
+            onBack();
+          }}
+          className="flex items-center space-x-1.5 text-xs font-bold text-amber-500 hover:text-amber-400 font-tech uppercase tracking-wider"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Return to Dashboard</span>
+        </button>
+      )}
+
       {/* 1. COACH PROFILE CARD */}
       <div className="bg-[#0b0f1a] border border-amber-500/30 rounded-3xl p-5 shadow-lg relative overflow-hidden">
         <div className="flex items-center justify-between">
@@ -220,18 +263,32 @@ export const TrainerChatScreen: React.FC<TrainerChatScreenProps> = ({ client, tr
       </div>
 
       {/* 2. LIVE CHAT CONVERSATION */}
-      <div className="bg-[#0c101a] border border-white/10 rounded-3xl p-4 shadow-lg flex flex-col h-[460px]">
-        <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-3">
+      <div className="bg-[#0c101a] border border-white/10 rounded-3xl p-4 shadow-lg flex flex-col h-[480px]">
+        <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-2">
           <div className="flex items-center space-x-2">
             <MessageSquare className="w-4 h-4 text-amber-400" />
             <h3 className="text-xs font-black text-white font-display uppercase tracking-wider">
               Coach Guidance Chat
             </h3>
           </div>
-          <span className="text-[10px] text-slate-500 font-tech">Real-time Cloud Sync</span>
+          <div className="flex items-center space-x-2">
+            <button
+              type="button"
+              onClick={() => {
+                hapticTap();
+                syncedStore.refreshTodayChat(client.name, trainer.name);
+              }}
+              title="Request today's daily coach check-in"
+              className="px-2.5 py-1 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] font-tech font-bold flex items-center space-x-1 transition-all active:scale-95"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>Daily Check-in</span>
+            </button>
+            <span className="text-[10px] text-slate-500 font-tech hidden sm:inline">Real-time Cloud Sync</span>
+          </div>
         </div>
 
-        {/* Message Stream */}
+        {/* Message Stream with Daily Dividers */}
         {(() => {
           const clientMessages = syncState.messages.filter((msg) => {
             if (!msg.clientId) return true;
@@ -242,8 +299,10 @@ export const TrainerChatScreen: React.FC<TrainerChatScreenProps> = ({ client, tr
             return false;
           });
 
+          let lastDateKey = '';
+
           return (
-            <div className="flex-1 overflow-y-auto space-y-3 p-1 scrollbar-none">
+            <div className="flex-1 overflow-y-auto space-y-2.5 p-1 scrollbar-none">
               {clientMessages.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center p-4 text-slate-500">
                   <Sparkles className="w-8 h-8 text-amber-500/40 mb-2" />
@@ -255,37 +314,85 @@ export const TrainerChatScreen: React.FC<TrainerChatScreenProps> = ({ client, tr
               ) : (
                 clientMessages.map((msg) => {
                   const isMe = msg.sender === 'client';
+                  const msgDate = new Date(msg.timestamp);
+                  const today = new Date();
+                  const yesterday = new Date();
+                  yesterday.setDate(yesterday.getDate() - 1);
+
+                  let dateLabel = '';
+                  if (msgDate.toDateString() === today.toDateString()) {
+                    dateLabel = 'Today';
+                  } else if (msgDate.toDateString() === yesterday.toDateString()) {
+                    dateLabel = 'Yesterday';
+                  } else {
+                    dateLabel = msgDate.toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' });
+                  }
+
+                  const showDateDivider = dateLabel !== lastDateKey;
+                  if (showDateDivider) {
+                    lastDateKey = dateLabel;
+                  }
+
                   return (
-                    <div
-                      key={msg.id}
-                      className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
-                    >
-                  <span className="text-[9px] font-tech text-slate-400 px-1 mb-0.5">
-                    {isMe ? 'You' : msg.senderName || trainer.name}
-                  </span>
-                  <div
-                    className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-xs shadow ${
-                      isMe
-                        ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-black font-medium rounded-br-none'
-                        : 'bg-slate-800/90 text-white border border-white/10 rounded-bl-none'
-                    }`}
-                  >
-                    {msg.text}
-                  </div>
-                  <span className="text-[8px] font-tech text-slate-500 px-1 mt-0.5">
-                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                </div>
-              );
-            })
-          )}
-            <div ref={messagesEndRef} />
-          </div>
-        );
-      })()}
+                    <React.Fragment key={msg.id}>
+                      {showDateDivider && (
+                        <div className="flex items-center justify-center my-2">
+                          <span className="px-3 py-0.5 rounded-full bg-slate-800/90 border border-white/10 text-[9px] font-tech font-bold text-amber-400 uppercase tracking-wider shadow-sm">
+                            {dateLabel}
+                          </span>
+                        </div>
+                      )}
+                      <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                        <span className="text-[9px] font-tech text-slate-400 px-1 mb-0.5">
+                          {isMe ? 'You' : msg.senderName || trainer.name}
+                        </span>
+                        <div
+                          className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-xs shadow ${
+                            isMe
+                              ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-black font-medium rounded-br-none'
+                              : 'bg-slate-800/90 text-white border border-white/10 rounded-bl-none'
+                          }`}
+                        >
+                          {msg.text}
+                        </div>
+                        <span className="text-[8px] font-tech text-slate-500 px-1 mt-0.5">
+                          {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                    </React.Fragment>
+                  );
+                })
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+          );
+        })()}
+
+        {/* Quick Check-in Chips */}
+        <div className="pt-2 pb-1 border-t border-white/5 flex items-center space-x-1.5 overflow-x-auto scrollbar-none">
+          {[
+            { label: "✅ Done Today's Workout", text: "Coach, I have completed today's workout!" },
+            { label: "🥗 On Track with Diet", text: "Coach, my meals and macros are on track today!" },
+            { label: "💧 Hit Water Goal", text: "Coach, I hit my daily water hydration target!" },
+            { label: "⚡ Sore Muscles", text: "Coach, feeling noticeable muscle soreness from training." },
+            { label: "⚖️ Morning Weight Logged", text: "Coach, just logged my morning weight in the tracker." }
+          ].map((chip, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => {
+                hapticTap();
+                syncedStore.sendMessage('client', chip.text, client.id, trainer?.id || client.trainerId, client.name);
+              }}
+              className="px-2.5 py-1 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-[10px] font-tech text-slate-300 hover:text-amber-400 border border-white/10 flex-shrink-0 transition-all active:scale-95"
+            >
+              {chip.label}
+            </button>
+          ))}
+        </div>
 
         {/* Input Bar */}
-        <form onSubmit={handleSend} className="pt-3 border-t border-white/10 flex items-center space-x-2">
+        <form onSubmit={handleSend} className="pt-2 flex items-center space-x-2">
           <input
             type="text"
             value={inputText}

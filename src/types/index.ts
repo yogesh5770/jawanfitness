@@ -128,6 +128,7 @@ export interface LoggedMealItem {
   fat: number;
   fiber: number;
   time: string;
+  date?: string; // YYYY-MM-DD
 }
 
 export interface DailyNutritionGoals {
@@ -163,6 +164,7 @@ export interface AssignedWorkout {
   assignedBy: string;
   assignedDate: string;
   estimatedMinutes: number;
+  notes?: string;
   exercises: {
     exerciseId: string;
     exerciseName: string;

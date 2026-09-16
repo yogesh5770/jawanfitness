@@ -1,15 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    JAWAN FITNESS - Android Network Security Configuration
+    ========================================================
+    - HTTPS is enforced everywhere except the explicit cleartext domains below.
+    - localhost / 127.0.0.1 cleartext is needed for local `vite preview` dev builds.
+    - All production traffic goes over HTTPS (Cloudflare Pages TLS).
+    - User-installed CA certificates are trusted so corporate/school proxies work.
+-->
 <network-security-config>
-    <base-config cleartextTrafficPermitted="true">
+
+    <!-- Default: HTTPS only, trust system + user CAs -->
+    <base-config cleartextTrafficPermitted="false">
         <trust-anchors>
             <certificates src="system" />
-            <certificates src="user" />
+            <!-- Allow user-installed certs for enterprise proxy environments -->
+            <certificates src="user" overridePins="true" />
         </trust-anchors>
     </base-config>
+
+    <!-- Local dev server (vite preview / capacitor run android) -->
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="true">localhost</domain>
         <domain includeSubdomains="true">127.0.0.1</domain>
-        <domain includeSubdomains="true">pages.dev</domain>
-        <domain includeSubdomains="true">jawanfitness.com</domain>
+        <domain includeSubdomains="true">10.0.2.2</domain>
     </domain-config>
+
+    <!-- Production API and CDN — HTTPS enforced, redundant but explicit -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">pages.dev</domain>
+        <domain includeSubdomains="true">cloudflare.com</domain>
+        <domain includeSubdomains="true">jawanfitness.com</domain>
+        <domain includeSubdomains="true">fonts.googleapis.com</domain>
+        <domain includeSubdomains="true">fonts.gstatic.com</domain>
+    </domain-config>
+
 </network-security-config>
