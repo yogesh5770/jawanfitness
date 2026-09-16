@@ -5,6 +5,7 @@ import { TrainerApp } from './components/trainer/TrainerApp';
 import { ClientApp } from './components/client/ClientApp';
 import { DevSyncSimulator } from './components/sync/DevSyncSimulator';
 import { UnifiedAuthGateway } from './components/auth/UnifiedAuthGateway';
+import { IOSInstallBanner } from './components/common/IOSInstallBanner';
 import { authService, AuthUser } from './services/authService';
 import { syncedStore } from './services/syncedStore';
 
@@ -66,10 +67,13 @@ export const App: React.FC = () => {
     const detected = detectAppRole();
     const defaultInitial = detected === 'admin' ? 'ADMIN' : detected === 'trainer' ? 'TRAINER' : 'CLIENT';
     return (
-      <UnifiedAuthGateway
-        onLoginSuccess={handleLoginSuccess}
-        initialRole={defaultInitial}
-      />
+      <>
+        <UnifiedAuthGateway
+          onLoginSuccess={handleLoginSuccess}
+          initialRole={defaultInitial}
+        />
+        <IOSInstallBanner />
+      </>
     );
   }
 
