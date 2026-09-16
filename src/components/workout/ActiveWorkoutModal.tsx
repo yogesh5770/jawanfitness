@@ -20,6 +20,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { hapticTap } from '../../utils/audioHaptics';
+import { Cinematic3DMotionViewer } from '../exercises/Cinematic3DMotionViewer';
 
 interface ActiveWorkoutModalProps {
   session: WorkoutSession | null;
@@ -315,28 +316,13 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
         {/* 3D Motion Demonstration Card (Full Visibility, No Crop) */}
         <div className="relative rounded-2xl bg-[#0e1320] border border-white/10 p-3.5 shadow-lg">
           <div className="flex items-center space-x-3.5">
-            {/* 3D Loop Frame */}
-            <div className="relative w-20 h-20 rounded-xl overflow-hidden bg-black border border-white/10 flex-shrink-0 flex items-center justify-center">
-              {currentExercise.animationUrl?.endsWith('.gif') ? (
-                <img
-                  src={currentExercise.animationUrl}
-                  alt={currentExercise.name}
-                  className="w-full h-full object-contain"
-                />
-              ) : (
-                <video
-                  src={currentExercise.animationUrl}
-                  poster={currentExercise.thumbnailUrl}
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  className="w-full h-full object-contain"
-                />
-              )}
-              <div className="absolute top-1 left-1 bg-black/60 px-1 py-0.5 rounded text-[8px] font-tech text-amber-400">
-                3D
-              </div>
+            {/* 3D Biomechanical Vector Frame */}
+            <div className="relative w-24 h-24 rounded-2xl overflow-hidden bg-black border border-amber-500/30 flex-shrink-0 flex items-center justify-center shadow-lg shadow-amber-500/10">
+              <Cinematic3DMotionViewer
+                exercise={currentExercise}
+                className="w-full h-full rounded-none border-0"
+                showControls={false}
+              />
             </div>
 
             {/* Title & Muscle Tags */}

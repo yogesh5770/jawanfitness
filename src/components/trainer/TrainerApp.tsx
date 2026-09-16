@@ -22,7 +22,11 @@ import { ChangePasswordModal } from '../common/ChangePasswordModal';
 import { IOSInstallBanner } from '../common/IOSInstallBanner';
 import { ThemeToggle } from '../common/ThemeToggle';
 
-export const TrainerApp: React.FC = () => {
+interface TrainerAppProps {
+  onLogout?: () => void;
+}
+
+export const TrainerApp: React.FC<TrainerAppProps> = ({ onLogout }) => {
   const [syncState, setSyncState] = useState<AppSyncState>(() => syncedStore.getState());
   const [activeTrainerId, setActiveTrainerId] = useState<string>(() => {
     return localStorage.getItem('jawan_trainer_session_id_v1') || '';
@@ -137,6 +141,7 @@ export const TrainerApp: React.FC = () => {
     authService.logout();
     setActiveTrainerId('');
     localStorage.removeItem('jawan_trainer_session_id_v1');
+    if (onLogout) onLogout();
   };
 
   // If no trainer profile selected or session is not active, render Trainer Login Gate

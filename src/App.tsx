@@ -4,52 +4,87 @@ import { AdminApp } from './components/admin/AdminApp';
 import { TrainerApp } from './components/trainer/TrainerApp';
 import { ClientApp } from './components/client/ClientApp';
 import { DevSyncSimulator } from './components/sync/DevSyncSimulator';
+import { UnifiedAuthGateway } from './components/auth/UnifiedAuthGateway';
+import { authService, AuthUser } from './services/authService';
+import { syncedStore } from './services/syncedStore';
 
 export const App: React.FC = () => {
-  const [role, setRole] = useState<AppRoleMode>(() => detectAppRole());
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => authService.getUser());
+  const [activeRole, setActiveRole] = useState<'CLIENT' | 'TRAINER' | 'ADMIN' | null>(() => {
+    const user = authService.getUser();
+    if (user && user.role) return user.role;
+    // URL or domain override if explicitly visited
+    const detected = detectAppRole();
+    if (detected === 'admin') return 'ADMIN';
+    if (detected === 'trainer') return 'TRAINER';
+    return null;
+  });
 
+  // Verify backend session on mount
   useEffect(() => {
-    const handleRouteUpdate = () => {
-      setRole(detectAppRole());
-    };
-
-    window.addEventListener('hashchange', handleRouteUpdate);
-    window.addEventListener('popstate', handleRouteUpdate);
-    return () => {
-      window.removeEventListener('hashchange', handleRouteUpdate);
-      window.removeEventListener('popstate', handleRouteUpdate);
-    };
+    async function verifyAuth() {
+      await authService.verifySession();
+      const verified = authService.getUser();
+      setCurrentUser(verified);
+      if (verified && verified.role) {
+        setActiveRole(verified.role);
+      }
+    }
+    verifyAuth();
   }, []);
 
+  // Update document title dynamically
   useEffect(() => {
-    if (role === 'admin') {
+    if (activeRole === 'ADMIN') {
       document.title = 'Jawan Admin | Director Console';
-    } else if (role === 'trainer') {
+    } else if (activeRole === 'TRAINER') {
       document.title = 'Jawan Trainer | Coach Portal';
-    } else if (role === 'dev-sync') {
-      document.title = 'Jawan Developer Simulator';
-    } else {
+    } else if (activeRole === 'CLIENT') {
       document.title = 'Jawan Fitness | Member Portal';
+    } else {
+      document.title = 'Jawan Fitness | Unified Portal';
     }
-  }, [role]);
+  }, [activeRole]);
 
-  // 1. ADMIN PRODUCTION APPLICATION (e.g. jawanfitnessadmin.com or /admin)
-  if (role === 'admin') {
-    return <AdminApp />;
+  const handleLoginSuccess = (user: AuthUser, role: 'CLIENT' | 'TRAINER' | 'ADMIN') => {
+    setCurrentUser(user);
+    setActiveRole(role);
+    syncedStore.syncFromCloud(true);
+  };
+
+  const handleUniversalLogout = () => {
+    authService.logout();
+    setCurrentUser(null);
+    setActiveRole(null);
+    localStorage.removeItem('jawan_active_client_id_v1');
+    localStorage.removeItem('jawan_trainer_session_id_v1');
+    window.location.hash = '';
+  };
+
+  // 1. IF NOT AUTHENTICATED: Present the Unified Jawan Fitness 3-way Gateway
+  if (!currentUser || !activeRole) {
+    const detected = detectAppRole();
+    const defaultInitial = detected === 'admin' ? 'ADMIN' : detected === 'trainer' ? 'TRAINER' : 'CLIENT';
+    return (
+      <UnifiedAuthGateway
+        onLoginSuccess={handleLoginSuccess}
+        initialRole={defaultInitial}
+      />
+    );
   }
 
-  // 2. TRAINER PRODUCTION APPLICATION (e.g. jawanfitnesstrainer.com or /trainer)
-  if (role === 'trainer') {
-    return <TrainerApp />;
+  // 2. ADMIN INTERFACE
+  if (activeRole === 'ADMIN') {
+    return <AdminApp onLogout={handleUniversalLogout} />;
   }
 
-  // 3. INTERNAL DEVELOPER TEST BENCH (/dev-sync or /#sync)
-  if (role === 'dev-sync') {
-    return <DevSyncSimulator />;
+  // 3. TRAINER INTERFACE
+  if (activeRole === 'TRAINER') {
+    return <TrainerApp onLogout={handleUniversalLogout} />;
   }
 
-  // 4. CLIENT USER PRODUCTION APPLICATION (Android APK, jawanfitness.com, app.jawanfitness.com, or /client)
-  return <ClientApp />;
+  // 4. MEMBER INTERFACE (Default)
+  return <ClientApp onLogout={handleUniversalLogout} />;
 };
 
 export default App;

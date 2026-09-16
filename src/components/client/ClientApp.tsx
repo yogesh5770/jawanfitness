@@ -24,7 +24,11 @@ import { authService, AuthUser } from '../../services/authService';
 import { ChangePasswordModal } from '../common/ChangePasswordModal';
 import { ThemeToggle } from '../common/ThemeToggle';
 
-export const ClientApp: React.FC = () => {
+interface ClientAppProps {
+  onLogout?: () => void;
+}
+
+export const ClientApp: React.FC<ClientAppProps> = ({ onLogout }) => {
   const [clientTab, setClientTab] = useState<TabType>('home');
   const [isWorkoutModalOpen, setIsWorkoutModalOpen] = useState(false);
   const [syncState, setSyncState] = useState<AppSyncState>(() => syncedStore.getState());
@@ -234,6 +238,7 @@ export const ClientApp: React.FC = () => {
     setCurrentUser(null);
     setPersistedClientId('');
     localStorage.removeItem('jawan_active_client_id_v1');
+    if (onLogout) onLogout();
   };
 
   // If no member logged in or no profile chosen, show Member Access Gate

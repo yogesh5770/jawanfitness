@@ -17,7 +17,11 @@ import { hapticTap } from '../../utils/audioHaptics';
 import { IOSInstallBanner } from '../common/IOSInstallBanner';
 import { ThemeToggle } from '../common/ThemeToggle';
 
-export const AdminApp: React.FC = () => {
+interface AdminAppProps {
+  onLogout?: () => void;
+}
+
+export const AdminApp: React.FC<AdminAppProps> = ({ onLogout }) => {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => authService.getUser());
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => authService.isAuthenticated('ADMIN'));
   const [isVerifying, setIsVerifying] = useState<boolean>(true);
@@ -73,11 +77,12 @@ export const AdminApp: React.FC = () => {
     }
   };
 
-  const handleLogout = async () => {
+  const handleLogout = () => {
     hapticTap();
-    await authService.logout();
+    authService.logout();
     setCurrentUser(null);
     setIsAuthenticated(false);
+    if (onLogout) onLogout();
   };
 
   // Initial session verification loader

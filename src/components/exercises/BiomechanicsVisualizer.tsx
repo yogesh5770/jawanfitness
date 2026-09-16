@@ -11,6 +11,7 @@ import {
   Wind
 } from 'lucide-react';
 import { hapticTap } from '../../utils/audioHaptics';
+import { Cinematic3DMotionViewer } from './Cinematic3DMotionViewer';
 
 interface BiomechanicsVisualizerProps {
   exercise: Exercise;
@@ -111,81 +112,10 @@ export const BiomechanicsVisualizer: React.FC<BiomechanicsVisualizerProps> = ({ 
         )}
       </div>
 
-      {/* Mode 1: 3D Motion Video/GIF Frame */}
+      {/* Mode 1: 3D Motion Vector & Biomechanical Animation */}
       {activeTab === 'motion' && (
-        <div className="relative w-full h-64 bg-black flex items-center justify-center overflow-hidden">
-          {!videoHasError ? (
-            exercise.animationUrl?.endsWith('.gif') ? (
-              <img
-                src={exercise.animationUrl}
-                alt={exercise.name}
-                onError={() => setVideoHasError(true)}
-                className="w-full h-full object-contain"
-              />
-            ) : (
-              <video
-                ref={videoRef}
-                src={exercise.animationUrl}
-                poster={exercise.thumbnailUrl}
-                autoPlay
-                loop
-                muted
-                playsInline
-                onError={() => setVideoHasError(true)}
-                className="w-full h-full object-contain"
-              />
-            )
-          ) : (
-            // High-def animated fallback frame with trajectory overlay
-            <div className="relative w-full h-full">
-              <img
-                src={exercise.thumbnailUrl || '/vital-animations/0051.mp4'}
-                alt={exercise.name}
-                className="w-full h-full object-contain filter brightness-90"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 flex flex-col items-center justify-center text-center p-4">
-                <div className="w-12 h-12 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 mb-2 animate-pulse">
-                  <Play className="w-6 h-6 fill-amber-400 ml-0.5" />
-                </div>
-                <span className="text-xs font-bold text-white font-display">
-                  Biomechanical Vector Preview Active
-                </span>
-                <span className="text-[10px] text-amber-400/90 font-tech mt-0.5">
-                  Full Range of Motion Loop
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* Top Format Badge */}
-          <div className="absolute top-3 left-3 z-20">
-            {exercise.animationUrl?.endsWith('.mp4') ? (
-              <span className="bg-amber-500/90 text-black px-2.5 py-1 rounded-full text-[10px] font-black font-tech tracking-wider uppercase shadow-[0_0_12px_rgba(245,158,11,0.5)]">
-                ⭐ 60 FPS 3D Video
-              </span>
-            ) : (
-              <span className="bg-black/70 backdrop-blur border border-white/20 text-slate-300 px-2 py-0.5 rounded-full text-[10px] font-tech">
-                3D Loop Animation
-              </span>
-            )}
-          </div>
-
-          {/* Bottom Gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#090d16]/80 via-transparent to-transparent pointer-events-none" />
-
-          {/* Floating Play/Pause Controls for MP4 videos */}
-          {!videoHasError && !exercise.animationUrl?.endsWith('.gif') && (
-            <button
-              onClick={handleTogglePlay}
-              className="absolute bottom-3 left-3 z-20 w-8 h-8 rounded-full bg-black/70 backdrop-blur border border-white/20 text-white flex items-center justify-center hover:bg-black transition-all"
-            >
-              {isPlaying ? <Pause className="w-4 h-4 fill-white" /> : <Play className="w-4 h-4 fill-white ml-0.5" />}
-            </button>
-          )}
-
-          <div className="absolute bottom-3 right-3 bg-black/60 backdrop-blur border border-white/10 px-2.5 py-1 rounded-full text-[10px] font-tech text-slate-300">
-            {exercise.equipment} • {exercise.difficulty}
-          </div>
+        <div className="relative w-full overflow-hidden">
+          <Cinematic3DMotionViewer exercise={exercise} className="w-full h-72 rounded-none border-0" />
         </div>
       )}
 
