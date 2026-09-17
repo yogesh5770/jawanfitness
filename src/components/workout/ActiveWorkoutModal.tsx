@@ -20,6 +20,8 @@ import {
   Sparkles
 } from 'lucide-react';
 import { hapticTap } from '../../utils/audioHaptics';
+import { Cinematic3DMotionViewer } from '../exercises/Cinematic3DMotionViewer';
+import { ExerciseDetailModal } from '../exercises/ExerciseDetailModal';
 
 interface ActiveWorkoutModalProps {
   session: WorkoutSession | null;
@@ -50,6 +52,7 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
   const [activeSetIndex, setActiveSetIndex] = useState(0);
   const [isPlateCalcOpen, setIsPlateCalcOpen] = useState(false);
   const [activePlateCalcSetIdx, setActivePlateCalcSetIdx] = useState(0);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   // Timer counter
   useEffect(() => {
@@ -316,8 +319,15 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
         <div className="relative rounded-2xl bg-[#0e1320] border border-white/10 p-3.5 shadow-lg">
           <div className="flex items-center space-x-3.5">
             {/* 3D Real Human Exercise Frame */}
-            <div className="relative w-24 h-24 rounded-2xl overflow-hidden bg-black/80 border border-amber-500/30 flex-shrink-0 flex items-center justify-center shadow-lg shadow-amber-500/10">
-              {currentExercise.animationUrl?.endsWith('.mp4') ? (
+            <div
+              onClick={() => {
+                hapticTap();
+                setIsDetailModalOpen(true);
+              }}
+              className="relative w-24 h-24 rounded-2xl overflow-hidden bg-black/80 border border-amber-500/30 flex-shrink-0 flex items-center justify-center shadow-lg shadow-amber-500/10 cursor-pointer group"
+              title="Tap for 3D Form Breakdown & Biomechanics"
+            >
+              {currentExercise.animationUrl?.endsWith('.mp4') || currentExercise.animationUrl?.endsWith('.webm') ? (
                 <video
                   src={currentExercise.animationUrl}
                   poster={currentExercise.thumbnailUrl}
@@ -328,23 +338,38 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
                   className="w-full h-full object-contain"
                 />
               ) : (
-                <img
-                  src={currentExercise.animationUrl || currentExercise.thumbnailUrl}
-                  alt={currentExercise.name}
-                  className="w-full h-full object-contain"
+                <Cinematic3DMotionViewer
+                  exercise={currentExercise}
+                  className="w-full h-full"
+                  showControls={false}
+                  autoPlay={true}
                 />
               )}
-              <div className="absolute top-1 left-1 bg-black/70 px-1.5 py-0.5 rounded text-[8px] font-tech text-amber-400 font-bold border border-white/10">
-                3D
+              <div className="absolute top-1 left-1 bg-black/80 px-1.5 py-0.5 rounded text-[8px] font-tech text-amber-400 font-bold border border-amber-500/30 flex items-center space-x-0.5 shadow">
+                <Sparkles className="w-2.5 h-2.5 fill-amber-400" />
+                <span>3D</span>
               </div>
             </div>
 
             {/* Title & Muscle Tags */}
             <div className="flex-1 min-w-0">
-              <div className="flex items-center space-x-1.5 text-[10px] text-amber-400 font-bold uppercase font-tech">
-                <span>{currentExercise.category}</span>
-                <span>•</span>
-                <span>{currentExercise.equipment}</span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-1.5 text-[10px] text-amber-400 font-bold uppercase font-tech">
+                  <span>{currentExercise.category}</span>
+                  <span>•</span>
+                  <span>{currentExercise.equipment}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    hapticTap();
+                    setIsDetailModalOpen(true);
+                  }}
+                  className="flex items-center space-x-1 text-[10px] font-tech font-bold text-amber-400 hover:text-amber-300 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-lg transition-all"
+                >
+                  <Sparkles className="w-2.5 h-2.5" />
+                  <span>3D Form</span>
+                </button>
               </div>
               <h3 className="text-sm sm:text-base font-black text-white font-display mt-0.5 truncate">
                 {currentExercise.name}
@@ -586,6 +611,14 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
             }
             setIsPlateCalcOpen(false);
           }}
+        />
+      )}
+
+      {/* 8. 3D Biomechanics & Exercise Form Detail Modal */}
+      {isDetailModalOpen && (
+        <ExerciseDetailModal
+          exercise={currentExercise}
+          onClose={() => setIsDetailModalOpen(false)}
         />
       )}
     </div>

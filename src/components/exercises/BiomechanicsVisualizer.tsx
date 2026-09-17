@@ -101,8 +101,8 @@ export const BiomechanicsVisualizer: React.FC<BiomechanicsVisualizerProps> = ({ 
                 : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
             }`}
           >
-            <Box className="w-3.5 h-3.5" />
-            <span>Interactive 3D</span>
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>3D Biomechanics</span>
           </button>
 
           {/* Muscle Anatomy Heatmap */}

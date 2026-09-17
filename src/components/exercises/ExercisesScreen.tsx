@@ -257,6 +257,9 @@ export const ExercisesScreen: React.FC<ExercisesScreenProps> = ({ onStartExercis
                     className="w-full h-full"
                   />
                 </div>
+                <div className="absolute bottom-1 right-1 bg-black/80 backdrop-blur border border-amber-500/30 text-[8px] font-tech font-black text-amber-400 px-1 py-0.2 rounded shadow flex items-center space-x-0.5 pointer-events-none">
+                  <span>3D</span>
+                </div>
               </div>
 
               {/* Exercise Title, Muscle & Equipment */}
