@@ -35,8 +35,11 @@ export const BiomechanicsVisualizer: React.FC<BiomechanicsVisualizerProps> = ({ 
        exercise.animationUrl.includes('.mp4?')))
   );
 
+  const animSrc = r2VideoUrl || exercise.animationUrl || exercise.thumbnailUrl;
+  const hasAnatomicalMedia = Boolean(animSrc);
+
   const [activeTab, setActiveTab] = useState<'motion' | 'interactive3d' | 'anatomy' | 'biomechanics'>(
-    isVideo ? 'motion' : 'interactive3d'
+    hasAnatomicalMedia ? 'motion' : 'interactive3d'
   );
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1.0);
   const [isPlaying, setIsPlaying] = useState<boolean>(true);
@@ -44,7 +47,6 @@ export const BiomechanicsVisualizer: React.FC<BiomechanicsVisualizerProps> = ({ 
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const isMp4 = isVideo;
-  const animSrc = r2VideoUrl || exercise.animationUrl || exercise.thumbnailUrl;
 
   const handleTogglePlay = () => {
     hapticTap();
@@ -74,25 +76,23 @@ export const BiomechanicsVisualizer: React.FC<BiomechanicsVisualizerProps> = ({ 
       {/* Mode Switcher Header */}
       <div className="flex items-center justify-between border-b border-white/10 bg-black/50 px-3 py-2 overflow-x-auto scrollbar-none">
         <div className="flex items-center space-x-1 flex-shrink-0">
-          {/* 3D Motion (Looping 3D Video Demo if available) */}
-          {isVideo && (
-            <button
-              onClick={() => {
-                hapticTap();
-                setActiveTab('motion');
-              }}
-              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                activeTab === 'motion'
-                  ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-black shadow-[0_0_12px_rgba(245,158,11,0.4)] font-black'
-                  : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
-              }`}
-            >
-              <Play className="w-3.5 h-3.5 fill-current" />
-              <span>3D Video</span>
-            </button>
-          )}
+          {/* Tab 1: Realistic 3D Anatomical Character (DEFAULT) */}
+          <button
+            onClick={() => {
+              hapticTap();
+              setActiveTab('motion');
+            }}
+            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              activeTab === 'motion'
+                ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-black shadow-[0_0_12px_rgba(245,158,11,0.4)] font-black'
+                : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5 fill-current" />
+            <span>3D Anatomical Model</span>
+          </button>
 
-          {/* Interactive 3D Biomechanical Engine */}
+          {/* Tab 2: Interactive 3D Biomechanical Wireframe Rotator */}
           <button
             onClick={() => {
               hapticTap();
@@ -104,11 +104,11 @@ export const BiomechanicsVisualizer: React.FC<BiomechanicsVisualizerProps> = ({ 
                 : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>3D Biomechanics</span>
+            <Box className="w-3.5 h-3.5" />
+            <span>3D Joint Wireframe</span>
           </button>
 
-          {/* Muscle Anatomy Heatmap */}
+          {/* Tab 3: Muscle Anatomy Heatmap */}
           <button
             onClick={() => {
               hapticTap();
@@ -124,7 +124,7 @@ export const BiomechanicsVisualizer: React.FC<BiomechanicsVisualizerProps> = ({ 
             <span>Muscle Map</span>
           </button>
 
-          {/* Biomechanical Telemetry */}
+          {/* Tab 4: Biomechanical Telemetry */}
           <button
             onClick={() => {
               hapticTap();
@@ -158,54 +158,72 @@ export const BiomechanicsVisualizer: React.FC<BiomechanicsVisualizerProps> = ({ 
         )}
       </div>
 
-      {/* Mode 1: Real 3D Human Exercise Demonstration (Video Loop) */}
-      {activeTab === 'motion' && isVideo && !hasError && (
-        <div className="relative w-full h-72 sm:h-80 bg-[#03050a] flex items-center justify-center overflow-hidden select-none">
+      {/* Mode 1: Real 3D Anatomical Human Exercise Demonstration (Default for all 1,324 exercises) */}
+      {activeTab === 'motion' && !hasError && (
+        <div className="relative w-full h-72 sm:h-84 bg-[#03050a] flex items-center justify-center overflow-hidden select-none">
           {/* Subtle Ambient Radial Lighting */}
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,#131a2e_0%,#03050a_80%)] pointer-events-none" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,#141d33_0%,#03050a_85%)] pointer-events-none" />
 
-          {/* Actual 3D Animation Video */}
-          <video
-            ref={videoRef}
-            src={animSrc}
-            poster={exercise.thumbnailUrl}
-            autoPlay
-            loop
-            muted
-            playsInline
-            onError={() => setHasError(true)}
-            className="relative z-10 w-full h-full object-contain"
-          />
+          {isVideo ? (
+            <video
+              ref={videoRef}
+              src={animSrc}
+              poster={exercise.thumbnailUrl}
+              autoPlay
+              loop
+              muted
+              playsInline
+              onError={() => setHasError(true)}
+              className="relative z-10 w-full h-full object-contain filter contrast-110"
+            />
+          ) : (
+            <img
+              src={animSrc}
+              alt={exercise.name}
+              className="relative z-10 w-full h-full object-contain filter contrast-110 drop-shadow-[0_10px_35px_rgba(0,0,0,0.85)]"
+              onError={() => setHasError(true)}
+            />
+          )}
 
           {/* Top Floating Badge */}
           <div className="absolute top-3 left-3 z-20 flex items-center space-x-2">
             <span className="bg-black/80 backdrop-blur border border-amber-500/40 text-amber-400 px-2.5 py-1 rounded-full text-[10px] font-black font-tech tracking-wider uppercase shadow-md flex items-center space-x-1.5">
               <Sparkles className="w-3 h-3 text-amber-400" />
-              <span>3D Motion Loop</span>
+              <span>3D Anatomical Model</span>
             </span>
+          </div>
+
+          {/* Bottom Floating Target Muscle Load Indicators */}
+          <div className="absolute bottom-3 left-3 z-20 flex items-center space-x-2 bg-black/80 backdrop-blur border border-white/10 px-2.5 py-1 rounded-xl shadow-lg">
+            <span className="text-[10px] font-tech text-slate-400">TARGET:</span>
+            <span className="text-[10px] font-tech font-bold text-amber-400 uppercase">{exercise.primaryMuscle}</span>
+            <span className="text-slate-600">•</span>
+            <span className="text-[10px] font-tech text-emerald-400 font-bold uppercase">{exercise.category}</span>
           </div>
 
           {/* Bottom Floating Play/Pause Controls */}
-          <div className="absolute bottom-3 right-3 z-20 flex items-center space-x-1.5 bg-black/80 backdrop-blur border border-white/10 px-2 py-1 rounded-xl shadow-lg">
-            <button
-              onClick={handleTogglePlay}
-              className="p-1 text-slate-300 hover:text-amber-400 transition-colors"
-              title={isPlaying ? 'Pause motion' : 'Play motion'}
-            >
-              {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 fill-current" />}
-            </button>
-            <span className="text-[10px] font-tech text-slate-400 px-1 border-l border-white/10">
-              {isPlaying ? 'ACTIVE' : 'PAUSED'}
-            </span>
-          </div>
+          {isVideo && (
+            <div className="absolute bottom-3 right-3 z-20 flex items-center space-x-1.5 bg-black/80 backdrop-blur border border-white/10 px-2 py-1 rounded-xl shadow-lg">
+              <button
+                onClick={handleTogglePlay}
+                className="p-1 text-slate-300 hover:text-amber-400 transition-colors"
+                title={isPlaying ? 'Pause motion' : 'Play motion'}
+              >
+                {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 fill-current" />}
+              </button>
+              <span className="text-[10px] font-tech text-slate-400 px-1 border-l border-white/10">
+                {isPlaying ? 'ACTIVE' : 'PAUSED'}
+              </span>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Mode 2: Interactive 3D Biomechanical Joint Engine (or fallback if video errors) */}
-      {(activeTab === 'interactive3d' || (activeTab === 'motion' && (!isVideo || hasError))) && (
+      {/* Mode 2: Interactive 3D Biomechanical Joint Engine (or fallback if image/video errors) */}
+      {(activeTab === 'interactive3d' || (activeTab === 'motion' && hasError)) && (
         <Cinematic3DMotionViewer
           exercise={exercise}
-          className="w-full h-72 sm:h-80"
+          className="w-full h-72 sm:h-84"
           showControls={true}
           autoPlay={true}
         />

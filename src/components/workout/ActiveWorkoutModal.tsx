@@ -351,6 +351,17 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
                   );
                 }
 
+                const animImg = currentExercise.animationUrl || currentExercise.thumbnailUrl;
+                if (animImg) {
+                  return (
+                    <img
+                      src={animImg}
+                      alt={currentExercise.name}
+                      className="w-full h-full object-contain filter contrast-110 drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)]"
+                    />
+                  );
+                }
+
                 return (
                   <Cinematic3DMotionViewer
                     exercise={currentExercise}
