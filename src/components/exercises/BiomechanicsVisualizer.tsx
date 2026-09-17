@@ -13,22 +13,34 @@ import {
   Eye,
   Sparkles,
   Activity,
-  Loader2
+  Loader2,
+  Box
 } from 'lucide-react';
 import { hapticTap } from '../../utils/audioHaptics';
+import { Cinematic3DMotionViewer } from './Cinematic3DMotionViewer';
 
 interface BiomechanicsVisualizerProps {
   exercise: Exercise;
 }
 
 export const BiomechanicsVisualizer: React.FC<BiomechanicsVisualizerProps> = ({ exercise }) => {
-  const [activeTab, setActiveTab] = useState<'motion' | 'anatomy' | 'biomechanics'>('motion');
+  const isVideo = Boolean(
+    exercise.animationUrl &&
+    (exercise.animationUrl.endsWith('.mp4') ||
+     exercise.animationUrl.endsWith('.webm') ||
+     exercise.animationUrl.includes('/vital-animations/') ||
+     exercise.animationUrl.includes('.mp4?'))
+  );
+
+  const [activeTab, setActiveTab] = useState<'motion' | 'interactive3d' | 'anatomy' | 'biomechanics'>(
+    isVideo ? 'motion' : 'interactive3d'
+  );
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1.0);
   const [isPlaying, setIsPlaying] = useState<boolean>(true);
   const [hasError, setHasError] = useState<boolean>(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  const isMp4 = exercise.animationUrl?.endsWith('.mp4');
+  const isMp4 = isVideo;
   const animSrc = exercise.animationUrl || exercise.thumbnailUrl;
 
   const handleTogglePlay = () => {
@@ -57,22 +69,40 @@ export const BiomechanicsVisualizer: React.FC<BiomechanicsVisualizerProps> = ({ 
   return (
     <div className="rounded-2xl bg-[#070a12] border border-white/10 overflow-hidden shadow-2xl">
       {/* Mode Switcher Header */}
-      <div className="flex items-center justify-between border-b border-white/10 bg-black/50 px-3 py-2">
-        <div className="flex items-center space-x-1">
-          {/* 3D Motion (Real Human Render Demo) */}
+      <div className="flex items-center justify-between border-b border-white/10 bg-black/50 px-3 py-2 overflow-x-auto scrollbar-none">
+        <div className="flex items-center space-x-1 flex-shrink-0">
+          {/* 3D Motion (Looping 3D Video Demo if available) */}
+          {isVideo && (
+            <button
+              onClick={() => {
+                hapticTap();
+                setActiveTab('motion');
+              }}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'motion'
+                  ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-black shadow-[0_0_12px_rgba(245,158,11,0.4)] font-black'
+                  : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
+              }`}
+            >
+              <Play className="w-3.5 h-3.5 fill-current" />
+              <span>3D Video</span>
+            </button>
+          )}
+
+          {/* Interactive 3D Biomechanical Engine */}
           <button
             onClick={() => {
               hapticTap();
-              setActiveTab('motion');
+              setActiveTab('interactive3d');
             }}
             className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              activeTab === 'motion'
+              activeTab === 'interactive3d'
                 ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-black shadow-[0_0_12px_rgba(245,158,11,0.4)] font-black'
                 : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
             }`}
           >
-            <Play className="w-3.5 h-3.5 fill-current" />
-            <span>3D Exercise</span>
+            <Box className="w-3.5 h-3.5" />
+            <span>Interactive 3D</span>
           </button>
 
           {/* Muscle Anatomy Heatmap */}
@@ -108,8 +138,8 @@ export const BiomechanicsVisualizer: React.FC<BiomechanicsVisualizerProps> = ({ 
           </button>
         </div>
 
-        {activeTab === 'motion' && isMp4 && (
-          <div className="flex items-center space-x-1 bg-slate-900/90 rounded-lg p-0.5 border border-white/10">
+        {activeTab === 'motion' && isVideo && (
+          <div className="flex items-center space-x-1 bg-slate-900/90 rounded-lg p-0.5 border border-white/10 flex-shrink-0 ml-2">
             {[0.5, 0.75, 1.0].map((s) => (
               <button
                 key={s}
@@ -125,57 +155,30 @@ export const BiomechanicsVisualizer: React.FC<BiomechanicsVisualizerProps> = ({ 
         )}
       </div>
 
-      {/* Mode 1: Real 3D Human Exercise Demonstration (GIF / MP4 Video) */}
-      {activeTab === 'motion' && (
+      {/* Mode 1: Real 3D Human Exercise Demonstration (Video Loop) */}
+      {activeTab === 'motion' && isVideo && !hasError && (
         <div className="relative w-full h-72 sm:h-80 bg-[#03050a] flex items-center justify-center overflow-hidden select-none">
           {/* Subtle Ambient Radial Lighting */}
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,#131a2e_0%,#03050a_80%)] pointer-events-none" />
 
-          {/* Actual 3D Animation (MP4 or GIF) */}
-          {isMp4 ? (
-            <video
-              ref={videoRef}
-              src={animSrc}
-              poster={exercise.thumbnailUrl}
-              autoPlay
-              loop
-              muted
-              playsInline
-              onError={() => setHasError(true)}
-              className="relative z-10 w-full h-full object-contain"
-            />
-          ) : (
-            <img
-              src={isPlaying ? animSrc : (exercise.thumbnailUrl || animSrc)}
-              alt={exercise.name}
-              loading="eager"
-              decoding="async"
-              onError={() => setHasError(true)}
-              className="relative z-10 w-full h-full object-contain"
-            />
-          )}
-
-          {/* Fallback if URL fails to load */}
-          {hasError && (
-            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-4 text-center bg-black/90">
-              {exercise.thumbnailUrl && (
-                <img
-                  src={exercise.thumbnailUrl}
-                  alt={exercise.name}
-                  className="max-h-56 object-contain mb-2 rounded-xl"
-                />
-              )}
-              <span className="text-xs text-amber-400 font-bold font-tech">
-                Exercise Form Guide Active
-              </span>
-            </div>
-          )}
+          {/* Actual 3D Animation Video */}
+          <video
+            ref={videoRef}
+            src={animSrc}
+            poster={exercise.thumbnailUrl}
+            autoPlay
+            loop
+            muted
+            playsInline
+            onError={() => setHasError(true)}
+            className="relative z-10 w-full h-full object-contain"
+          />
 
           {/* Top Floating Badge */}
           <div className="absolute top-3 left-3 z-20 flex items-center space-x-2">
             <span className="bg-black/80 backdrop-blur border border-amber-500/40 text-amber-400 px-2.5 py-1 rounded-full text-[10px] font-black font-tech tracking-wider uppercase shadow-md flex items-center space-x-1.5">
               <Sparkles className="w-3 h-3 text-amber-400" />
-              <span>3D Human Demonstration</span>
+              <span>3D Motion Loop</span>
             </span>
           </div>
 
@@ -193,6 +196,16 @@ export const BiomechanicsVisualizer: React.FC<BiomechanicsVisualizerProps> = ({ 
             </span>
           </div>
         </div>
+      )}
+
+      {/* Mode 2: Interactive 3D Biomechanical Joint Engine (or fallback if video errors) */}
+      {(activeTab === 'interactive3d' || (activeTab === 'motion' && (!isVideo || hasError))) && (
+        <Cinematic3DMotionViewer
+          exercise={exercise}
+          className="w-full h-72 sm:h-80"
+          showControls={true}
+          autoPlay={true}
+        />
       )}
 
       {/* Mode 2: Muscle Anatomy Heatmap */}
