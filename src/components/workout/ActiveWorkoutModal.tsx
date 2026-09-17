@@ -22,6 +22,7 @@ import {
 import { hapticTap } from '../../utils/audioHaptics';
 import { Cinematic3DMotionViewer } from '../exercises/Cinematic3DMotionViewer';
 import { ExerciseDetailModal } from '../exercises/ExerciseDetailModal';
+import { R2MediaService } from '../../services/r2MediaService';
 
 interface ActiveWorkoutModalProps {
   session: WorkoutSession | null;
@@ -327,24 +328,38 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
               className="relative w-24 h-24 rounded-2xl overflow-hidden bg-black/80 border border-amber-500/30 flex-shrink-0 flex items-center justify-center shadow-lg shadow-amber-500/10 cursor-pointer group"
               title="Tap for 3D Form Breakdown & Biomechanics"
             >
-              {currentExercise.animationUrl?.endsWith('.mp4') || currentExercise.animationUrl?.endsWith('.webm') ? (
-                <video
-                  src={currentExercise.animationUrl}
-                  poster={currentExercise.thumbnailUrl}
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  className="w-full h-full object-contain"
-                />
-              ) : (
-                <Cinematic3DMotionViewer
-                  exercise={currentExercise}
-                  className="w-full h-full"
-                  showControls={false}
-                  autoPlay={true}
-                />
-              )}
+              {(() => {
+                const r2Url = R2MediaService.getVideoUrl(currentExercise);
+                const isVideo = Boolean(
+                  r2Url ||
+                  currentExercise.animationUrl?.endsWith('.mp4') ||
+                  currentExercise.animationUrl?.endsWith('.webm')
+                );
+                const vidSrc = r2Url || currentExercise.animationUrl;
+
+                if (isVideo && vidSrc) {
+                  return (
+                    <video
+                      src={vidSrc}
+                      poster={currentExercise.thumbnailUrl}
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      className="w-full h-full object-contain"
+                    />
+                  );
+                }
+
+                return (
+                  <Cinematic3DMotionViewer
+                    exercise={currentExercise}
+                    className="w-full h-full"
+                    showControls={false}
+                    autoPlay={true}
+                  />
+                );
+              })()}
               <div className="absolute top-1 left-1 bg-black/80 px-1.5 py-0.5 rounded text-[8px] font-tech text-amber-400 font-bold border border-amber-500/30 flex items-center space-x-0.5 shadow">
                 <Sparkles className="w-2.5 h-2.5 fill-amber-400" />
                 <span>3D</span>

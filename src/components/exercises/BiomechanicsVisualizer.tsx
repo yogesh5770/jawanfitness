@@ -18,18 +18,21 @@ import {
 } from 'lucide-react';
 import { hapticTap } from '../../utils/audioHaptics';
 import { Cinematic3DMotionViewer } from './Cinematic3DMotionViewer';
+import { R2MediaService } from '../../services/r2MediaService';
 
 interface BiomechanicsVisualizerProps {
   exercise: Exercise;
 }
 
 export const BiomechanicsVisualizer: React.FC<BiomechanicsVisualizerProps> = ({ exercise }) => {
+  const r2VideoUrl = R2MediaService.getVideoUrl(exercise);
   const isVideo = Boolean(
-    exercise.animationUrl &&
-    (exercise.animationUrl.endsWith('.mp4') ||
-     exercise.animationUrl.endsWith('.webm') ||
-     exercise.animationUrl.includes('/vital-animations/') ||
-     exercise.animationUrl.includes('.mp4?'))
+    r2VideoUrl ||
+    (exercise.animationUrl &&
+      (exercise.animationUrl.endsWith('.mp4') ||
+       exercise.animationUrl.endsWith('.webm') ||
+       exercise.animationUrl.includes('/vital-animations/') ||
+       exercise.animationUrl.includes('.mp4?')))
   );
 
   const [activeTab, setActiveTab] = useState<'motion' | 'interactive3d' | 'anatomy' | 'biomechanics'>(
@@ -41,7 +44,7 @@ export const BiomechanicsVisualizer: React.FC<BiomechanicsVisualizerProps> = ({ 
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const isMp4 = isVideo;
-  const animSrc = exercise.animationUrl || exercise.thumbnailUrl;
+  const animSrc = r2VideoUrl || exercise.animationUrl || exercise.thumbnailUrl;
 
   const handleTogglePlay = () => {
     hapticTap();

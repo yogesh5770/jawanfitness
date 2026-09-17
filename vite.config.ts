@@ -233,6 +233,20 @@ export default defineConfig({
               },
               cacheableResponse: { statuses: [0, 200] }
             }
+          },
+          // Cloudflare R2 3D Human Exercise Videos — CacheFirst 90 days with Range Requests
+          {
+            urlPattern: /^https:\/\/.*\.r2\.dev\/.*|\.(?:mp4|webm)$/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'jawan-r2-3d-videos',
+              expiration: {
+                maxEntries: 150,
+                maxAgeSeconds: 60 * 60 * 24 * 90 // 90 days offline cache
+              },
+              cacheableResponse: { statuses: [0, 200] },
+              rangeRequests: true
+            }
           }
         ]
       }
