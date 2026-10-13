@@ -327,6 +327,10 @@ class SyncedStore {
     return null;
   }
 
+  private sanitizePeople<T extends { temporaryPassword?: string }>(list: T[] | undefined): T[] {
+    return (Array.isArray(list) ? list : []).map(({ temporaryPassword: _ignored, ...rest }) => rest as T);
+  }
+
   private loadInitialState(): AppSyncState {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -335,8 +339,8 @@ class SyncedStore {
         return {
           ...DEFAULT_STATE,
           ...parsed,
-          clients: Array.isArray(parsed.clients) ? parsed.clients : [],
-          trainers: Array.isArray(parsed.trainers) ? parsed.trainers : [],
+          clients: this.sanitizePeople(parsed.clients),
+          trainers: this.sanitizePeople(parsed.trainers),
           customFoods: Array.isArray(parsed.customFoods) ? parsed.customFoods : []
         };
       }
@@ -348,7 +352,12 @@ class SyncedStore {
 
   private persist() {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+      const cleanState: AppSyncState = {
+        ...this.state,
+        clients: this.sanitizePeople(this.state.clients),
+        trainers: this.sanitizePeople(this.state.trainers)
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(cleanState));
     } catch {
       // fallback
     }
@@ -408,11 +417,18 @@ class SyncedStore {
   // 1. ADMIN ACTIONS - TRAINER MANAGEMENT
   public createTrainer(trainerData: Omit<TrainerData, 'id' | 'clientsCount' | 'avgAdherence'>) {
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    const assignedLoginId = trainerData.loginId || `JWT-${randomSuffix}`;
+    const assignedPassword = trainerData.temporaryPassword || `Coach@${randomSuffix}`;
+    const trainerId = `trainer-${Date.now()}`;
+
+    saveEphemeralPassword(assignedLoginId, assignedPassword);
+    saveEphemeralPassword(trainerId, assignedPassword);
+
+    const { temporaryPassword: _ignored, ...trainerDataWithoutPass } = trainerData;
     const newTrainer: TrainerData = {
-      ...trainerData,
-      id: `trainer-${Date.now()}`,
-      loginId: trainerData.loginId || `JWT-${randomSuffix}`,
-      temporaryPassword: trainerData.temporaryPassword || `Coach@${randomSuffix}`,
+      ...trainerDataWithoutPass,
+      id: trainerId,
+      loginId: assignedLoginId,
       clientsCount: 0,
       avgAdherence: 0
     };
@@ -547,11 +563,18 @@ class SyncedStore {
   // 1. ADMIN ACTIONS - CLIENT ENROLLMENT
   public createClient(clientData: Omit<ClientData, 'id' | 'workoutAdherence' | 'dietAdherence' | 'lastWorkout' | 'status' | 'firstLoginCompleted'>) {
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    const assignedLoginId = clientData.loginId || `JWM-${randomSuffix}`;
+    const assignedPassword = clientData.temporaryPassword || `Fit@${randomSuffix}`;
+    const clientId = `client-${Date.now()}`;
+
+    saveEphemeralPassword(assignedLoginId, assignedPassword);
+    saveEphemeralPassword(clientId, assignedPassword);
+
+    const { temporaryPassword: _ignored, ...clientDataWithoutPass } = clientData;
     const newClient: ClientData = {
-      ...clientData,
-      id: `client-${Date.now()}`,
-      loginId: clientData.loginId || `JWM-${randomSuffix}`,
-      temporaryPassword: clientData.temporaryPassword || `Fit@${randomSuffix}`,
+      ...clientDataWithoutPass,
+      id: clientId,
+      loginId: assignedLoginId,
       status: 'Active',
       workoutAdherence: 0,
       dietAdherence: 0,
@@ -596,21 +619,29 @@ class SyncedStore {
     cloudDbService.pushStateToCloud(this.state);
   }
 
-  public updateTrainerCredentials(trainerId: string, loginId: string, temporaryPassword: string) {
+  public updateTrainerCredentials(trainerId: string, loginId: string, temporaryPassword?: string) {
+    if (temporaryPassword) {
+      saveEphemeralPassword(loginId, temporaryPassword);
+      saveEphemeralPassword(trainerId, temporaryPassword);
+    }
     this.state = {
       ...this.state,
       trainers: this.state.trainers.map((t) =>
-        t.id === trainerId ? { ...t, loginId, temporaryPassword } : t
+        t.id === trainerId ? { ...t, loginId } : t
       )
     };
     this.notify();
   }
 
-  public updateClientCredentials(clientId: string, loginId: string, temporaryPassword: string) {
+  public updateClientCredentials(clientId: string, loginId: string, temporaryPassword?: string) {
+    if (temporaryPassword) {
+      saveEphemeralPassword(loginId, temporaryPassword);
+      saveEphemeralPassword(clientId, temporaryPassword);
+    }
     this.state = {
       ...this.state,
       clients: this.state.clients.map((c) =>
-        c.id === clientId ? { ...c, loginId, temporaryPassword } : c
+        c.id === clientId ? { ...c, loginId } : c
       )
     };
     this.notify();
@@ -1158,3 +1189,39 @@ class SyncedStore {
 }
 
 export const syncedStore = new SyncedStore();
+
+/**
+ * Session-only ephemeral credential store.
+ * Allows admins to re-share credentials via WhatsApp during their active session
+ * WITHOUT storing plain-text passwords in persistent localStorage or cloud sync states.
+ */
+const ephemeralPasswordMap = new Map<string, string>();
+
+export function saveEphemeralPassword(idOrLoginId: string, tempPass: string): void {
+  if (!idOrLoginId || !tempPass) return;
+  ephemeralPasswordMap.set(idOrLoginId.toLowerCase(), tempPass);
+  try {
+    const raw = sessionStorage.getItem('jawan_ephemeral_credentials_v1');
+    const store = raw ? JSON.parse(raw) : {};
+    store[idOrLoginId.toLowerCase()] = tempPass;
+    sessionStorage.setItem('jawan_ephemeral_credentials_v1', JSON.stringify(store));
+  } catch {
+    // sessionStorage not available
+  }
+}
+
+export function getEphemeralPassword(idOrLoginId: string): string | undefined {
+  if (!idOrLoginId) return undefined;
+  const key = idOrLoginId.toLowerCase();
+  if (ephemeralPasswordMap.has(key)) return ephemeralPasswordMap.get(key);
+  try {
+    const raw = sessionStorage.getItem('jawan_ephemeral_credentials_v1');
+    if (raw) {
+      const store = JSON.parse(raw);
+      return store[key];
+    }
+  } catch {
+    // sessionStorage not available
+  }
+  return undefined;
+}

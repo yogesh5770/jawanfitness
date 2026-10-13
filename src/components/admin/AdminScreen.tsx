@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Users, ShieldCheck, Dumbbell, Apple, FileText, Search, Plus, Trash2, X, Activity, Sparkles, Check, Menu, UserPlus, RefreshCw, LogOut, Database, MessageCircle, Key, Camera, Upload } from 'lucide-react';
 import { ExerciseService } from '../../services/exerciseService';
 import { FoodService, FOOD_CATEGORIES } from '../../data/foodDatabase';
-import { syncedStore, AppSyncState, ClientData } from '../../services/syncedStore';
+import { syncedStore, AppSyncState, ClientData, saveEphemeralPassword, getEphemeralPassword } from '../../services/syncedStore';
 import { authService } from '../../services/authService';
 import { hapticTap } from '../../utils/audioHaptics';
 import { compressImageFile } from '../../utils/imageUtils';
@@ -181,6 +181,9 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
       avatarUrl: newTrainerPhoto || undefined
     });
 
+    saveEphemeralPassword(assignedLoginId, assignedPassword);
+    saveEphemeralPassword(created.id, assignedPassword);
+
     const portalUser = await authService.createPortalUser({
       email: created.email,
       password: assignedPassword,
@@ -212,7 +215,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
       email: created.email,
       role: 'TRAINER',
       loginId: created.loginId || assignedLoginId,
-      temporaryPassword: created.temporaryPassword || assignedPassword,
+      temporaryPassword: assignedPassword,
       portalUrl: 'https://jawan-fitness-trainer.vercel.app'
     });
   };
@@ -271,6 +274,9 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
       trainerName: created.trainerName
     });
 
+    saveEphemeralPassword(assignedLoginId, assignedPassword);
+    saveEphemeralPassword(created.id, assignedPassword);
+
     await syncedStore.forcePushToCloud();
 
     setIsAddClientOpen(false);
@@ -293,7 +299,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
       email: created.email,
       role: 'CLIENT',
       loginId: created.loginId || assignedLoginId,
-      temporaryPassword: created.temporaryPassword || assignedPassword,
+      temporaryPassword: assignedPassword,
       portalUrl: window.location.origin.includes('pages.dev') ? 'https://jawan-fitness-app.pages.dev' : window.location.origin,
       assignedCoach: created.trainerName || 'Unassigned'
     });
@@ -810,26 +816,35 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                           <div className="text-[10px] font-tech text-slate-500 dark:text-slate-400">
                             ID: <strong className="text-amber-600 dark:text-amber-400">{trainer.loginId || trainer.email.split('@')[0]}</strong>
                           </div>
-                          <button
-                            onClick={() => {
-                              hapticTap();
-                              setActiveCredentialModal({
-                                name: trainer.name,
-                                phone: trainer.phone,
-                                email: trainer.email,
-                                role: 'TRAINER',
-                                loginId: trainer.loginId || trainer.email,
-                                temporaryPassword: trainer.temporaryPassword || '',
-                                portalUrl: 'https://jawan-fitness-trainer.vercel.app'
-                              });
-                            }}
-                            disabled={!trainer.temporaryPassword}
-                            className="px-2.5 py-1.5 bg-[#25D366]/15 hover:bg-[#25D366]/25 border border-[#25D366]/30 text-[#25D366] text-xs font-bold rounded-xl flex items-center space-x-1.5 transition-all"
-                            title={trainer.temporaryPassword ? 'Send login credentials via WhatsApp' : 'Temporary password is no longer available'}
-                          >
-                            <MessageCircle className="w-3.5 h-3.5 fill-current" />
-                            <span>WhatsApp Pass</span>
-                          </button>
+                          {(() => {
+                            const tempPass = getEphemeralPassword(trainer.loginId || '') || getEphemeralPassword(trainer.id);
+                            return (
+                              <button
+                                onClick={() => {
+                                  hapticTap();
+                                  setActiveCredentialModal({
+                                    name: trainer.name,
+                                    phone: trainer.phone,
+                                    email: trainer.email,
+                                    role: 'TRAINER',
+                                    loginId: trainer.loginId || trainer.email,
+                                    temporaryPassword: tempPass || '',
+                                    portalUrl: 'https://jawan-fitness-trainer.vercel.app'
+                                  });
+                                }}
+                                disabled={!tempPass}
+                                className={`px-2.5 py-1.5 border text-xs font-bold rounded-xl flex items-center space-x-1.5 transition-all ${
+                                  tempPass
+                                    ? 'bg-[#25D366]/15 hover:bg-[#25D366]/25 border-[#25D366]/30 text-[#25D366]'
+                                    : 'bg-slate-500/10 border-slate-500/20 text-slate-400 cursor-not-allowed opacity-60'
+                                }`}
+                                title={tempPass ? 'Send login credentials via WhatsApp' : 'Temporary password expired or not in active session'}
+                              >
+                                <MessageCircle className="w-3.5 h-3.5 fill-current" />
+                                <span>{tempPass ? 'WhatsApp Pass' : 'Sent'}</span>
+                              </button>
+                            );
+                          })()}
                         </div>
                       </div>
                     );
@@ -931,26 +946,36 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                           {/* WhatsApp Credentials Dispatch Action */}
                           <div className="flex items-center justify-between text-xs pt-1.5 border-t border-slate-200/80 dark:border-white/5">
                             <span className="text-[10px] font-tech text-slate-500 dark:text-slate-400">ID: <strong className="text-amber-600 dark:text-amber-400">{client.loginId || client.phone}</strong></span>
-                            <button
-                              onClick={() => {
-                                hapticTap();
-                                setActiveCredentialModal({
-                                  name: client.name,
-                                  phone: client.phone,
-                                  email: client.email,
-                                  role: 'CLIENT',
-                                  loginId: client.loginId || client.phone || client.email,
-                                  temporaryPassword: client.temporaryPassword || '',
-                                  portalUrl: 'https://jawan-fitness-app.vercel.app',
-                                  assignedCoach: client.trainerName
-                                });
-                              }}
-                              disabled={!client.temporaryPassword}
-                              className="px-2.5 py-1 rounded-lg bg-[#25D366]/15 hover:bg-[#25D366]/25 border border-[#25D366]/30 text-[#25D366] text-xs font-bold flex items-center space-x-1.5 transition-all"
-                            >
-                              <MessageCircle className="w-3.5 h-3.5 fill-current" />
-                              <span>WhatsApp Pass</span>
-                            </button>
+                            {(() => {
+                              const tempPass = getEphemeralPassword(client.loginId || '') || getEphemeralPassword(client.phone || '') || getEphemeralPassword(client.id);
+                              return (
+                                <button
+                                  onClick={() => {
+                                    hapticTap();
+                                    setActiveCredentialModal({
+                                      name: client.name,
+                                      phone: client.phone,
+                                      email: client.email,
+                                      role: 'CLIENT',
+                                      loginId: client.loginId || client.phone || client.email,
+                                      temporaryPassword: tempPass || '',
+                                      portalUrl: 'https://jawan-fitness-app.vercel.app',
+                                      assignedCoach: client.trainerName
+                                    });
+                                  }}
+                                  disabled={!tempPass}
+                                  className={`px-2.5 py-1 rounded-lg border text-xs font-bold flex items-center space-x-1.5 transition-all ${
+                                    tempPass
+                                      ? 'bg-[#25D366]/15 hover:bg-[#25D366]/25 border-[#25D366]/30 text-[#25D366]'
+                                      : 'bg-slate-500/10 border-slate-500/20 text-slate-400 cursor-not-allowed opacity-60'
+                                  }`}
+                                  title={tempPass ? 'Send credentials via WhatsApp' : 'Temporary password expired or not in active session'}
+                                >
+                                  <MessageCircle className="w-3.5 h-3.5 fill-current" />
+                                  <span>{tempPass ? 'WhatsApp Pass' : 'Sent'}</span>
+                                </button>
+                              );
+                            })()}
                           </div>
                         </div>
                       ))}
@@ -1012,27 +1037,36 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                               </td>
                               <td className="p-4 text-right">
                                 <div className="flex items-center justify-end space-x-1.5">
-                                  <button
-                                    onClick={() => {
-                                      hapticTap();
-                                      setActiveCredentialModal({
-                                        name: client.name,
-                                        phone: client.phone,
-                                        email: client.email,
-                                        role: 'CLIENT',
-                                        loginId: client.loginId || client.phone || client.email,
-                                        temporaryPassword: client.temporaryPassword || '',
-                                        portalUrl: 'https://jawan-fitness-app.vercel.app',
-                                        assignedCoach: client.trainerName
-                                      });
-                                    }}
-                                    disabled={!client.temporaryPassword}
-                                    className="px-2.5 py-1.5 rounded-xl bg-[#25D366]/15 hover:bg-[#25D366]/25 border border-[#25D366]/30 text-[#25D366] text-xs font-bold flex items-center space-x-1.5 transition-all"
-                                    title="Send Credentials via WhatsApp"
-                                  >
-                                    <MessageCircle className="w-3.5 h-3.5 fill-current" />
-                                    <span>WhatsApp Pass</span>
-                                  </button>
+                                  {(() => {
+                                    const tempPass = getEphemeralPassword(client.loginId || '') || getEphemeralPassword(client.phone || '') || getEphemeralPassword(client.id);
+                                    return (
+                                      <button
+                                        onClick={() => {
+                                          hapticTap();
+                                          setActiveCredentialModal({
+                                            name: client.name,
+                                            phone: client.phone,
+                                            email: client.email,
+                                            role: 'CLIENT',
+                                            loginId: client.loginId || client.phone || client.email,
+                                            temporaryPassword: tempPass || '',
+                                            portalUrl: 'https://jawan-fitness-app.vercel.app',
+                                            assignedCoach: client.trainerName
+                                          });
+                                        }}
+                                        disabled={!tempPass}
+                                        className={`px-2.5 py-1.5 rounded-xl border text-xs font-bold flex items-center space-x-1.5 transition-all ${
+                                          tempPass
+                                            ? 'bg-[#25D366]/15 hover:bg-[#25D366]/25 border-[#25D366]/30 text-[#25D366]'
+                                            : 'bg-slate-500/10 border-slate-500/20 text-slate-400 cursor-not-allowed opacity-60'
+                                        }`}
+                                        title={tempPass ? 'Send Credentials via WhatsApp' : 'Temporary password expired or not in active session'}
+                                      >
+                                        <MessageCircle className="w-3.5 h-3.5 fill-current" />
+                                        <span>{tempPass ? 'WhatsApp Pass' : 'Sent'}</span>
+                                      </button>
+                                    );
+                                  })()}
                                   <button
                                     onClick={() => handleDeleteClient(client.id, client.name)}
                                     className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"
