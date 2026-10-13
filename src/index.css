@@ -27,8 +27,8 @@
     --sal: env(safe-area-inset-left, 0px);
     --sar: env(safe-area-inset-right, 0px);
 
-    /* Touch target minimum (WCAG 2.5.5 / Apple HIG / Google Material) */
-    --touch-min: 44px;
+    /* Touch target minimum (WCAG 2.1 AA / Android Material 3 48dp standard) */
+    --touch-min: 48px;
 
     /* Bottom nav height — used everywhere that needs to avoid nav overlap */
     --nav-height: 64px;
@@ -151,6 +151,15 @@
   to   { opacity: 1; transform: translateY(0);   }
 }
 .animate-fadeIn { animation: fadeIn 0.3s ease both; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
 
 /* =============================================================================
    LIGHT-MODE SAFETY NET
