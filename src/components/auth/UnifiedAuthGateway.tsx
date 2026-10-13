@@ -128,13 +128,13 @@ export const UnifiedAuthGateway: React.FC<UnifiedAuthGatewayProps> = ({
             <button
               type="button"
               onClick={() => handleRoleChange('CLIENT')}
-              className={`py-2.5 px-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center justify-center space-x-1.5 cursor-pointer ${
+              className={`min-h-[44px] py-2 px-1 sm:px-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all duration-200 flex items-center justify-center space-x-1.5 cursor-pointer ${
                 selectedRole === 'CLIENT'
                   ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-black shadow-[0_2px_15px_rgba(245,158,11,0.35)] font-black scale-[1.02]'
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.04]'
               }`}
             >
-              <Dumbbell className="w-3.5 h-3.5" />
+              <Dumbbell className="w-3.5 h-3.5 flex-shrink-0" />
               <span>Athlete</span>
             </button>
 
@@ -142,13 +142,13 @@ export const UnifiedAuthGateway: React.FC<UnifiedAuthGatewayProps> = ({
             <button
               type="button"
               onClick={() => handleRoleChange('TRAINER')}
-              className={`py-2.5 px-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center justify-center space-x-1.5 cursor-pointer ${
+              className={`min-h-[44px] py-2 px-1 sm:px-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all duration-200 flex items-center justify-center space-x-1.5 cursor-pointer ${
                 selectedRole === 'TRAINER'
                   ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-black shadow-[0_2px_15px_rgba(245,158,11,0.35)] font-black scale-[1.02]'
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.04]'
               }`}
             >
-              <Users className="w-3.5 h-3.5" />
+              <Users className="w-3.5 h-3.5 flex-shrink-0" />
               <span>Trainer</span>
             </button>
 
@@ -156,13 +156,13 @@ export const UnifiedAuthGateway: React.FC<UnifiedAuthGatewayProps> = ({
             <button
               type="button"
               onClick={() => handleRoleChange('ADMIN')}
-              className={`py-2.5 px-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center justify-center space-x-1.5 cursor-pointer ${
+              className={`min-h-[44px] py-2 px-1 sm:px-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all duration-200 flex items-center justify-center space-x-1.5 cursor-pointer ${
                 selectedRole === 'ADMIN'
                   ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-black shadow-[0_2px_15px_rgba(245,158,11,0.35)] font-black scale-[1.02]'
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.04]'
               }`}
             >
-              <ShieldCheck className="w-3.5 h-3.5" />
+              <ShieldCheck className="w-3.5 h-3.5 flex-shrink-0" />
               <span>Director</span>
             </button>
           </div>
@@ -224,7 +224,7 @@ export const UnifiedAuthGateway: React.FC<UnifiedAuthGatewayProps> = ({
                     ? 'e.g. JWT-7195 or 9360345770'
                     : 'admin@jawan.fit'
                 }
-                className="w-full bg-slate-100 dark:bg-[#060810]/90 border border-slate-200 dark:border-white/10 focus:border-amber-500 focus:bg-[#0a0d18] rounded-2xl px-4 py-3 text-sm text-slate-900 dark:text-white outline-none transition-all duration-200 placeholder:text-slate-500 dark:placeholder:text-slate-400 shadow-inner focus:shadow-[0_0_20px_rgba(245,158,11,0.15)] pr-11"
+                className="w-full min-h-[48px] bg-slate-100 dark:bg-[#060810]/90 border border-slate-200 dark:border-white/10 focus:border-amber-500 focus:bg-[#0a0d18] rounded-2xl px-4 py-3 text-base sm:text-sm text-slate-900 dark:text-white outline-none transition-all duration-200 placeholder:text-slate-500 dark:placeholder:text-slate-400 shadow-inner focus:shadow-[0_0_20px_rgba(245,158,11,0.15)] pr-11"
               />
               <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none group-focus-within:text-amber-400 transition-colors">
                 {selectedRole === 'CLIENT' ? <Phone className="w-4 h-4" /> : <Mail className="w-4 h-4" />}
@@ -250,12 +250,12 @@ export const UnifiedAuthGateway: React.FC<UnifiedAuthGatewayProps> = ({
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your secure password"
-                className="w-full bg-slate-100 dark:bg-[#060810]/90 border border-slate-200 dark:border-white/10 focus:border-amber-500 focus:bg-[#0a0d18] rounded-2xl px-4 py-3 text-sm text-slate-900 dark:text-white outline-none transition-all duration-200 placeholder:text-slate-500 dark:placeholder:text-slate-400 shadow-inner focus:shadow-[0_0_20px_rgba(245,158,11,0.15)] pr-11"
+                className="w-full min-h-[48px] bg-slate-100 dark:bg-[#060810]/90 border border-slate-200 dark:border-white/10 focus:border-amber-500 focus:bg-[#0a0d18] rounded-2xl px-4 py-3 text-base sm:text-sm text-slate-900 dark:text-white outline-none transition-all duration-200 placeholder:text-slate-500 dark:placeholder:text-slate-400 shadow-inner focus:shadow-[0_0_20px_rgba(245,158,11,0.15)] pr-11"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white p-1 transition-colors cursor-pointer"
+                className="min-h-[44px] min-w-[44px] absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center justify-center transition-colors cursor-pointer"
                 aria-label="Toggle password visibility"
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -265,7 +265,7 @@ export const UnifiedAuthGateway: React.FC<UnifiedAuthGatewayProps> = ({
 
           {/* Keep me signed in */}
           <div className="flex items-center justify-between pt-1 text-xs">
-            <label className="flex items-center space-x-2 text-slate-500 dark:text-slate-400 cursor-pointer select-none">
+            <label className="min-h-[44px] flex items-center space-x-2 text-slate-500 dark:text-slate-400 cursor-pointer select-none">
               <input
                 type="checkbox"
                 checked={keepSignedIn}
@@ -280,7 +280,7 @@ export const UnifiedAuthGateway: React.FC<UnifiedAuthGatewayProps> = ({
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-3.5 px-5 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-black font-display font-black text-xs tracking-widest uppercase shadow-[0_4px_25px_rgba(245,158,11,0.35)] flex items-center justify-center space-x-2 transition-all duration-200 active:scale-[0.98] disabled:opacity-50 cursor-pointer mt-3"
+            className="w-full min-h-[48px] py-3.5 px-5 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-black font-display font-black text-xs tracking-widest uppercase shadow-[0_4px_25px_rgba(245,158,11,0.35)] flex items-center justify-center space-x-2 transition-all duration-200 active:scale-[0.98] disabled:opacity-50 cursor-pointer mt-3"
           >
             {isLoading ? (
               <>

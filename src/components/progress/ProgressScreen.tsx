@@ -157,7 +157,7 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
   return (
     <div className="space-y-4 pb-28 text-left animate-fadeIn max-w-xl mx-auto">
       {/* Segmented Navigation Bar */}
-      <div className="bg-white dark:bg-[#0c101a] border border-slate-200 dark:border-white/10 rounded-2xl p-1 shadow-sm flex items-center justify-between transition-colors duration-200">
+      <div className="bg-white dark:bg-[#0c101a] border border-slate-200 dark:border-white/10 rounded-2xl p-1 shadow-sm flex items-center gap-1 overflow-x-auto scrollbar-none transition-colors duration-200">
         {[
           { id: 'overview', label: 'Overview' },
           { id: 'measurements', label: 'Measurements' },
@@ -170,10 +170,10 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
               hapticTap();
               setActiveTab(tab.id as any);
             }}
-            className={`flex-1 py-2 px-1 text-center rounded-xl text-xs font-tech font-bold transition-all ${
+            className={`flex-1 min-w-[76px] min-h-[44px] py-2 px-2 text-center rounded-xl text-[11px] sm:text-xs font-tech font-bold transition-all whitespace-nowrap cursor-pointer flex items-center justify-center ${
               activeTab === tab.id
                 ? 'bg-amber-500 text-black shadow-md'
-                : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                : 'text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.04]'
             }`}
           >
             {tab.label}
@@ -196,7 +196,7 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
               </div>
               <button
                 onClick={() => setIsLoggingWeight(!isLoggingWeight)}
-                className="flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-black font-display shadow active:scale-95 transition-all"
+                className="min-h-[44px] flex items-center space-x-1 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-black font-display shadow active:scale-95 transition-all cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5 stroke-[3]" />
                 <span>Log Weight</span>
@@ -212,13 +212,13 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
                   placeholder="e.g. 102.8"
                   value={newWeightInput}
                   onChange={(e) => setNewWeightInput(e.target.value)}
-                  className="flex-1 bg-white dark:bg-slate-800 px-3 py-2 rounded-xl text-slate-900 dark:text-white text-xs font-tech font-bold focus:outline-none focus:ring-1 focus:ring-amber-500 border border-slate-200 dark:border-transparent"
+                  className="flex-1 min-h-[48px] bg-white dark:bg-slate-800 px-3.5 py-2.5 rounded-xl text-slate-900 dark:text-white text-base sm:text-xs font-tech font-bold focus:outline-none focus:ring-1 focus:ring-amber-500 border border-slate-200 dark:border-transparent"
                 />
                 <button
                   onClick={handleSaveWeight}
-                  className="px-3 py-2 bg-emerald-500 text-black font-bold text-xs rounded-xl flex items-center space-x-1 shadow"
+                  className="min-h-[48px] px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs rounded-xl flex items-center space-x-1.5 shadow cursor-pointer active:scale-95 transition-transform"
                 >
-                  <Check className="w-3.5 h-3.5 stroke-[3]" />
+                  <Check className="w-4 h-4 stroke-[3]" />
                   <span>Save</span>
                 </button>
               </div>
