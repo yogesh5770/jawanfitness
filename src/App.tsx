@@ -5,6 +5,7 @@ import { UnifiedAuthGateway } from './components/auth/UnifiedAuthGateway';
 import { IOSInstallBanner } from './components/common/IOSInstallBanner';
 import { authService, AuthUser } from './services/authService';
 import { syncedStore } from './services/syncedStore';
+import { nativePlatform } from './services/nativePlatformService';
 import { Loader2 } from 'lucide-react';
 
 const AdminApp = lazy(() => import('./components/admin/AdminApp').then((m) => ({ default: m.AdminApp })));
@@ -35,8 +36,10 @@ export const App: React.FC = () => {
     return null;
   });
 
-  // Verify backend session on mount
+  // Verify backend session on mount & initialize platform bridge
   useEffect(() => {
+    nativePlatform.init();
+
     async function verifyAuth() {
       const token = authService.getToken();
       if (!token) {

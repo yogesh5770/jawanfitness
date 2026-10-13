@@ -94,23 +94,19 @@ export function playRestFinishedSound() {
   }
 }
 
+import { nativePlatform } from '../services/nativePlatformService';
+
 /**
  * Trigger subtle tap feedback
  */
 export function hapticTap() {
-  if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-    navigator.vibrate(25);
-  }
+  nativePlatform.triggerHaptic('light').catch(() => {});
 }
 
 export function hapticSuccess() {
-  if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-    navigator.vibrate([40, 60, 80]);
-  }
+  nativePlatform.triggerHaptic('success').catch(() => {});
 }
 
 export function hapticError() {
-  if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-    navigator.vibrate([100, 50, 100]);
-  }
+  nativePlatform.triggerHaptic('error').catch(() => {});
 }
