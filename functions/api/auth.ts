@@ -36,6 +36,60 @@ function corsHeaders(request: Request) {
   };
 }
 
+const DUMMY_SALT = '0123456789abcdef0123456789abcdef';
+
+function constantTimeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) {
+    let dummy = 0;
+    for (let i = 0; i < a.length; i++) {
+      dummy |= a.charCodeAt(i) ^ a.charCodeAt(i);
+    }
+    return false;
+  }
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
+interface RateLimitRecord {
+  attempts: number;
+  resetAt: number;
+}
+const loginRateLimits = new Map<string, RateLimitRecord>();
+
+function checkRateLimit(key: string, maxAttempts: number): { allowed: boolean; retryAfterSeconds: number } {
+  const now = Date.now();
+  const record = loginRateLimits.get(key);
+  if (!record || now > record.resetAt) {
+    return { allowed: true, retryAfterSeconds: 0 };
+  }
+  if (record.attempts >= maxAttempts) {
+    return { allowed: false, retryAfterSeconds: Math.ceil((record.resetAt - now) / 1000) };
+  }
+  return { allowed: true, retryAfterSeconds: 0 };
+}
+
+function recordFailedAttempt(key: string, windowMs: number): void {
+  const now = Date.now();
+  const record = loginRateLimits.get(key);
+  if (!record || now > record.resetAt) {
+    loginRateLimits.set(key, { attempts: 1, resetAt: now + windowMs });
+  } else {
+    record.attempts += 1;
+  }
+  if (loginRateLimits.size > 5000) {
+    for (const [k, v] of loginRateLimits.entries()) {
+      if (now > v.resetAt) loginRateLimits.delete(k);
+    }
+  }
+}
+
+function clearRateLimit(key: string): void {
+  loginRateLimits.delete(key);
+}
+
 async function hashPassword(password: string, salt: string): Promise<string> {
   const enc = new TextEncoder();
   const keyMaterial = await crypto.subtle.importKey(
@@ -108,6 +162,25 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       const last10Digits = digitsOnly.length >= 10 ? digitsOnly.slice(-10) : digitsOnly;
       const phoneWithCountry = last10Digits ? `+91${last10Digits}` : cleanInput;
 
+      // Rate limiting: Compound (IP + ID) limit (5 attempts/15m) and Global IP cap (25 attempts/15m)
+      const clientIp = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For')?.split(',')[0].trim() || '127.0.0.1';
+      const rateLimitKey = `${clientIp}:${cleanInput.toLowerCase()}`;
+      const ipLimitKey = `ip:${clientIp}`;
+
+      const compoundCheck = checkRateLimit(rateLimitKey, 5);
+      const ipCheck = checkRateLimit(ipLimitKey, 25);
+
+      if (!compoundCheck.allowed || !ipCheck.allowed) {
+        const retryAfter = Math.max(compoundCheck.retryAfterSeconds, ipCheck.retryAfterSeconds, 1);
+        return new Response(JSON.stringify({ error: 'Too many failed login attempts. Please wait 15 minutes before trying again.' }), {
+          status: 429,
+          headers: {
+            ...headers,
+            'Retry-After': String(retryAfter)
+          }
+        });
+      }
+
       const user = await env.DB.prepare(`
         SELECT * FROM gym_users
         WHERE (
@@ -134,6 +207,10 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       ).first() as any;
 
       if (!user) {
+        // Timing-safe dummy hash execution to mitigate username/phone enumeration
+        await hashPassword(password, DUMMY_SALT);
+        recordFailedAttempt(rateLimitKey, 15 * 60 * 1000);
+        recordFailedAttempt(ipLimitKey, 15 * 60 * 1000);
         return new Response(JSON.stringify({ error: 'Invalid user credentials.' }), {
           status: 401,
           headers
@@ -141,12 +218,17 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       }
 
       const inputHash = await hashPassword(password, user.salt);
-      if (inputHash !== user.password_hash) {
+      if (!constantTimeEqual(inputHash, user.password_hash)) {
+        recordFailedAttempt(rateLimitKey, 15 * 60 * 1000);
+        recordFailedAttempt(ipLimitKey, 15 * 60 * 1000);
         return new Response(JSON.stringify({ error: 'Invalid user credentials.' }), {
           status: 401,
           headers
         });
       }
+
+      // Successful verification: clear lockouts for this identifier
+      clearRateLimit(rateLimitKey);
 
       const roleHierarchy: Record<string, number> = { CLIENT: 1, TRAINER: 2, ADMIN: 3 };
       const userLevel = roleHierarchy[user.role] || 0;
@@ -298,7 +380,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       }
 
       const oldHash = await hashPassword(oldPassword, user.salt);
-      if (oldHash !== user.password_hash) {
+      if (!constantTimeEqual(oldHash, user.password_hash)) {
         return new Response(JSON.stringify({ error: 'Current password does not match.' }), {
           status: 401,
           headers
