@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import { hapticTap } from '../../utils/audioHaptics';
+import { registerBackButtonHandler } from '../../services/nativePlatformService';
 
 export interface ModalProps {
   isOpen: boolean;
@@ -26,15 +27,26 @@ export const Modal: React.FC<ModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
 
+    // 1. Web Escape key
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         hapticTap();
         onClose();
       }
     };
-
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+
+    // 2. Android Hardware Back Button LIFO stack
+    const unregisterBack = registerBackButtonHandler(() => {
+      hapticTap();
+      onClose();
+      return true;
+    });
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      unregisterBack();
+    };
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;

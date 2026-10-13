@@ -4,6 +4,7 @@ import { FoodService, CURATED_INDIAN_FOODS } from '../../data/foodDatabase';
 import { Plus, Trash2, Droplets, Search, X, Check, Flame, Sparkles, Calendar, ChevronLeft, ChevronRight, RotateCcw, Clock } from 'lucide-react';
 import { hapticTap } from '../../utils/audioHaptics';
 import { syncedStore, getTodayDateKey } from '../../services/syncedStore';
+import { registerBackButtonHandler } from '../../services/nativePlatformService';
 
 interface DietScreenProps {
   trainerName?: string;
@@ -31,6 +32,32 @@ export const DietScreen: React.FC<DietScreenProps> = ({
   const [viewScope, setViewScope] = useState<'today' | 'yesterday' | 'all'>('today');
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
 
+  const [activeMealCategory, setActiveMealCategory] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack' | null>(null);
+  const [foodSearchQuery, setFoodSearchQuery] = useState('');
+  const [asyncResults, setAsyncResults] = useState<FoodItem[]>([]);
+  const [isSearchingDb, setIsSearchingDb] = useState(false);
+  const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
+  const [servings, setServings] = useState(1);
+  const [foodFilterCategory, setFoodFilterCategory] = useState<string>('All');
+
+  // Hardware Back Button integration
+  useEffect(() => {
+    if (!activeMealCategory && !isResetConfirmOpen) return;
+    return registerBackButtonHandler(() => {
+      hapticTap();
+      if (activeMealCategory) {
+        setActiveMealCategory(null);
+        setSelectedFood(null);
+        return true;
+      }
+      if (isResetConfirmOpen) {
+        setIsResetConfirmOpen(false);
+        return true;
+      }
+      return false;
+    });
+  }, [activeMealCategory, isResetConfirmOpen]);
+
   const yesterdayDateObj = new Date();
   yesterdayDateObj.setDate(yesterdayDateObj.getDate() - 1);
   const yesterdayKey = getTodayDateKey(yesterdayDateObj);
@@ -51,14 +78,6 @@ export const DietScreen: React.FC<DietScreenProps> = ({
 
   const isViewingToday = selectedDate === todayKey && viewScope !== 'all';
   const isViewingYesterday = selectedDate === yesterdayKey && viewScope !== 'all';
-
-  const [activeMealCategory, setActiveMealCategory] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack' | null>(null);
-  const [foodSearchQuery, setFoodSearchQuery] = useState('');
-  const [asyncResults, setAsyncResults] = useState<FoodItem[]>([]);
-  const [isSearchingDb, setIsSearchingDb] = useState(false);
-  const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
-  const [servings, setServings] = useState(1);
-  const [foodFilterCategory, setFoodFilterCategory] = useState<string>('All');
 
   // Assigned meal plan comes ONLY from props (resolved per-member by ClientApp).
   // Never fall back to the first key in the store — that leaks other members' plans.
@@ -347,7 +366,7 @@ export const DietScreen: React.FC<DietScreenProps> = ({
         </div>
 
         {/* 4 Macro Cards */}
-        <div className="grid grid-cols-4 gap-2 text-center pt-2 border-t border-slate-200/80 dark:border-white/5">
+        <div className="grid grid-cols-2 min-[380px]:grid-cols-4 gap-2 text-center pt-2 border-t border-slate-200/80 dark:border-white/5">
           <div className="bg-slate-100/70 dark:bg-slate-900/60 p-2 sm:p-2.5 rounded-2xl border border-slate-200/80 dark:border-white/5">
             <span className="text-[9px] sm:text-[10px] uppercase font-tech text-amber-600 dark:text-amber-400 font-bold block">Protein</span>
             <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white font-display mt-0.5 block">
@@ -532,13 +551,13 @@ export const DietScreen: React.FC<DietScreenProps> = ({
         </div>
 
         {/* Quick Add Buttons */}
-        <div className="flex items-center space-x-1.5">
+        <div className="flex items-center space-x-2">
           <button
             onClick={() => {
               hapticTap();
               onUpdateWater(250);
             }}
-            className="px-2.5 py-1.5 rounded-xl bg-cyan-950 border border-cyan-500/30 text-cyan-700 dark:text-cyan-300 hover:bg-cyan-900 text-xs font-bold active:scale-95 transition-all"
+            className="min-h-[44px] px-3.5 rounded-xl bg-cyan-950 border border-cyan-500/30 text-cyan-700 dark:text-cyan-300 hover:bg-cyan-900 text-xs font-bold active:scale-95 transition-all cursor-pointer flex items-center justify-center"
           >
             +250ml
           </button>
@@ -547,7 +566,7 @@ export const DietScreen: React.FC<DietScreenProps> = ({
               hapticTap();
               onUpdateWater(500);
             }}
-            className="px-2.5 py-1.5 rounded-xl bg-cyan-500 text-black font-black text-xs hover:bg-cyan-400 active:scale-95 transition-all shadow"
+            className="min-h-[44px] px-3.5 rounded-xl bg-cyan-500 text-black font-black text-xs hover:bg-cyan-400 active:scale-95 transition-all shadow cursor-pointer flex items-center justify-center"
           >
             +500ml
           </button>
@@ -581,9 +600,9 @@ export const DietScreen: React.FC<DietScreenProps> = ({
                     hapticTap();
                     setActiveMealCategory(meal.type);
                   }}
-                  className="flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-amber-600 dark:text-amber-400 hover:text-amber-300 text-xs font-bold border border-slate-200/80 dark:border-white/5 transition-all"
+                  className="min-h-[44px] flex items-center space-x-1.5 px-3.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-amber-600 dark:text-amber-400 hover:text-amber-300 text-xs font-bold border border-slate-200/80 dark:border-white/5 transition-all cursor-pointer"
                 >
-                  <Plus className="w-3.5 h-3.5" />
+                  <Plus className="w-4 h-4" />
                   <span>Add Food</span>
                 </button>
               </div>
@@ -599,7 +618,7 @@ export const DietScreen: React.FC<DietScreenProps> = ({
                           {item.protein}g P • {item.carbs}g C • {item.fat}g F • {item.time}
                         </span>
                       </div>
-                      <div className="flex items-center space-x-2.5">
+                      <div className="flex items-center space-x-2">
                         <span className="font-tech font-bold text-amber-600 dark:text-amber-400">
                           {item.calories} kcal
                         </span>
@@ -608,9 +627,10 @@ export const DietScreen: React.FC<DietScreenProps> = ({
                             hapticTap();
                             onRemoveMealItem(item.id);
                           }}
-                          className="p-1 text-slate-600 hover:text-red-400 transition-colors"
+                          aria-label={`Remove ${item.name}`}
+                          className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-400 hover:text-rose-500 rounded-xl transition-colors cursor-pointer"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
@@ -638,10 +658,12 @@ export const DietScreen: React.FC<DietScreenProps> = ({
               </div>
               <button
                 onClick={() => {
+                  hapticTap();
                   setActiveMealCategory(null);
                   setSelectedFood(null);
                 }}
-                className="p-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                aria-label="Close food search"
+                className="min-h-[48px] min-w-[48px] flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -649,23 +671,23 @@ export const DietScreen: React.FC<DietScreenProps> = ({
 
             {/* Search Input */}
             <div className="p-3 border-b border-slate-200/80 dark:border-white/5 bg-white dark:bg-[#090d15]">
-              <div className="flex items-center bg-white dark:bg-[#151a24] rounded-xl px-3 py-2 text-slate-500 dark:text-slate-400 focus-within:ring-2 focus-within:ring-amber-500">
+              <div className="flex items-center min-h-[48px] bg-slate-50 dark:bg-[#151a24] rounded-xl px-3.5 text-slate-500 dark:text-slate-400 focus-within:ring-2 focus-within:ring-amber-500 border border-slate-200 dark:border-white/5">
                 <Search className="w-4 h-4 mr-2 text-slate-500 dark:text-slate-400 flex-shrink-0" />
                 <input
                   type="text"
                   value={foodSearchQuery}
                   onChange={(e) => setFoodSearchQuery(e.target.value)}
                   placeholder="Search idli, dosa, biryani, chicken, paneer, dal..."
-                  className="bg-transparent text-slate-900 dark:text-white text-xs w-full outline-none placeholder:text-slate-500 dark:placeholder:text-slate-400"
+                  className="bg-transparent text-slate-900 dark:text-white text-base sm:text-xs w-full outline-none placeholder:text-slate-500 dark:placeholder:text-slate-400"
                   autoFocus
                 />
                 {isSearchingDb && (
-                  <span className="text-[10px] font-tech text-amber-600 dark:text-amber-400 animate-pulse">Searching...</span>
+                  <span className="text-[10px] font-tech text-amber-600 dark:text-amber-400 animate-pulse flex-shrink-0">Searching...</span>
                 )}
               </div>
 
               {/* Verified Food Categories Pill Bar */}
-              <div className="flex space-x-1.5 overflow-x-auto scrollbar-none pt-2 text-[10px] font-tech font-bold">
+              <div className="flex space-x-1.5 overflow-x-auto scrollbar-none pt-2.5 text-[10px] font-tech font-bold">
                 {[
                   { id: 'All', label: 'All Items' },
                   { id: 'Rice & grains', label: '🌾 Rice & Grains' },
@@ -690,7 +712,7 @@ export const DietScreen: React.FC<DietScreenProps> = ({
                       hapticTap();
                       setFoodFilterCategory(cat.id);
                     }}
-                    className={`px-2.5 py-1 rounded-lg flex-shrink-0 transition-all ${
+                    className={`min-h-[36px] px-3 py-1.5 rounded-lg flex-shrink-0 transition-all cursor-pointer ${
                       foodFilterCategory === cat.id
                         ? 'bg-amber-500 text-black font-extrabold shadow'
                         : 'bg-slate-100/80 dark:bg-slate-900/80 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200/80 dark:border-white/5'
@@ -713,13 +735,13 @@ export const DietScreen: React.FC<DietScreenProps> = ({
                       hapticTap();
                       setSelectedFood(food);
                     }}
-                    className={`py-2.5 px-3 rounded-xl flex items-center justify-between cursor-pointer transition-all ${
+                    className={`min-h-[48px] py-3 px-3 rounded-xl flex items-center justify-between cursor-pointer transition-all ${
                       isSelected ? 'bg-amber-500/20 border border-amber-500/40' : 'hover:bg-slate-100 dark:hover:bg-white/[0.03]'
                     }`}
                   >
                     <div>
                       <div className="flex items-center space-x-2">
-                        <span className="text-xs font-bold text-slate-900 dark:text-white">{food.name}</span>
+                        <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">{food.name}</span>
                         {food.verified && (
                           <span className="text-[9px] bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.2 rounded font-tech">
                             Verified
@@ -730,7 +752,7 @@ export const DietScreen: React.FC<DietScreenProps> = ({
                         {food.servingSize} • {food.protein}g P • {food.carbs}g C • {food.fat}g F
                       </span>
                     </div>
-                    <span className="text-xs font-tech font-bold text-amber-600 dark:text-amber-400">
+                    <span className="text-xs sm:text-sm font-tech font-bold text-amber-600 dark:text-amber-400 ml-2">
                       {food.calories} kcal
                     </span>
                   </div>
@@ -750,15 +772,23 @@ export const DietScreen: React.FC<DietScreenProps> = ({
                 <div className="flex items-center space-x-2">
                   <span className="text-xs text-slate-500 dark:text-slate-400">Servings:</span>
                   <button
-                    onClick={() => setServings(Math.max(1, servings - 1))}
-                    className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-bold flex items-center justify-center"
+                    onClick={() => {
+                      hapticTap();
+                      setServings(Math.max(1, servings - 1));
+                    }}
+                    aria-label="Decrease servings"
+                    className="min-w-[44px] min-h-[44px] rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-white font-bold flex items-center justify-center cursor-pointer transition-colors"
                   >
                     -
                   </button>
-                  <span className="font-tech font-bold text-amber-600 dark:text-amber-400 px-1 text-sm">{servings}</span>
+                  <span className="font-tech font-bold text-amber-600 dark:text-amber-400 px-1.5 text-base">{servings}</span>
                   <button
-                    onClick={() => setServings(servings + 1)}
-                    className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-bold flex items-center justify-center"
+                    onClick={() => {
+                      hapticTap();
+                      setServings(servings + 1);
+                    }}
+                    aria-label="Increase servings"
+                    className="min-w-[44px] min-h-[44px] rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-white font-bold flex items-center justify-center cursor-pointer transition-colors"
                   >
                     +
                   </button>
@@ -766,9 +796,9 @@ export const DietScreen: React.FC<DietScreenProps> = ({
 
                 <button
                   onClick={handleConfirmLogFood}
-                  className="flex-1 py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-display font-black text-xs uppercase tracking-wider flex items-center justify-center space-x-1 shadow-lg"
+                  className="min-h-[48px] flex-1 py-3 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-display font-black text-xs uppercase tracking-wider flex items-center justify-center space-x-1.5 shadow-lg cursor-pointer transition-transform active:scale-95"
                 >
-                  <Check className="w-4 h-4" />
+                  <Check className="w-4 h-4 stroke-[3]" />
                   <span>
                     Add ({Math.round(selectedFood.calories * servings)} kcal)
                   </span>
