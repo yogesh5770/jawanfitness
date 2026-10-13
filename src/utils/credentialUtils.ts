@@ -14,6 +14,20 @@ export interface CredentialInfo {
 }
 
 /**
+ * Returns the current unified portal URL, falling back to the production Cloudflare Pages deployment
+ * when running inside Capacitor Android APK or local development.
+ */
+export function getUnifiedPortalUrl(): string {
+  if (typeof window !== 'undefined') {
+    const origin = window.location.origin;
+    if (origin && !origin.includes('localhost') && !origin.includes('capacitor://') && !origin.includes('ionic://') && !origin.startsWith('file:')) {
+      return origin;
+    }
+  }
+  return 'https://jawan-fitness-admin.pages.dev';
+}
+
+/**
  * Format phone number for WhatsApp direct URL
  * Defaults to +91 (India) if 10-digit number is provided without country code
  */
@@ -30,17 +44,18 @@ export function getTrainerWhatsAppMessage(info: CredentialInfo): string {
   return `🏋️ *JAWAN FITNESS — COACH PORTAL ACCESS*
 
 Hello *${info.name}*,
-You have been appointed to the Jawan Fitness coaching team by the Gym Director. Your official coach portal credentials are ready:
+You have been appointed to the Jawan Fitness coaching team by the Gym Director. Your official credentials are ready:
 
-📱 *Coach App:* ${info.portalUrl}
+📱 *App & Web Portal:* ${info.portalUrl}
 👤 *User ID:* ${info.loginId}
 📧 *Email:* ${info.email || 'N/A'}
 🔑 *Password:* ${info.temporaryPassword}
 
 👉 *How to log in:*
-1. Click the portal link above
-2. Enter your User ID and Password
-3. Access your assigned client roster, workout programming & diet schedules.
+1. Open the portal link above OR open the Jawan Fitness App (APK/PWA)
+2. Slide the top toggle to *Trainer*
+3. Enter your User ID and Password
+4. Access your client roster, workout programming & diet schedules.
 
 _Jawan Fitness Headquarters • Salem_`;
 }
@@ -54,16 +69,17 @@ export function getClientWhatsAppMessage(info: CredentialInfo): string {
 Hello *${info.name}*,
 Your gym membership portal is now active! Your personal dashboard is ready for tracking workouts and nutrition.
 
-📲 *Member App:* ${info.portalUrl}
+📲 *App & Web Portal:* ${info.portalUrl}
 👤 *Login ID:* ${info.loginId}
 📱 *Registered Mobile:* ${info.phone}
 🔑 *Password:* ${info.temporaryPassword}
 🏋️ *Assigned Coach:* ${info.assignedCoach || 'Head Coach'}
 
 👉 *How to log in:*
-1. Tap the link above
-2. Enter your Login ID (or Phone) and Password
-3. View your daily workout plan, log your sets, and check your nutrition targets!
+1. Open the portal link above OR open the Jawan Fitness App (APK/PWA)
+2. Slide the top toggle to *Member*
+3. Enter your Login ID (or Mobile) and Password
+4. View your daily workout plan, log your sets, and check your nutrition targets!
 
 _Jawan Fitness • Salem Headquarters_`;
 }

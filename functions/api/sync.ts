@@ -390,6 +390,23 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       if (!inner.assignedDietPlans) inner.assignedDietPlans = {};
       if (!Array.isArray(inner.customFoods)) inner.customFoods = [];
 
+      const deadClientKeys = new Set<string>(
+        (Array.isArray(inner.deletedClientIds) ? inner.deletedClientIds : []).map((v: any) => String(v).toLowerCase())
+      );
+      const deadTrainerKeys = new Set<string>(
+        (Array.isArray(inner.deletedTrainerIds) ? inner.deletedTrainerIds : []).map((v: any) => String(v).toLowerCase())
+      );
+
+      // Purge tombstoned entities from inner state
+      inner.clients = inner.clients.filter((c: any) => {
+        const keys = [c.id, c.loginId, c.email].filter(Boolean).map(String).map((v) => v.toLowerCase());
+        return !keys.some((k) => deadClientKeys.has(k));
+      });
+      inner.trainers = inner.trainers.filter((t: any) => {
+        const keys = [t.id, t.loginId, t.email].filter(Boolean).map(String).map((v) => v.toLowerCase());
+        return !keys.some((k) => deadTrainerKeys.has(k));
+      });
+
       // Query real users from D1 gym_users table to ensure 100% database accuracy
       try {
         const dbUsersRes = await env.DB.prepare(`
@@ -403,9 +420,11 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         const dbTrainers = dbUsers.filter((u: any) => u.role === 'TRAINER');
         const dbClients = dbUsers.filter((u: any) => u.role === 'CLIENT');
 
-        // Merge DB trainers into state (ADMIN only sees the full roster;
-        // role scoping below trims this for TRAINER/CLIENT)
+        // Merge DB trainers into state (skip any deleted/tombstoned trainers)
         for (const t of dbTrainers) {
+          const tKeys = [t.id, t.login_id, t.email].filter(Boolean).map(String).map((v) => v.toLowerCase());
+          if (tKeys.some((k) => deadTrainerKeys.has(k))) continue;
+
           let trainerObj = inner.trainers.find((it: any) =>
             it.id === t.id ||
             (it.loginId && t.login_id && it.loginId.toLowerCase() === t.login_id.toLowerCase()) ||
@@ -431,8 +450,10 @@ export const onRequest: PagesFunction<Env> = async (context) => {
           }
         }
 
-        // Ensure DB clients are in state — use real DB weight/goal values
+        // Ensure DB clients are in state — skip any deleted/tombstoned clients
         for (const c of dbClients) {
+          const cKeys = [c.id, c.login_id, c.email].filter(Boolean).map(String).map((v) => v.toLowerCase());
+          if (cKeys.some((k) => deadClientKeys.has(k))) continue;
           let clientObj = inner.clients.find((ic: any) =>
             ic.id === c.id ||
             (ic.loginId && c.login_id && ic.loginId.toLowerCase() === c.login_id.toLowerCase()) ||
@@ -572,13 +593,79 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       let mergedPayload: any;
 
       if (session.role === 'ADMIN') {
-        // Safeguard: never let a post wipe out trainers or client list
-        if ((!incomingData.trainers || incomingData.trainers.length === 0) && existingState.trainers?.length > 0) {
-          incomingData.trainers = existingState.trainers;
+        // Collect tombstones
+        const clientTombstones: string[] = [
+          ...(Array.isArray(incomingData.deletedClientIds) ? incomingData.deletedClientIds : []),
+          ...(Array.isArray(existingState.deletedClientIds) ? existingState.deletedClientIds : [])
+        ];
+
+        if (Array.isArray(existingState.clients) && Array.isArray(incomingData.clients)) {
+          const incomingIds = new Set(
+            incomingData.clients.flatMap((c: any) => [c.id, c.loginId, c.email].filter(Boolean).map(String).map((v) => v.toLowerCase()))
+          );
+          for (const ec of existingState.clients) {
+            const ecKeys = [ec.id, ec.loginId, ec.email].filter(Boolean).map(String).map((v) => v.toLowerCase());
+            if (ecKeys.length > 0 && !ecKeys.some((k) => incomingIds.has(k))) {
+              clientTombstones.push(...ecKeys);
+            }
+          }
         }
-        if ((!incomingData.clients || incomingData.clients.length === 0) && existingState.clients?.length > 0) {
-          incomingData.clients = existingState.clients;
+
+        const uniqueClientTombstones = Array.from(new Set(clientTombstones.filter(Boolean)));
+        for (const deadId of uniqueClientTombstones) {
+          try {
+            await env.DB.prepare(`
+              DELETE FROM gym_users 
+              WHERE LOWER(id) = LOWER(?) 
+                 OR (login_id IS NOT NULL AND LOWER(login_id) = LOWER(?))
+                 OR (email IS NOT NULL AND LOWER(email) = LOWER(?))
+            `).bind(deadId, deadId, deadId).run();
+
+            await env.DB.prepare(`
+              DELETE FROM gym_sessions WHERE LOWER(user_id) = LOWER(?)
+            `).bind(deadId).run();
+          } catch (delErr) {
+            console.error('Error deleting client from D1:', delErr);
+          }
         }
+
+        const trainerTombstones: string[] = [
+          ...(Array.isArray(incomingData.deletedTrainerIds) ? incomingData.deletedTrainerIds : []),
+          ...(Array.isArray(existingState.deletedTrainerIds) ? existingState.deletedTrainerIds : [])
+        ];
+
+        if (Array.isArray(existingState.trainers) && Array.isArray(incomingData.trainers)) {
+          const incomingIds = new Set(
+            incomingData.trainers.flatMap((t: any) => [t.id, t.loginId, t.email].filter(Boolean).map(String).map((v) => v.toLowerCase()))
+          );
+          for (const et of existingState.trainers) {
+            const etKeys = [et.id, et.loginId, et.email].filter(Boolean).map(String).map((v) => v.toLowerCase());
+            if (etKeys.length > 0 && !etKeys.some((k) => incomingIds.has(k))) {
+              trainerTombstones.push(...etKeys);
+            }
+          }
+        }
+
+        const uniqueTrainerTombstones = Array.from(new Set(trainerTombstones.filter(Boolean)));
+        for (const deadId of uniqueTrainerTombstones) {
+          try {
+            await env.DB.prepare(`
+              DELETE FROM gym_users 
+              WHERE (LOWER(id) = LOWER(?) 
+                 OR (login_id IS NOT NULL AND LOWER(login_id) = LOWER(?))
+                 OR (email IS NOT NULL AND LOWER(email) = LOWER(?)))
+                AND role = 'TRAINER'
+            `).bind(deadId, deadId, deadId).run();
+
+            await env.DB.prepare(`
+              DELETE FROM gym_sessions WHERE LOWER(user_id) = LOWER(?)
+            `).bind(deadId).run();
+          } catch (delErr) {
+            console.error('Error deleting trainer from D1:', delErr);
+          }
+        }
+
+        const deadAllKeys = new Set([...uniqueClientTombstones, ...uniqueTrainerTombstones].map((v) => v.toLowerCase()));
 
         // Deduplicate and union-merge chat messages by unique id
         const msgMap = new Map<string, any>();
@@ -592,27 +679,48 @@ export const onRequest: PagesFunction<Env> = async (context) => {
             if (m && m.id) msgMap.set(m.id, m);
           }
         }
-        const mergedMessages = Array.from(msgMap.values()).sort(
-          (a, b) => Number(a.timestamp || 0) - Number(b.timestamp || 0)
-        );
+        const mergedMessages = Array.from(msgMap.values())
+          .filter((m: any) => !deadAllKeys.has(String(m?.clientId || '').toLowerCase()) && !deadAllKeys.has(String(m?.trainerId || '').toLowerCase()))
+          .sort((a, b) => Number(a.timestamp || 0) - Number(b.timestamp || 0));
 
         const mergedWorkouts = {
           ...(existingState.assignedWorkouts || {}),
           ...(incomingData.assignedWorkouts || {})
         };
+        for (const k of Object.keys(mergedWorkouts)) {
+          if (deadAllKeys.has(k.toLowerCase())) delete mergedWorkouts[k];
+        }
+
         const mergedDietPlans = {
           ...(existingState.assignedDietPlans || {}),
           ...(incomingData.assignedDietPlans || {})
         };
+        for (const k of Object.keys(mergedDietPlans)) {
+          if (deadAllKeys.has(k.toLowerCase())) delete mergedDietPlans[k];
+        }
+
+        const rawClients = incomingData.clients || existingState.clients || [];
+        const filteredClients = rawClients.filter((c: any) => {
+          const keys = [c.id, c.loginId, c.email].filter(Boolean).map(String).map((v) => v.toLowerCase());
+          return !keys.some((k) => deadAllKeys.has(k));
+        });
+
+        const rawTrainers = incomingData.trainers || existingState.trainers || [];
+        const filteredTrainers = rawTrainers.filter((t: any) => {
+          const keys = [t.id, t.loginId, t.email].filter(Boolean).map(String).map((v) => v.toLowerCase());
+          return !keys.some((k) => deadAllKeys.has(k));
+        });
 
         mergedPayload = {
-          clients: incomingData.clients || existingState.clients || [],
-          trainers: incomingData.trainers || existingState.trainers || [],
+          clients: filteredClients,
+          trainers: filteredTrainers,
+          deletedClientIds: uniqueClientTombstones,
+          deletedTrainerIds: uniqueTrainerTombstones,
           assignedWorkouts: mergedWorkouts,
           assignedDietPlans: mergedDietPlans,
-          workoutHistory: incomingData.workoutHistory || existingState.workoutHistory || [],
-          loggedMeals: incomingData.loggedMeals || existingState.loggedMeals || [],
-          weightHistory: incomingData.weightHistory || existingState.weightHistory || [],
+          workoutHistory: (incomingData.workoutHistory || existingState.workoutHistory || []).filter((w: any) => !deadAllKeys.has(String(w?.clientId || '').toLowerCase())),
+          loggedMeals: (incomingData.loggedMeals || existingState.loggedMeals || []).filter((m: any) => !deadAllKeys.has(String(m?.clientId || '').toLowerCase())),
+          weightHistory: (incomingData.weightHistory || existingState.weightHistory || []).filter((w: any) => !deadAllKeys.has(String(w?.clientId || '').toLowerCase())),
           events: incomingData.events || existingState.events || [],
           messages: mergedMessages,
           customFoods: incomingData.customFoods || existingState.customFoods || [],

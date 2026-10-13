@@ -7,7 +7,7 @@ import { authService } from '../../services/authService';
 import { hapticTap } from '../../utils/audioHaptics';
 import { compressImageFile } from '../../utils/imageUtils';
 import { CredentialShareModal } from './CredentialShareModal';
-import { CredentialInfo } from '../../utils/credentialUtils';
+import { CredentialInfo, getUnifiedPortalUrl } from '../../utils/credentialUtils';
 import { ThemeToggle } from '../common/ThemeToggle';
 import { AddFoodModal } from '../common/AddFoodModal';
 import { SyncStatusBadge } from '../common/SyncStatusBadge';
@@ -216,7 +216,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
       role: 'TRAINER',
       loginId: created.loginId || assignedLoginId,
       temporaryPassword: assignedPassword,
-      portalUrl: 'https://jawan-fitness-trainer.vercel.app'
+      portalUrl: getUnifiedPortalUrl()
     });
   };
 
@@ -300,16 +300,17 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
       role: 'CLIENT',
       loginId: created.loginId || assignedLoginId,
       temporaryPassword: assignedPassword,
-      portalUrl: window.location.origin.includes('pages.dev') ? 'https://jawan-fitness-app.pages.dev' : window.location.origin,
+      portalUrl: getUnifiedPortalUrl(),
       assignedCoach: created.trainerName || 'Unassigned'
     });
   };
 
   // ADMIN ACTION: Remove Client
-  const handleDeleteClient = (clientId: string, clientName: string) => {
+  const handleDeleteClient = async (clientId: string, clientName: string) => {
     if (window.confirm(`Remove client ${clientName} from gym records?`)) {
       hapticTap();
       syncedStore.deleteClient(clientId);
+      await syncedStore.forcePushToCloud();
       showNotification(`Client ${clientName} removed.`);
     }
   };
@@ -829,7 +830,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                                     role: 'TRAINER',
                                     loginId: trainer.loginId || trainer.email,
                                     temporaryPassword: tempPass || '',
-                                    portalUrl: 'https://jawan-fitness-trainer.vercel.app'
+                                    portalUrl: getUnifiedPortalUrl()
                                   });
                                 }}
                                 disabled={!tempPass}
@@ -959,7 +960,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                                       role: 'CLIENT',
                                       loginId: client.loginId || client.phone || client.email,
                                       temporaryPassword: tempPass || '',
-                                      portalUrl: 'https://jawan-fitness-app.vercel.app',
+                                      portalUrl: getUnifiedPortalUrl(),
                                       assignedCoach: client.trainerName
                                     });
                                   }}
@@ -1050,7 +1051,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                                             role: 'CLIENT',
                                             loginId: client.loginId || client.phone || client.email,
                                             temporaryPassword: tempPass || '',
-                                            portalUrl: 'https://jawan-fitness-app.vercel.app',
+                                            portalUrl: getUnifiedPortalUrl(),
                                             assignedCoach: client.trainerName
                                           });
                                         }}

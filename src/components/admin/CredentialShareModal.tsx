@@ -153,9 +153,14 @@ export const CredentialShareModal: React.FC<CredentialShareModalProps> = ({ info
 
           {/* Target Portal Link */}
           <div>
-            <span className="text-[10px] font-tech text-slate-500 dark:text-slate-400 uppercase tracking-wider font-bold block mb-1">
-              {info.role === 'TRAINER' ? 'Trainer Web Portal' : 'Member App Portal'}
-            </span>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10px] font-tech text-slate-500 dark:text-slate-400 uppercase tracking-wider font-bold">
+                App & Web Portal (Use Here or in App)
+              </span>
+              <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500 dark:text-amber-400 font-medium">
+                Slide to {info.role === 'TRAINER' ? 'Trainer' : 'Member'}
+              </span>
+            </div>
             <div className="flex items-center justify-between bg-black/60 border border-slate-200 dark:border-white/10 rounded-xl px-3.5 py-2.5">
               <a
                 href={info.portalUrl}

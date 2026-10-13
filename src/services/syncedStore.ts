@@ -71,6 +71,8 @@ export interface AppSyncState {
   customFoods: FoodItem[];
   dailyWaterLog?: Record<string, number>;
   lastActiveDate?: string; // YYYY-MM-DD
+  deletedClientIds?: string[];
+  deletedTrainerIds?: string[];
 }
 
 import { cloudDbService } from './cloudDatabaseService';
@@ -102,7 +104,9 @@ const DEFAULT_STATE: AppSyncState = {
   weightHistory: [],
   messages: [],
   events: [],
-  customFoods: []
+  customFoods: [],
+  deletedClientIds: [],
+  deletedTrainerIds: []
 };
 
 type Listener = (state: AppSyncState) => void;
@@ -450,14 +454,24 @@ class SyncedStore {
 
   public deleteTrainer(trainerId: string) {
     const trainer = this.state.trainers.find((t) => t.id === trainerId);
+    const deadTrainerKeys = [trainer?.id, trainer?.loginId, trainer?.email, trainerId]
+      .filter(Boolean)
+      .map((v) => String(v).toLowerCase());
+
+    const updatedDeletedTrainerIds = Array.from(new Set([
+      ...(this.state.deletedTrainerIds || []),
+      ...deadTrainerKeys
+    ]));
+
     this.state = {
       ...this.state,
       trainers: this.state.trainers.filter((t) => t.id !== trainerId),
-      activeTrainerId: this.state.activeTrainerId === trainerId ? (this.state.trainers[0]?.id || '') : this.state.activeTrainerId,
+      activeTrainerId: this.state.activeTrainerId === trainerId ? (this.state.trainers.find((t) => t.id !== trainerId)?.id || '') : this.state.activeTrainerId,
       // Unassign any clients assigned to this deleted trainer
       clients: this.state.clients.map((c) =>
         c.trainerId === trainerId ? { ...c, trainerId: '', trainerName: 'Unassigned' } : c
-      )
+      ),
+      deletedTrainerIds: updatedDeletedTrainerIds
     };
 
     this.logEvent(
@@ -466,6 +480,12 @@ class SyncedStore {
       `Admin removed trainer ${trainer?.name || trainerId} from gym staff`,
       'Admin'
     );
+
+    this.persist();
+    this.notify();
+    this.emitState();
+    this.broadcastToTabs();
+    this.forcePushToCloud();
   }
 
   public updateTrainer(trainerId: string, updates: Partial<TrainerData>) {
@@ -534,11 +554,16 @@ class SyncedStore {
   public deleteClient(clientId: string) {
     const client = this.state.clients.find((c) => c.id === clientId);
     // Purge assignment keys — may be keyed by id, loginId or email
-    const deadKeys = new Set<string>(
-      [client?.id, client?.loginId, client?.email, clientId]
-        .filter(Boolean)
-        .map((v) => String(v).toLowerCase())
-    );
+    const deadKeysList = [client?.id, client?.loginId, client?.email, clientId]
+      .filter(Boolean)
+      .map((v) => String(v).toLowerCase());
+    const deadKeys = new Set<string>(deadKeysList);
+
+    const updatedDeletedClientIds = Array.from(new Set([
+      ...(this.state.deletedClientIds || []),
+      ...deadKeysList
+    ]));
+
     const purgeAssignments = <T,>(map: Record<string, T>): Record<string, T> =>
       Object.fromEntries(
         Object.entries(map).filter(([k]) => !deadKeys.has(String(k).toLowerCase()))
@@ -547,9 +572,14 @@ class SyncedStore {
     this.state = {
       ...this.state,
       clients: this.state.clients.filter((c) => c.id !== clientId),
-      activeClientId: this.state.activeClientId === clientId ? (this.state.clients[0]?.id || '') : this.state.activeClientId,
+      activeClientId: this.state.activeClientId === clientId ? (this.state.clients.find((c) => c.id !== clientId)?.id || '') : this.state.activeClientId,
       assignedWorkouts: purgeAssignments({ ...this.state.assignedWorkouts }),
-      assignedDietPlans: purgeAssignments({ ...this.state.assignedDietPlans })
+      assignedDietPlans: purgeAssignments({ ...this.state.assignedDietPlans }),
+      messages: (this.state.messages || []).filter((m) => m.clientId !== clientId && !deadKeys.has(String(m.clientId || '').toLowerCase())),
+      workoutHistory: (this.state.workoutHistory || []).filter((w) => w.clientId !== clientId),
+      weightHistory: (this.state.weightHistory || []).filter((w) => w.clientId !== clientId),
+      loggedMeals: (this.state.loggedMeals || []).filter((m) => m.clientId !== clientId),
+      deletedClientIds: updatedDeletedClientIds
     };
 
     this.logEvent(
@@ -558,6 +588,12 @@ class SyncedStore {
       `Admin removed client ${client?.name || clientId}`,
       'Admin'
     );
+
+    this.persist();
+    this.notify();
+    this.emitState();
+    this.broadcastToTabs();
+    this.forcePushToCloud();
   }
 
   // 1. ADMIN ACTIONS - CLIENT ENROLLMENT

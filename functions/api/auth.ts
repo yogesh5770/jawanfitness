@@ -90,7 +90,9 @@ function clearRateLimit(key: string): void {
   loginRateLimits.delete(key);
 }
 
-async function hashPassword(password: string, salt: string, iterations = 210000): Promise<string> {
+async function hashPassword(password: string, salt: string, iterations = 100000): Promise<string> {
+  // Cloudflare Workers Web Crypto caps PBKDF2 at 100,000 iterations
+  const safeIterations = Math.min(Math.max(Number(iterations) || 100000, 1), 100000);
   const enc = new TextEncoder();
   const keyMaterial = await crypto.subtle.importKey(
     'raw',
@@ -103,7 +105,7 @@ async function hashPassword(password: string, salt: string, iterations = 210000)
     {
       name: 'PBKDF2',
       salt: enc.encode(salt),
-      iterations,
+      iterations: safeIterations,
       hash: 'SHA-512'
     },
     keyMaterial,
@@ -208,7 +210,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
       if (!user) {
         // Timing-safe dummy hash execution to mitigate username/phone enumeration
-        await hashPassword(password, DUMMY_SALT, 210000);
+        await hashPassword(password, DUMMY_SALT, 100000);
         recordFailedAttempt(rateLimitKey, 15 * 60 * 1000);
         recordFailedAttempt(ipLimitKey, 15 * 60 * 1000);
         return new Response(JSON.stringify({ error: 'Invalid user credentials.' }), {
@@ -217,7 +219,10 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         });
       }
 
-      const storedIterations = typeof user.iterations === 'number' && user.iterations > 0 ? user.iterations : 100000;
+      const storedIterations = Math.min(
+        typeof user.iterations === 'number' && user.iterations > 0 ? user.iterations : 100000,
+        100000
+      );
       const inputHash = await hashPassword(password, user.salt, storedIterations);
       if (!constantTimeEqual(inputHash, user.password_hash)) {
         recordFailedAttempt(rateLimitKey, 15 * 60 * 1000);
@@ -230,20 +235,6 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
       // Successful verification: clear lockouts for this identifier
       clearRateLimit(rateLimitKey);
-
-      // Upgrade hash to OWASP 210,000 iterations transparently if previously hashed with 100k
-      if (storedIterations < 210000) {
-        try {
-          const upgradedHash = await hashPassword(password, user.salt, 210000);
-          await env.DB.prepare(`
-            UPDATE gym_users
-            SET password_hash = ?, iterations = 210000, updated_at = datetime('now')
-            WHERE id = ?
-          `).bind(upgradedHash, user.id).run();
-        } catch {
-          // Non-blocking if table lacks iterations column prior to migration
-        }
-      }
 
       const roleHierarchy: Record<string, number> = { CLIENT: 1, TRAINER: 2, ADMIN: 3 };
       const userLevel = roleHierarchy[user.role] || 0;
@@ -404,12 +395,12 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       }
 
       const newSalt = generateRandomHex(16);
-      const newHash = await hashPassword(newPassword, newSalt, 210000);
+      const newHash = await hashPassword(newPassword, newSalt, 100000);
 
       try {
         await env.DB.prepare(`
           UPDATE gym_users
-          SET password_hash = ?, salt = ?, iterations = 210000, updated_at = datetime('now')
+          SET password_hash = ?, salt = ?, iterations = 100000, updated_at = datetime('now')
           WHERE id = ?
         `).bind(newHash, newSalt, user.id).run();
       } catch {
@@ -472,7 +463,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       }
 
       const salt = generateRandomHex(16);
-      const passwordHash = await hashPassword(password, salt, 210000);
+      const passwordHash = await hashPassword(password, salt, 100000);
       const userId = id || generateRandomHex(16);
 
       try {
@@ -482,7 +473,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
             starting_weight_kg, current_weight_kg, goal_weight_kg,
             height_cm, goal, trainer_id, trainer_name, iterations
           )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 210000)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 100000)
           ON CONFLICT(id) DO UPDATE SET
             email = excluded.email,
             password_hash = excluded.password_hash,
@@ -498,7 +489,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
             goal = excluded.goal,
             trainer_id = excluded.trainer_id,
             trainer_name = excluded.trainer_name,
-            iterations = 210000,
+            iterations = 100000,
             updated_at = datetime('now');
         `).bind(
           userId, email.toLowerCase().trim(), passwordHash, salt, role, name.trim(), phone || null, userLoginId,
