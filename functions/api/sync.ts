@@ -352,12 +352,19 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         return new Response(JSON.stringify({ error: 'Valid session required.' }), { status: 401, headers });
       }
 
-      const row = await env.DB.prepare(`
-        SELECT data, updated_at FROM gym_sync_state WHERE id = 'master' LIMIT 1
-      `).first() as any;
+      let row: any = null;
+      try {
+        row = await env.DB.prepare(`
+          SELECT data, updated_at, version FROM gym_sync_state WHERE id = 'master' LIMIT 1
+        `).first() as any;
+      } catch {
+        row = await env.DB.prepare(`
+          SELECT data, updated_at FROM gym_sync_state WHERE id = 'master' LIMIT 1
+        `).first() as any;
+      }
 
       if (!row) {
-        return new Response(JSON.stringify({ data: null }), { status: 200, headers });
+        return new Response(JSON.stringify({ data: null, version: 1 }), { status: 200, headers });
       }
 
       let parsed = row.data;
@@ -497,6 +504,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0';
       return new Response(JSON.stringify({
         data: scoped,
+        version: row?.version || 1,
         updatedAt: row.updated_at
       }), {
         status: 200,
@@ -520,10 +528,39 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       let incomingData = parsedBody?.data || parsedBody;
       if (!incomingData || typeof incomingData !== 'object') incomingData = {};
 
-      // Fetch current row so we don't accidentally drop trainers or clients
-      const existingRow = await env.DB.prepare(`
-        SELECT data FROM gym_sync_state WHERE id = 'master' LIMIT 1
-      `).first() as any;
+      const expectedVersion = typeof parsedBody?.version === 'number'
+        ? parsedBody.version
+        : (typeof incomingData?.version === 'number' ? incomingData.version : null);
+
+      // Fetch current row with version
+      let existingRow: any = null;
+      try {
+        existingRow = await env.DB.prepare(`
+          SELECT data, version FROM gym_sync_state WHERE id = 'master' LIMIT 1
+        `).first() as any;
+      } catch {
+        existingRow = await env.DB.prepare(`
+          SELECT data FROM gym_sync_state WHERE id = 'master' LIMIT 1
+        `).first() as any;
+      }
+
+      // Optimistic concurrency compare-and-set verification
+      if (
+        expectedVersion !== null &&
+        existingRow &&
+        typeof existingRow.version === 'number' &&
+        expectedVersion !== existingRow.version
+      ) {
+        return new Response(JSON.stringify({
+          error: 'Conflict: sync state has been updated by another client. Please fetch latest state and retry.',
+          code: 'CONCURRENCY_CONFLICT',
+          currentVersion: existingRow.version,
+          clientVersion: expectedVersion
+        }), {
+          status: 409,
+          headers
+        });
+      }
       let existingState: any = {};
       if (existingRow?.data) {
         try {
@@ -589,13 +626,25 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       mergedPayload.clients = stripSecrets(mergedPayload.clients);
       mergedPayload.trainers = stripSecrets(mergedPayload.trainers);
 
-      await env.DB.prepare(`
-        INSERT INTO gym_sync_state (id, data, updated_at)
-        VALUES ('master', ?, datetime('now'))
-        ON CONFLICT(id) DO UPDATE SET
-          data = excluded.data,
-          updated_at = datetime('now');
-      `).bind(JSON.stringify({ data: mergedPayload })).run();
+      const nextVersion = (existingRow?.version ? Number(existingRow.version) : 1) + 1;
+      try {
+        await env.DB.prepare(`
+          INSERT INTO gym_sync_state (id, data, updated_at, version)
+          VALUES ('master', ?, datetime('now'), ?)
+          ON CONFLICT(id) DO UPDATE SET
+            data = excluded.data,
+            version = COALESCE(gym_sync_state.version, 1) + 1,
+            updated_at = datetime('now');
+        `).bind(JSON.stringify({ data: mergedPayload }), nextVersion).run();
+      } catch {
+        await env.DB.prepare(`
+          INSERT INTO gym_sync_state (id, data, updated_at)
+          VALUES ('master', ?, datetime('now'))
+          ON CONFLICT(id) DO UPDATE SET
+            data = excluded.data,
+            updated_at = datetime('now');
+        `).bind(JSON.stringify({ data: mergedPayload })).run();
+      }
 
       // Synchronize client trainer assignments to gym_users table in D1 (ADMIN only)
       if (session.role === 'ADMIN') {
@@ -618,6 +667,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0';
       return new Response(JSON.stringify({
         success: true,
+        version: nextVersion,
         timestamp: new Date().toISOString()
       }), {
         status: 200,

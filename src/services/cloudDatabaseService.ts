@@ -45,6 +45,15 @@ class CloudDatabaseService {
 
   private syncListeners: Set<(config: CloudDbConfig) => void> = new Set();
   private pollInterval: any = null;
+  private currentSyncVersion: number = 1;
+
+  public getSyncVersion(): number {
+    return this.currentSyncVersion;
+  }
+
+  public setSyncVersion(v: number): void {
+    if (typeof v === 'number' && v > 0) this.currentSyncVersion = v;
+  }
 
   private hasAuthToken(): boolean {
     return Boolean(authService.getToken());
@@ -166,11 +175,22 @@ class CloudDatabaseService {
         const primaryRes = await fetch(endpoint, {
           method: 'POST',
           headers: this.authHeaders(),
-          body: JSON.stringify({ data: payload })
+          body: JSON.stringify({ data: payload, version: this.currentSyncVersion })
         });
 
         const contentType = primaryRes.headers.get('content-type') || '';
-        if (primaryRes.ok && !contentType.includes('text/html')) {
+        if (primaryRes.status === 409) {
+          // Concurrency conflict: another client wrote first. Update version and re-fetch
+          const errData = await primaryRes.json().catch(() => null);
+          if (errData?.currentVersion) {
+            this.currentSyncVersion = errData.currentVersion;
+          }
+          await this.fetchStateFromCloud();
+        } else if (primaryRes.ok && !contentType.includes('text/html')) {
+          const resJson = await primaryRes.json().catch(() => ({}));
+          if (typeof resJson?.version === 'number') {
+            this.currentSyncVersion = resJson.version;
+          }
           this.config.syncStatus = 'synced';
           this.config.lastSyncedAt = Date.now();
           this.config.activeProvider = 'Cloudflare D1 (Live)';
@@ -187,11 +207,21 @@ class CloudDatabaseService {
         const remoteRes = await fetch(FALLBACK_REMOTE_API, {
           method: 'POST',
           headers: this.authHeaders(),
-          body: JSON.stringify({ data: payload })
+          body: JSON.stringify({ data: payload, version: this.currentSyncVersion })
         });
 
         const contentType = remoteRes.headers.get('content-type') || '';
-        if (remoteRes.ok && !contentType.includes('text/html')) {
+        if (remoteRes.status === 409) {
+          const errData = await remoteRes.json().catch(() => null);
+          if (errData?.currentVersion) {
+            this.currentSyncVersion = errData.currentVersion;
+          }
+          await this.fetchStateFromCloud();
+        } else if (remoteRes.ok && !contentType.includes('text/html')) {
+          const resJson = await remoteRes.json().catch(() => ({}));
+          if (typeof resJson?.version === 'number') {
+            this.currentSyncVersion = resJson.version;
+          }
           this.config.syncStatus = 'synced';
           this.config.lastSyncedAt = Date.now();
           this.config.activeProvider = 'Cloudflare D1 (Remote)';
@@ -244,6 +274,9 @@ class CloudDatabaseService {
         if (primaryRes.ok && !contentType.includes('text/html')) {
           const json = await primaryRes.json();
           if (json && json.data) {
+            if (typeof json.version === 'number') {
+              this.currentSyncVersion = json.version;
+            }
             let resData = json.data;
             if (resData.data && (Array.isArray(resData.data.clients) || Array.isArray(resData.data.trainers))) {
               resData = resData.data;
@@ -271,6 +304,9 @@ class CloudDatabaseService {
         if (remoteRes.ok && !contentType.includes('text/html')) {
           const json = await remoteRes.json();
           if (json && json.data) {
+            if (typeof json.version === 'number') {
+              this.currentSyncVersion = json.version;
+            }
             let resData = json.data;
             if (resData.data && (Array.isArray(resData.data.clients) || Array.isArray(resData.data.trainers))) {
               resData = resData.data;

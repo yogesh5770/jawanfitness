@@ -90,7 +90,7 @@ function clearRateLimit(key: string): void {
   loginRateLimits.delete(key);
 }
 
-async function hashPassword(password: string, salt: string): Promise<string> {
+async function hashPassword(password: string, salt: string, iterations = 210000): Promise<string> {
   const enc = new TextEncoder();
   const keyMaterial = await crypto.subtle.importKey(
     'raw',
@@ -103,7 +103,7 @@ async function hashPassword(password: string, salt: string): Promise<string> {
     {
       name: 'PBKDF2',
       salt: enc.encode(salt),
-      iterations: 100000,
+      iterations,
       hash: 'SHA-512'
     },
     keyMaterial,
@@ -208,7 +208,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
       if (!user) {
         // Timing-safe dummy hash execution to mitigate username/phone enumeration
-        await hashPassword(password, DUMMY_SALT);
+        await hashPassword(password, DUMMY_SALT, 210000);
         recordFailedAttempt(rateLimitKey, 15 * 60 * 1000);
         recordFailedAttempt(ipLimitKey, 15 * 60 * 1000);
         return new Response(JSON.stringify({ error: 'Invalid user credentials.' }), {
@@ -217,7 +217,8 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         });
       }
 
-      const inputHash = await hashPassword(password, user.salt);
+      const storedIterations = typeof user.iterations === 'number' && user.iterations > 0 ? user.iterations : 100000;
+      const inputHash = await hashPassword(password, user.salt, storedIterations);
       if (!constantTimeEqual(inputHash, user.password_hash)) {
         recordFailedAttempt(rateLimitKey, 15 * 60 * 1000);
         recordFailedAttempt(ipLimitKey, 15 * 60 * 1000);
@@ -229,6 +230,20 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
       // Successful verification: clear lockouts for this identifier
       clearRateLimit(rateLimitKey);
+
+      // Upgrade hash to OWASP 210,000 iterations transparently if previously hashed with 100k
+      if (storedIterations < 210000) {
+        try {
+          const upgradedHash = await hashPassword(password, user.salt, 210000);
+          await env.DB.prepare(`
+            UPDATE gym_users
+            SET password_hash = ?, iterations = 210000, updated_at = datetime('now')
+            WHERE id = ?
+          `).bind(upgradedHash, user.id).run();
+        } catch {
+          // Non-blocking if table lacks iterations column prior to migration
+        }
+      }
 
       const roleHierarchy: Record<string, number> = { CLIENT: 1, TRAINER: 2, ADMIN: 3 };
       const userLevel = roleHierarchy[user.role] || 0;
@@ -379,7 +394,8 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         });
       }
 
-      const oldHash = await hashPassword(oldPassword, user.salt);
+      const storedIterations = typeof user.iterations === 'number' && user.iterations > 0 ? user.iterations : 100000;
+      const oldHash = await hashPassword(oldPassword, user.salt, storedIterations);
       if (!constantTimeEqual(oldHash, user.password_hash)) {
         return new Response(JSON.stringify({ error: 'Current password does not match.' }), {
           status: 401,
@@ -388,13 +404,21 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       }
 
       const newSalt = generateRandomHex(16);
-      const newHash = await hashPassword(newPassword, newSalt);
+      const newHash = await hashPassword(newPassword, newSalt, 210000);
 
-      await env.DB.prepare(`
-        UPDATE gym_users
-        SET password_hash = ?, salt = ?, updated_at = datetime('now')
-        WHERE id = ?
-      `).bind(newHash, newSalt, user.id).run();
+      try {
+        await env.DB.prepare(`
+          UPDATE gym_users
+          SET password_hash = ?, salt = ?, iterations = 210000, updated_at = datetime('now')
+          WHERE id = ?
+        `).bind(newHash, newSalt, user.id).run();
+      } catch {
+        await env.DB.prepare(`
+          UPDATE gym_users
+          SET password_hash = ?, salt = ?, updated_at = datetime('now')
+          WHERE id = ?
+        `).bind(newHash, newSalt, user.id).run();
+      }
 
       return new Response(JSON.stringify({ success: true, message: 'Password updated successfully!' }), {
         status: 200,
@@ -448,37 +472,69 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       }
 
       const salt = generateRandomHex(16);
-      const passwordHash = await hashPassword(password, salt);
+      const passwordHash = await hashPassword(password, salt, 210000);
       const userId = id || generateRandomHex(16);
 
-      await env.DB.prepare(`
-        INSERT INTO gym_users (
-          id, email, password_hash, salt, role, name, phone, login_id,
-          starting_weight_kg, current_weight_kg, goal_weight_kg,
-          height_cm, goal, trainer_id, trainer_name
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(id) DO UPDATE SET
-          email = excluded.email,
-          password_hash = excluded.password_hash,
-          salt = excluded.salt,
-          role = excluded.role,
-          name = excluded.name,
-          phone = excluded.phone,
-          login_id = excluded.login_id,
-          starting_weight_kg = excluded.starting_weight_kg,
-          current_weight_kg = excluded.current_weight_kg,
-          goal_weight_kg = excluded.goal_weight_kg,
-          height_cm = excluded.height_cm,
-          goal = excluded.goal,
-          trainer_id = excluded.trainer_id,
-          trainer_name = excluded.trainer_name,
-          updated_at = datetime('now');
-      `).bind(
-        userId, email.toLowerCase().trim(), passwordHash, salt, role, name.trim(), phone || null, userLoginId,
-        finalStartWeight, finalCurrentWeight, finalGoalWeight,
-        finalHeight, finalGoal, finalTrainerId, finalTrainerName
-      ).run();
+      try {
+        await env.DB.prepare(`
+          INSERT INTO gym_users (
+            id, email, password_hash, salt, role, name, phone, login_id,
+            starting_weight_kg, current_weight_kg, goal_weight_kg,
+            height_cm, goal, trainer_id, trainer_name, iterations
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 210000)
+          ON CONFLICT(id) DO UPDATE SET
+            email = excluded.email,
+            password_hash = excluded.password_hash,
+            salt = excluded.salt,
+            role = excluded.role,
+            name = excluded.name,
+            phone = excluded.phone,
+            login_id = excluded.login_id,
+            starting_weight_kg = excluded.starting_weight_kg,
+            current_weight_kg = excluded.current_weight_kg,
+            goal_weight_kg = excluded.goal_weight_kg,
+            height_cm = excluded.height_cm,
+            goal = excluded.goal,
+            trainer_id = excluded.trainer_id,
+            trainer_name = excluded.trainer_name,
+            iterations = 210000,
+            updated_at = datetime('now');
+        `).bind(
+          userId, email.toLowerCase().trim(), passwordHash, salt, role, name.trim(), phone || null, userLoginId,
+          finalStartWeight, finalCurrentWeight, finalGoalWeight,
+          finalHeight, finalGoal, finalTrainerId, finalTrainerName
+        ).run();
+      } catch {
+        await env.DB.prepare(`
+          INSERT INTO gym_users (
+            id, email, password_hash, salt, role, name, phone, login_id,
+            starting_weight_kg, current_weight_kg, goal_weight_kg,
+            height_cm, goal, trainer_id, trainer_name
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET
+            email = excluded.email,
+            password_hash = excluded.password_hash,
+            salt = excluded.salt,
+            role = excluded.role,
+            name = excluded.name,
+            phone = excluded.phone,
+            login_id = excluded.login_id,
+            starting_weight_kg = excluded.starting_weight_kg,
+            current_weight_kg = excluded.current_weight_kg,
+            goal_weight_kg = excluded.goal_weight_kg,
+            height_cm = excluded.height_cm,
+            goal = excluded.goal,
+            trainer_id = excluded.trainer_id,
+            trainer_name = excluded.trainer_name,
+            updated_at = datetime('now');
+        `).bind(
+          userId, email.toLowerCase().trim(), passwordHash, salt, role, name.trim(), phone || null, userLoginId,
+          finalStartWeight, finalCurrentWeight, finalGoalWeight,
+          finalHeight, finalGoal, finalTrainerId, finalTrainerName
+        ).run();
+      }
 
       return new Response(JSON.stringify({
         success: true,
