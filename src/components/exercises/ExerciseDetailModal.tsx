@@ -29,9 +29,9 @@ export const ExerciseDetailModal: React.FC<ExerciseDetailModalProps> = ({
             hapticTap();
             onClose();
           }}
-          className="absolute top-3 right-3 z-30 w-8 h-8 rounded-full bg-black/70 backdrop-blur border border-slate-300 dark:border-white/20 text-slate-900 dark:text-white flex items-center justify-center hover:bg-black transition-all"
+          className="absolute top-3 right-3 z-30 w-8 h-8 rounded-full bg-black/70 backdrop-blur border border-white/20 text-white flex items-center justify-center hover:bg-black transition-all"
         >
-          <X className="w-4 h-4" />
+          <X className="w-4 h-4 text-white" />
         </button>
 
         {/* Biomechanics & 3D Motion Visualizer */}
@@ -139,15 +139,15 @@ export const ExerciseDetailModal: React.FC<ExerciseDetailModalProps> = ({
 
           {/* Common Mistakes */}
           {exercise.commonMistakes.length > 0 && (
-            <div className="bg-red-950/20 border border-red-500/30 rounded-xl p-3.5">
-              <h4 className="text-xs font-bold text-red-400 flex items-center space-x-1.5 mb-2">
-                <AlertTriangle className="w-4 h-4 text-red-400" />
+            <div className="bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-500/30 rounded-xl p-3.5">
+              <h4 className="text-xs font-bold text-rose-700 dark:text-rose-400 flex items-center space-x-1.5 mb-2">
+                <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400" />
                 <span>Common Mistakes to Avoid</span>
               </h4>
               <ul className="space-y-1.5">
                 {exercise.commonMistakes.map((mistake, idx) => (
-                  <li key={idx} className="text-xs text-red-200/90 flex items-start space-x-2">
-                    <span className="text-red-400">•</span>
+                  <li key={idx} className="text-xs text-rose-950 dark:text-rose-200/90 flex items-start space-x-2">
+                    <span className="text-rose-600 dark:text-rose-400">•</span>
                     <span>{mistake}</span>
                   </li>
                 ))}
@@ -157,12 +157,12 @@ export const ExerciseDetailModal: React.FC<ExerciseDetailModalProps> = ({
 
           {/* Trainer's Pro Tip */}
           {exercise.trainerTip && (
-            <div className="bg-amber-950/20 border border-amber-500/30 rounded-xl p-3.5">
-              <h4 className="text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center space-x-1.5 mb-1.5">
+            <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-500/30 rounded-xl p-3.5">
+              <h4 className="text-xs font-bold text-amber-700 dark:text-amber-400 flex items-center space-x-1.5 mb-1.5">
                 <Lightbulb className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                 <span>Coach's Form Cue</span>
               </h4>
-              <p className="text-xs text-amber-800 dark:text-amber-200/90 italic leading-relaxed">
+              <p className="text-xs text-amber-950 dark:text-amber-200/90 italic leading-relaxed">
                 "{exercise.trainerTip}"
               </p>
             </div>
@@ -178,9 +178,9 @@ export const ExerciseDetailModal: React.FC<ExerciseDetailModalProps> = ({
                 onStartExercise(exercise);
                 onClose();
               }}
-              className="w-full py-3.5 px-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-black text-sm rounded-xl font-display uppercase tracking-wider flex items-center justify-center space-x-2 shadow-[0_0_20px_rgba(245,158,11,0.3)] active:scale-[0.98] transition-all"
+              className="w-full py-3.5 px-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-sm rounded-xl font-display uppercase tracking-wider flex items-center justify-center space-x-2 shadow-[0_0_20px_rgba(245,158,11,0.3)] active:scale-[0.98] transition-all cursor-pointer"
             >
-              <Flame className="w-4 h-4 fill-black" />
+              <Flame className="w-4 h-4 fill-slate-950 text-slate-950" />
               <span>Start This Exercise</span>
             </button>
           </div>

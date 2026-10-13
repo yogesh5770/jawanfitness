@@ -224,7 +224,7 @@ export const UnifiedAuthGateway: React.FC<UnifiedAuthGatewayProps> = ({
                     ? 'e.g. JWT-7195 or 9360345770'
                     : 'admin@jawan.fit'
                 }
-                className="w-full min-h-[48px] bg-slate-100 dark:bg-[#060810]/90 border border-slate-200 dark:border-white/10 focus:border-amber-500 focus:bg-[#0a0d18] rounded-2xl px-4 py-3 text-base sm:text-sm text-slate-900 dark:text-white outline-none transition-all duration-200 placeholder:text-slate-500 dark:placeholder:text-slate-400 shadow-inner focus:shadow-[0_0_20px_rgba(245,158,11,0.15)] pr-11"
+                className="w-full min-h-[48px] bg-slate-100 dark:bg-[#060810]/90 border border-slate-200 dark:border-white/10 focus:border-amber-500 focus:bg-white dark:focus:bg-[#0a0d18] rounded-2xl px-4 py-3 text-base sm:text-sm text-slate-900 dark:text-white outline-none transition-all duration-200 placeholder:text-slate-500 dark:placeholder:text-slate-400 shadow-inner focus:shadow-[0_0_20px_rgba(245,158,11,0.15)] pr-11"
               />
               <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none group-focus-within:text-amber-400 transition-colors">
                 {selectedRole === 'CLIENT' ? <Phone className="w-4 h-4" /> : <Mail className="w-4 h-4" />}
@@ -250,7 +250,7 @@ export const UnifiedAuthGateway: React.FC<UnifiedAuthGatewayProps> = ({
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your secure password"
-                className="w-full min-h-[48px] bg-slate-100 dark:bg-[#060810]/90 border border-slate-200 dark:border-white/10 focus:border-amber-500 focus:bg-[#0a0d18] rounded-2xl px-4 py-3 text-base sm:text-sm text-slate-900 dark:text-white outline-none transition-all duration-200 placeholder:text-slate-500 dark:placeholder:text-slate-400 shadow-inner focus:shadow-[0_0_20px_rgba(245,158,11,0.15)] pr-11"
+                className="w-full min-h-[48px] bg-slate-100 dark:bg-[#060810]/90 border border-slate-200 dark:border-white/10 focus:border-amber-500 focus:bg-white dark:focus:bg-[#0a0d18] rounded-2xl px-4 py-3 text-base sm:text-sm text-slate-900 dark:text-white outline-none transition-all duration-200 placeholder:text-slate-500 dark:placeholder:text-slate-400 shadow-inner focus:shadow-[0_0_20px_rgba(245,158,11,0.15)] pr-11"
               />
               <button
                 type="button"

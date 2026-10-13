@@ -38,7 +38,7 @@ export const WorkoutHubScreen: React.FC<WorkoutHubScreenProps> = ({
   return (
     <div className="space-y-5 pb-28 text-left">
       {/* Hero: Today's Assigned / Recommended Workout Banner */}
-      <div className="relative rounded-3xl overflow-hidden border border-amber-500/40 p-5 bg-gradient-to-br from-amber-950/40 via-white dark:via-[#0e1320] to-white dark:to-[#07090e] shadow-[0_10px_30px_rgba(245,158,11,0.15)]">
+      <div className="relative rounded-3xl overflow-hidden border border-amber-500/40 p-5 bg-gradient-to-br from-amber-50/80 via-white to-amber-50/30 dark:from-amber-950/40 dark:via-[#0e1320] dark:to-[#07090e] shadow-[0_10px_30px_rgba(245,158,11,0.15)]">
         {/* Background ambient lighting */}
         <div className="absolute top-0 right-0 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -87,9 +87,9 @@ export const WorkoutHubScreen: React.FC<WorkoutHubScreenProps> = ({
               onStartRoutine(recommendedRoutine);
             }
           }}
-          className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-black text-sm uppercase font-display tracking-wider flex items-center justify-center space-x-2 shadow-[0_0_20px_rgba(245,158,11,0.4)] active:scale-[0.98] transition-all"
+          className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-sm uppercase font-display tracking-wider flex items-center justify-center space-x-2 shadow-[0_0_20px_rgba(245,158,11,0.4)] active:scale-[0.98] transition-all cursor-pointer"
         >
-          <Play className="w-4 h-4 fill-black" />
+          <Play className="w-4 h-4 fill-slate-950 text-slate-950" />
           <span>START TODAY'S WORKOUT</span>
         </button>
       </div>

@@ -258,16 +258,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             </div>
 
             <div className="flex items-baseline justify-between mb-2">
-              <div className="text-slate-500 dark:text-slate-400 text-xs">
+              <div className="text-slate-600 dark:text-slate-400 text-xs font-medium">
                 Start: <span className="font-bold text-slate-900 dark:text-white">{startWeightKg} kg</span>
               </div>
               <div className="text-center">
                 <span className="text-2xl font-black text-amber-600 dark:text-amber-400 font-display tracking-tight">
                   {currentWeightKg}
                 </span>
-                <span className="text-xs text-slate-500 dark:text-slate-400 ml-1 font-tech">kg current</span>
+                <span className="text-xs text-slate-600 dark:text-slate-400 ml-1 font-tech">kg current</span>
               </div>
-              <div className="text-slate-500 dark:text-slate-400 text-xs">
+              <div className="text-slate-600 dark:text-slate-400 text-xs font-medium">
                 Goal: <span className="font-bold text-emerald-600 dark:text-emerald-400">{goalWeightKg} kg</span>
               </div>
             </div>
@@ -437,9 +437,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                     hapticTap();
                     onStartWorkout();
                   }}
-                  className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-display font-black text-sm tracking-wide shadow-[0_0_20px_rgba(245,158,11,0.3)] flex items-center justify-center space-x-2 active:scale-95 transition-all"
+                  className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-display font-black text-sm tracking-wide shadow-[0_0_20px_rgba(245,158,11,0.3)] flex items-center justify-center space-x-2 active:scale-95 transition-all cursor-pointer"
                 >
-                  <Play className="w-4 h-4 fill-black" />
+                  <Play className="w-4 h-4 fill-slate-950 text-slate-950" />
                   <span>START TODAY'S WORKOUT</span>
                 </button>
               </>

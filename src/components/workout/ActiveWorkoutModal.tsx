@@ -330,10 +330,10 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
                   }}
                   className={`flex-shrink-0 px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 ${
                     isCurrent
-                      ? 'bg-amber-500 text-black shadow-[0_0_12px_rgba(245,158,11,0.4)]'
+                      ? 'bg-amber-500 text-slate-950 shadow-[0_0_12px_rgba(245,158,11,0.4)]'
                       : allDone
-                      ? 'bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40'
-                      : 'bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border border-slate-200/80 dark:border-white/5'
+                      ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/40'
+                      : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200/80 dark:border-white/5'
                   }`}
                 >
                   <span>{idx + 1}. {item.exercise.name.split(' ').slice(0, 2).join(' ')}</span>
@@ -468,7 +468,7 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
                 key={set.id}
                 className={`p-3.5 sm:p-4 rounded-2xl border transition-all ${
                   isSetCompleted
-                    ? 'bg-emerald-950/20 border-emerald-500/40'
+                    ? 'bg-emerald-50/80 dark:bg-emerald-950/20 border-emerald-500/40'
                     : isFocused
                     ? 'bg-slate-100 dark:bg-[#121827] border-amber-500/60 shadow-[0_0_15px_rgba(245,158,11,0.15)]'
                     : 'bg-white dark:bg-[#0c101a] border-slate-200/80 dark:border-white/5'
@@ -480,10 +480,10 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
                     <span
                       className={`w-8 h-8 rounded-xl flex items-center justify-center font-tech font-black text-xs ${
                         isSetCompleted
-                          ? 'bg-emerald-500 text-black'
+                          ? 'bg-emerald-500 text-slate-950'
                           : isFocused
-                          ? 'bg-amber-500 text-black'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+                          ? 'bg-amber-500 text-slate-950'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
                       }`}
                     >
                       {set.setNumber}
@@ -498,8 +498,8 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
                     onClick={() => handleCompleteCurrentSet(idx)}
                     className={`min-h-[48px] px-4 rounded-xl flex items-center justify-center space-x-2 font-bold text-xs sm:text-sm active:scale-95 transition-all cursor-pointer ${
                       isSetCompleted
-                        ? 'bg-emerald-500 text-black shadow-[0_0_12px_rgba(16,185,129,0.4)]'
-                        : 'bg-amber-500/20 hover:bg-amber-500 text-amber-700 dark:text-amber-300 hover:text-black border border-amber-500/40'
+                        ? 'bg-emerald-500 text-slate-950 shadow-[0_0_12px_rgba(16,185,129,0.4)]'
+                        : 'bg-amber-500/20 hover:bg-amber-500 text-amber-800 dark:text-amber-300 hover:text-slate-950 border border-amber-500/40'
                     }`}
                   >
                     <Check className="w-4 h-4 stroke-[3]" />
@@ -630,7 +630,7 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
             }}
             className={`min-h-[48px] flex-1 py-3 px-4 rounded-xl font-display font-black text-xs uppercase tracking-wider flex items-center justify-center space-x-2 transition-all cursor-pointer ${
               allExercisesCompleted
-                ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 text-black shadow-[0_0_20px_rgba(16,185,129,0.4)] active:scale-95'
+                ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 text-slate-950 shadow-[0_0_20px_rgba(16,185,129,0.4)] active:scale-95'
                 : 'bg-slate-100 dark:bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-200 dark:border-white/10'
             }`}
           >

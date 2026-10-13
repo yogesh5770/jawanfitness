@@ -232,11 +232,84 @@ html.light .bg-slate-800\/90 {
   border-color: rgba(15, 23, 42, 0.08) !important;
 }
 
-/* ── Typography stragglers in light mode ──────────────────────────────────── */
-html.light .text-white { color: #0f172a !important; }
-html.light .text-slate-100, html.light .text-slate-200 { color: #1e293b !important; }
-html.light .text-slate-300, html.light .text-slate-400 { color: #475569 !important; }
-html.light .text-neutral-400, html.light .text-neutral-500 { color: #475569 !important; }
+/* ── Typography contrast rules in light & dark mode ────────────────────────── */
+/* In light mode, bare text-white on light surfaces becomes dark charcoal,
+   BUT buttons, badges, and dark containers preserve high-contrast white text */
+html.light .text-white:not(
+  button,
+  [role="button"],
+  button *,
+  [role="button"] *,
+  [class*="bg-black"],
+  [class*="bg-black"] *,
+  [class*="bg-slate-900"],
+  [class*="bg-slate-900"] *,
+  [class*="bg-amber-600"],
+  [class*="bg-amber-600"] *,
+  [class*="bg-emerald-"],
+  [class*="bg-emerald-"] *,
+  [class*="bg-rose-"],
+  [class*="bg-rose-"] *,
+  [class*="bg-red-"],
+  [class*="bg-red-"] *,
+  [class*="bg-blue-"],
+  [class*="bg-blue-"] *,
+  [class*="bg-cyan-600"],
+  [class*="bg-cyan-600"] *,
+  .backdrop-blur-md *,
+  .backdrop-blur-lg *,
+  .backdrop-blur-xl *,
+  [class*="bg-black/"] *
+) {
+  color: #0f172a;
+}
+
+/* Explicit high-contrast white text for dark badges, action buttons, and overlays in light mode */
+html.light button.text-white,
+html.light [role="button"].text-white,
+html.light [class*="bg-black"] .text-white,
+html.light [class*="bg-emerald-600"] .text-white,
+html.light [class*="bg-emerald-700"] .text-white,
+html.light [class*="bg-rose-600"] .text-white,
+html.light [class*="bg-red-600"] .text-white,
+html.light [class*="bg-blue-600"] .text-white,
+html.light [class*="bg-amber-600"] .text-white,
+html.light .bg-black .text-white,
+html.light [class*="bg-black/"] .text-white {
+  color: #ffffff !important;
+}
+
+html.light .text-slate-100:not(button *, [role="button"] *),
+html.light .text-slate-200:not(button *, [role="button"] *) {
+  color: #1e293b;
+}
+
+html.light .text-slate-300, html.light .text-slate-400 { color: #475569; }
+html.light .text-neutral-400, html.light .text-neutral-500 { color: #475569; }
+
+/* In dark mode, ensure text never blends into dark backgrounds */
+html.dark .text-slate-900:not(
+  [class*="bg-amber-"],
+  [class*="bg-amber-"] *,
+  [class*="bg-emerald-"],
+  [class*="bg-emerald-"] *,
+  [class*="bg-cyan-"],
+  [class*="bg-cyan-"] *,
+  [class*="bg-yellow-"],
+  [class*="bg-yellow-"] *
+),
+html.dark .text-slate-800:not(
+  [class*="bg-amber-"],
+  [class*="bg-amber-"] *,
+  [class*="bg-emerald-"],
+  [class*="bg-emerald-"] *,
+  [class*="bg-cyan-"],
+  [class*="bg-cyan-"] *,
+  [class*="bg-yellow-"],
+  [class*="bg-yellow-"] *
+) {
+  color: #f1f5f9;
+}
 
 /* ── Borders stragglers ───────────────────────────────────────────────────── */
 html.light .border-white\/5,
