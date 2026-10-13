@@ -9,14 +9,20 @@
 -->
 <network-security-config>
 
-    <!-- Default: HTTPS only, trust system + user CAs -->
+    <!-- Default: HTTPS only, trust system CAs in release builds (MASVS-NETWORK-1) -->
     <base-config cleartextTrafficPermitted="false">
         <trust-anchors>
             <certificates src="system" />
-            <!-- Allow user-installed certs for enterprise proxy environments -->
-            <certificates src="user" overridePins="true" />
         </trust-anchors>
     </base-config>
+
+    <!-- Debug overrides: allow user-installed certs for local proxy/inspection during development only -->
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="user" />
+            <certificates src="system" />
+        </trust-anchors>
+    </debug-overrides>
 
     <!-- Local dev server (vite preview / capacitor run android) -->
     <domain-config cleartextTrafficPermitted="true">

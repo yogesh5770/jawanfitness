@@ -267,13 +267,15 @@ html.light .text-white:not(
 /* Explicit high-contrast white text for dark badges, action buttons, and overlays in light mode */
 html.light button.text-white,
 html.light [role="button"].text-white,
+html.light button .text-white,
+html.light [role="button"] .text-white,
 html.light [class*="bg-black"] .text-white,
-html.light [class*="bg-emerald-600"] .text-white,
-html.light [class*="bg-emerald-700"] .text-white,
-html.light [class*="bg-rose-600"] .text-white,
-html.light [class*="bg-red-600"] .text-white,
-html.light [class*="bg-blue-600"] .text-white,
+html.light [class*="bg-emerald-"] .text-white,
+html.light [class*="bg-rose-"] .text-white,
+html.light [class*="bg-red-"] .text-white,
+html.light [class*="bg-blue-"] .text-white,
 html.light [class*="bg-amber-600"] .text-white,
+html.light [class*="bg-orange-"] .text-white,
 html.light .bg-black .text-white,
 html.light [class*="bg-black/"] .text-white {
   color: #ffffff !important;
@@ -287,7 +289,27 @@ html.light .text-slate-200:not(button *, [role="button"] *) {
 html.light .text-slate-300, html.light .text-slate-400 { color: #475569; }
 html.light .text-neutral-400, html.light .text-neutral-500 { color: #475569; }
 
-/* In dark mode, ensure text never blends into dark backgrounds */
+/* In dark mode, ensure dark text never blends into dark backgrounds */
+html.dark .text-slate-950:not(
+  [class*="bg-amber-"],
+  [class*="bg-amber-"] *,
+  [class*="bg-emerald-"],
+  [class*="bg-emerald-"] *,
+  [class*="bg-cyan-"],
+  [class*="bg-cyan-"] *,
+  [class*="bg-yellow-"],
+  [class*="bg-yellow-"] *
+),
+html.dark .text-black:not(
+  [class*="bg-amber-"],
+  [class*="bg-amber-"] *,
+  [class*="bg-emerald-"],
+  [class*="bg-emerald-"] *,
+  [class*="bg-cyan-"],
+  [class*="bg-cyan-"] *,
+  [class*="bg-yellow-"],
+  [class*="bg-yellow-"] *
+),
 html.dark .text-slate-900:not(
   [class*="bg-amber-"],
   [class*="bg-amber-"] *,
