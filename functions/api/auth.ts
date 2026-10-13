@@ -2,13 +2,36 @@ interface Env {
   DB: D1Database;
 }
 
+const ALLOWED_ORIGINS = new Set([
+  'https://jawan.fit',
+  'https://www.jawan.fit',
+  'https://admin.jawan.fit',
+  'https://trainer.jawan.fit',
+  'https://app.jawan.fit',
+  'https://jawan-fitness-app.pages.dev',
+  'capacitor://localhost',
+  'http://localhost',
+  'https://localhost'
+]);
+
+function isOriginAllowed(origin: string | null): boolean {
+  if (!origin) return false;
+  if (ALLOWED_ORIGINS.has(origin)) return true;
+  if (/^https:\/\/[a-z0-9-]+\.jawan-fitness-app\.pages\.dev$/.test(origin)) return true;
+  if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return true;
+  return false;
+}
+
 function corsHeaders(request: Request) {
-  const origin = request.headers.get('Origin') || '*';
+  const origin = request.headers.get('Origin');
+  const allowed = isOriginAllowed(origin);
+  const allowOrigin = allowed && origin ? origin : 'null';
+
   return {
-    'Access-Control-Allow-Origin': origin,
+    'Access-Control-Allow-Origin': allowOrigin,
     'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, Cache-Control, Pragma, Accept, *',
-    'Access-Control-Allow-Credentials': 'true',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, Cache-Control, Pragma, Accept',
+    ...(allowed && allowOrigin !== 'null' ? { 'Access-Control-Allow-Credentials': 'true' } : {}),
     'Content-Type': 'application/json'
   };
 }
