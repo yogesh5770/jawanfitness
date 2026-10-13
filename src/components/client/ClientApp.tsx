@@ -568,9 +568,9 @@ export const ClientApp: React.FC<ClientAppProps> = ({ currentUser: initialUser, 
     : '';
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-[#04060a] text-slate-900 dark:text-slate-100 flex flex-col items-center justify-start p-0 font-sans transition-colors duration-200">
+    <div className="min-h-screen bg-slate-100 dark:bg-[#04060a] text-slate-900 dark:text-slate-100 flex flex-col items-center justify-start p-0 font-sans transition-colors duration-200 md:pl-20 lg:pl-64">
       {/* Responsive executive container: fluid on phone, wide and spacious on laptop/desktop */}
-      <div className="w-full max-w-lg md:max-w-3xl lg:max-w-5xl xl:max-w-6xl min-h-screen bg-white dark:bg-[#07090e] text-slate-900 dark:text-slate-100 flex flex-col relative shadow-2xl text-left border-x border-slate-200 dark:border-white/5 transition-colors duration-200">
+      <div className="w-full max-w-lg md:max-w-4xl lg:max-w-6xl min-h-screen bg-white dark:bg-[#07090e] text-slate-900 dark:text-slate-100 flex flex-col relative shadow-2xl text-left border-x border-slate-200 dark:border-white/5 transition-colors duration-200">
         {/* Top Status Bar with Member Name, Assigned Coach, Password & Logout */}
         <header className="px-3 sm:px-4 pt-safe py-2.5 sm:py-3 flex items-center justify-between bg-white/95 dark:bg-[#0c101a]/95 border-b border-slate-200 dark:border-white/5 sticky top-0 z-40 backdrop-blur-md transition-colors duration-200 gap-2">
           <div className="flex items-center space-x-2 sm:space-x-2.5 min-w-0 flex-1">
