@@ -19,6 +19,8 @@ const ALLOWED_ORIGINS = new Set([
   'https://trainer.jawan.fit',
   'https://app.jawan.fit',
   'https://jawan-fitness-app.pages.dev',
+  'https://jawan-fitness-admin.pages.dev',
+  'https://jawan-fitness-trainer.pages.dev',
   'capacitor://localhost',
   'http://localhost',
   'https://localhost'
@@ -27,7 +29,7 @@ const ALLOWED_ORIGINS = new Set([
 function isOriginAllowed(origin: string | null): boolean {
   if (!origin) return false;
   if (ALLOWED_ORIGINS.has(origin)) return true;
-  if (/^https:\/\/[a-z0-9-]+\.jawan-fitness-app\.pages\.dev$/.test(origin)) return true;
+  if (/^https:\/\/([a-z0-9-]+\.)?jawan-fitness(-[a-z0-9]+)?\.pages\.dev$/.test(origin)) return true;
   if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return true;
   return false;
 }

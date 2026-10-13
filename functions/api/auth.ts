@@ -9,6 +9,8 @@ const ALLOWED_ORIGINS = new Set([
   'https://trainer.jawan.fit',
   'https://app.jawan.fit',
   'https://jawan-fitness-app.pages.dev',
+  'https://jawan-fitness-admin.pages.dev',
+  'https://jawan-fitness-trainer.pages.dev',
   'capacitor://localhost',
   'http://localhost',
   'https://localhost'
@@ -17,7 +19,7 @@ const ALLOWED_ORIGINS = new Set([
 function isOriginAllowed(origin: string | null): boolean {
   if (!origin) return false;
   if (ALLOWED_ORIGINS.has(origin)) return true;
-  if (/^https:\/\/[a-z0-9-]+\.jawan-fitness-app\.pages\.dev$/.test(origin)) return true;
+  if (/^https:\/\/([a-z0-9-]+\.)?jawan-fitness(-[a-z0-9]+)?\.pages\.dev$/.test(origin)) return true;
   if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return true;
   return false;
 }
@@ -150,16 +152,17 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     // -----------------------------------------------------------------
     if (action === 'login' && request.method === 'POST') {
       const body = await request.json() as any;
-      const { email, password, requiredRole = 'ADMIN', keepSignedIn = true } = body || {};
+      const { email, identifier, loginId, username, password, requiredRole = 'ADMIN', keepSignedIn = true } = body || {};
+      const rawInput = email || identifier || loginId || username;
 
-      if (!email || !password) {
+      if (!rawInput || !password) {
         return new Response(JSON.stringify({ error: 'User ID / email and password are required.' }), {
           status: 400,
           headers
         });
       }
 
-      const cleanInput = email.trim();
+      const cleanInput = String(rawInput).trim();
       const digitsOnly = cleanInput.replace(/\D/g, '');
       const last10Digits = digitsOnly.length >= 10 ? digitsOnly.slice(-10) : digitsOnly;
       const phoneWithCountry = last10Digits ? `+91${last10Digits}` : cleanInput;
@@ -466,6 +469,21 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       const passwordHash = await hashPassword(password, salt, 100000);
       const userId = id || generateRandomHex(16);
 
+      let finalEmail = (email || '').toLowerCase().trim();
+      try {
+        const existingEmailUser = await env.DB.prepare(`
+          SELECT id FROM gym_users WHERE LOWER(email) = LOWER(?) AND id != ? LIMIT 1
+        `).bind(finalEmail, userId).first();
+
+        if (existingEmailUser) {
+          const parts = finalEmail.split('@');
+          const cleanSuffix = (userLoginId || userId).toLowerCase().replace(/[^a-z0-9]/g, '');
+          finalEmail = `${parts[0]}+${cleanSuffix}@${parts[1] || 'jawan.fit'}`;
+        }
+      } catch (checkErr) {
+        console.warn('Email uniqueness check failed:', checkErr);
+      }
+
       try {
         await env.DB.prepare(`
           INSERT INTO gym_users (
@@ -492,39 +510,18 @@ export const onRequest: PagesFunction<Env> = async (context) => {
             iterations = 100000,
             updated_at = datetime('now');
         `).bind(
-          userId, email.toLowerCase().trim(), passwordHash, salt, role, name.trim(), phone || null, userLoginId,
+          userId, finalEmail, passwordHash, salt, role, name.trim(), phone || null, userLoginId,
           finalStartWeight, finalCurrentWeight, finalGoalWeight,
           finalHeight, finalGoal, finalTrainerId, finalTrainerName
         ).run();
-      } catch {
-        await env.DB.prepare(`
-          INSERT INTO gym_users (
-            id, email, password_hash, salt, role, name, phone, login_id,
-            starting_weight_kg, current_weight_kg, goal_weight_kg,
-            height_cm, goal, trainer_id, trainer_name
-          )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          ON CONFLICT(id) DO UPDATE SET
-            email = excluded.email,
-            password_hash = excluded.password_hash,
-            salt = excluded.salt,
-            role = excluded.role,
-            name = excluded.name,
-            phone = excluded.phone,
-            login_id = excluded.login_id,
-            starting_weight_kg = excluded.starting_weight_kg,
-            current_weight_kg = excluded.current_weight_kg,
-            goal_weight_kg = excluded.goal_weight_kg,
-            height_cm = excluded.height_cm,
-            goal = excluded.goal,
-            trainer_id = excluded.trainer_id,
-            trainer_name = excluded.trainer_name,
-            updated_at = datetime('now');
-        `).bind(
-          userId, email.toLowerCase().trim(), passwordHash, salt, role, name.trim(), phone || null, userLoginId,
-          finalStartWeight, finalCurrentWeight, finalGoalWeight,
-          finalHeight, finalGoal, finalTrainerId, finalTrainerName
-        ).run();
+      } catch (insertErr: any) {
+        console.error('Failed to save gym_user in D1:', insertErr);
+        return new Response(JSON.stringify({ 
+          error: `Database write failed: ${insertErr?.message || 'Unique constraint or D1 error'}` 
+        }), {
+          status: 500,
+          headers
+        });
       }
 
       return new Response(JSON.stringify({
