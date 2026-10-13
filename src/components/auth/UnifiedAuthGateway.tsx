@@ -298,8 +298,53 @@ export const UnifiedAuthGateway: React.FC<UnifiedAuthGatewayProps> = ({
           </button>
         </form>
 
+        {/* Quick Demo Pre-fill for Testing & Evaluation */}
+        <div className="mt-5 pt-3 border-t border-slate-200/80 dark:border-white/5">
+          <div className="flex items-center justify-between text-[11px] mb-2 font-tech text-slate-500">
+            <span>Quick Login Preview:</span>
+          </div>
+          <div className="grid grid-cols-3 gap-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                hapticTap();
+                setSelectedRole('ADMIN');
+                setIdentifier('admin@jawan.fit');
+                setPassword('Admin@123');
+              }}
+              className="py-1.5 px-2 rounded-xl bg-slate-100 hover:bg-amber-500/15 dark:bg-white/[0.04] dark:hover:bg-amber-500/20 text-slate-700 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-400 border border-slate-200/80 dark:border-white/5 text-[10px] font-tech font-bold transition-all active:scale-95"
+            >
+              Director
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                hapticTap();
+                setSelectedRole('TRAINER');
+                setIdentifier('JWT-7195');
+                setPassword('Coach@7195');
+              }}
+              className="py-1.5 px-2 rounded-xl bg-slate-100 hover:bg-amber-500/15 dark:bg-white/[0.04] dark:hover:bg-amber-500/20 text-slate-700 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-400 border border-slate-200/80 dark:border-white/5 text-[10px] font-tech font-bold transition-all active:scale-95"
+            >
+              Coach
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                hapticTap();
+                setSelectedRole('CLIENT');
+                setIdentifier('8248345770');
+                setPassword('Fit@5200');
+              }}
+              className="py-1.5 px-2 rounded-xl bg-slate-100 hover:bg-amber-500/15 dark:bg-white/[0.04] dark:hover:bg-amber-500/20 text-slate-700 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-400 border border-slate-200/80 dark:border-white/5 text-[10px] font-tech font-bold transition-all active:scale-95"
+            >
+              Athlete
+            </button>
+          </div>
+        </div>
+
         {/* Credential Help */}
-        <div className="mt-6 pt-4 border-t border-slate-200 dark:border-white/10">
+        <div className="mt-4 pt-3 border-t border-slate-200/80 dark:border-white/5">
           <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-start space-x-2.5 text-left">
             <KeyRound className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
             <div className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
