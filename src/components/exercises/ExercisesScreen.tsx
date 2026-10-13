@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Exercise, MuscleGroup } from '../../types';
 import { ExerciseService } from '../../services/exerciseService';
 import { AnatomicalExerciseIllustration } from '../anatomy/AnatomicalExerciseIllustration';
@@ -17,6 +17,10 @@ export const ExercisesScreen: React.FC<ExercisesScreenProps> = ({ onStartExercis
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedEquipment, setSelectedEquipment] = useState<string>('All');
   const [activeDetailExercise, setActiveDetailExercise] = useState<Exercise | null>(null);
+
+  // Progressive list virtualization for 1,324 exercises (renders 24 items initially, increments smoothly)
+  const [visibleCount, setVisibleCount] = useState(24);
+  const observerTarget = useRef<HTMLDivElement>(null);
 
   // Per-user favorites storage key
   const favStorageKey = clientId ? `jawan_favorite_exercises_${clientId}` : 'jawan_favorite_exercises';
@@ -52,6 +56,14 @@ export const ExercisesScreen: React.FC<ExercisesScreenProps> = ({ onStartExercis
       // ignore
     }
   }, [favoriteIds, favStorageKey]);
+
+  // Reset virtualization window whenever filters change (React 19 pattern)
+  const filterKey = `${searchQuery}-${selectedCategory}-${selectedEquipment}-${showOnlyFavorites}`;
+  const [prevFilterKey, setPrevFilterKey] = useState(filterKey);
+  if (prevFilterKey !== filterKey) {
+    setPrevFilterKey(filterKey);
+    setVisibleCount(24);
+  }
 
   const categories = [
     'All',
@@ -105,6 +117,33 @@ export const ExercisesScreen: React.FC<ExercisesScreenProps> = ({ onStartExercis
     return results;
   }, [searchQuery, selectedCategory, selectedEquipment, showOnlyFavorites, favoriteIds]);
 
+  // Windowed exercises slice to keep DOM slim and fast at 120 FPS
+  const displayedExercises = useMemo(
+    () => filteredExercises.slice(0, visibleCount),
+    [filteredExercises, visibleCount]
+  );
+
+  // IntersectionObserver to progressively mount next chunk
+  useEffect(() => {
+    if (visibleCount >= filteredExercises.length) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setVisibleCount((prev) => Math.min(prev + 24, filteredExercises.length));
+        }
+      },
+      { rootMargin: '300px' }
+    );
+
+    const target = observerTarget.current;
+    if (target) observer.observe(target);
+
+    return () => {
+      if (target) observer.unobserve(target);
+    };
+  }, [visibleCount, filteredExercises.length]);
+
   const toggleFavorite = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     hapticTap();
@@ -117,19 +156,20 @@ export const ExercisesScreen: React.FC<ExercisesScreenProps> = ({ onStartExercis
   };
 
   return (
-    <div className="bg-black min-h-screen text-slate-900 dark:text-white text-left pb-28 -mx-4 -mt-4 px-4 pt-3">
-      {/* 1. Header Bar matching Fitness Online */}
+    <div className="w-full text-slate-900 dark:text-white text-left pb-32 pt-1 animate-fadeIn">
+      {/* 1. Header Bar matching Fitness Online with 48dp targets */}
       <div className="flex items-center justify-between py-2 border-b border-slate-200/80 dark:border-white/5 mb-3">
         <div className="flex items-center space-x-2">
           {onBack && (
             <button
               onClick={onBack}
-              className="text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white p-1 rounded-full active:scale-95"
+              aria-label="Back to previous screen"
+              className="min-h-[48px] min-w-[48px] flex items-center justify-center text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded-2xl active:scale-95 transition-colors cursor-pointer"
             >
               ←
             </button>
           )}
-          <h1 className="text-xl font-black text-slate-900 dark:text-white font-display tracking-wide">
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-display tracking-wide">
             {showOnlyFavorites ? '★ Favorites' : selectedCategory === 'All' ? 'All Exercises' : `${selectedCategory} Exercises`}
           </h1>
         </div>
@@ -221,9 +261,9 @@ export const ExercisesScreen: React.FC<ExercisesScreenProps> = ({ onStartExercis
         </div>
       </div>
 
-      {/* 5. Exercise List Card Stack */}
-      <div className="divide-y divide-white/5">
-        {filteredExercises.map((exercise) => {
+      {/* 5. Exercise List Responsive Grid / Stack */}
+      <div className="divide-y divide-slate-100 dark:divide-white/5 md:divide-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-3">
+        {displayedExercises.map((exercise) => {
           const isFav = favoriteIds.has(exercise.id);
 
           return (
@@ -233,10 +273,10 @@ export const ExercisesScreen: React.FC<ExercisesScreenProps> = ({ onStartExercis
                 hapticTap();
                 setActiveDetailExercise(exercise);
               }}
-              className="py-3 px-1 flex items-center space-x-3.5 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/[0.04] active:bg-white/[0.08] transition-colors group select-none rounded-xl"
+              className="py-3 px-2 flex items-center space-x-3.5 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/[0.04] active:bg-white/[0.08] transition-colors group select-none rounded-2xl md:border md:border-slate-200/80 md:dark:border-white/5 md:bg-white md:dark:bg-[#0c101a] md:p-3.5 shadow-sm"
             >
               {/* GymVisual 3D Anatomical Thumbnail with Neon Muscle Accent */}
-              <div className="w-20 h-16 flex-shrink-0 flex items-center justify-center bg-slate-50 dark:bg-[#07090e] border border-slate-200/80 dark:border-white/5 rounded-lg overflow-hidden relative">
+              <div className="w-20 h-16 flex-shrink-0 flex items-center justify-center bg-slate-50 dark:bg-[#07090e] border border-slate-200/80 dark:border-white/5 rounded-xl overflow-hidden relative">
                 {exercise.thumbnailUrl ? (
                   <img
                     src={exercise.thumbnailUrl}
@@ -265,32 +305,40 @@ export const ExercisesScreen: React.FC<ExercisesScreenProps> = ({ onStartExercis
 
               {/* Exercise Title, Muscle & Equipment */}
               <div className="flex-1 min-w-0 pr-1">
-                <h3 className="text-[14px] text-slate-900 dark:text-white font-medium leading-snug group-hover:text-amber-400 transition-colors truncate">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white leading-snug group-hover:text-amber-500 dark:group-hover:text-amber-400 transition-colors truncate">
                   {exercise.name}
                 </h3>
                 <div className="flex items-center space-x-2 mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                  <span className="text-amber-600 dark:text-amber-400/90 font-medium">{exercise.primaryMuscle}</span>
+                  <span className="text-amber-600 dark:text-amber-400 font-medium">{exercise.primaryMuscle}</span>
                   <span>•</span>
-                  <span className="text-slate-500 dark:text-slate-400">{exercise.equipment}</span>
+                  <span className="text-slate-500 dark:text-slate-400 truncate">{exercise.equipment}</span>
                 </div>
               </div>
 
-              {/* Independent Favorite Button */}
+              {/* Independent Favorite Button with 48dp target */}
               <button
                 type="button"
                 onClick={(e) => toggleFavorite(e, exercise.id)}
-                className="p-2 text-slate-500 hover:text-amber-600 dark:hover:text-amber-400 transition-colors flex-shrink-0"
+                className="min-h-[48px] min-w-[48px] flex items-center justify-center text-slate-400 hover:text-amber-500 dark:hover:text-amber-400 transition-colors flex-shrink-0 cursor-pointer rounded-xl"
                 aria-label={isFav ? 'Remove from favorites' : 'Add to favorites'}
               >
                 <Star
-                  className={`w-4 h-4 transition-all ${
-                    isFav ? 'fill-amber-400 text-amber-600 dark:text-amber-400 scale-110' : 'text-slate-600'
+                  className={`w-5 h-5 transition-all ${
+                    isFav ? 'fill-amber-400 text-amber-500 scale-110' : 'text-slate-400'
                   }`}
                 />
               </button>
             </div>
           );
         })}
+
+        {/* Intersection Sentinel for dynamic infinite windowing */}
+        {visibleCount < filteredExercises.length && (
+          <div ref={observerTarget} className="col-span-full py-4 text-center text-xs font-tech text-slate-400 flex items-center justify-center space-x-2">
+            <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+            <span>Loading exercises ({displayedExercises.length} of {filteredExercises.length})...</span>
+          </div>
+        )}
 
         {filteredExercises.length === 0 && (
           <div className="py-16 text-center text-slate-500 space-y-2">
