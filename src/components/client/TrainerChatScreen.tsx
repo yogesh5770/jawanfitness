@@ -61,14 +61,29 @@ export const TrainerChatScreen: React.FC<TrainerChatScreenProps> = ({ client, tr
     }
   }, [syncState.messages, isAssigned]);
 
-  // Live 2-second cloud synchronization while chat is open
+  // Live cloud synchronization while chat is open — pauses when tab is hidden or minimized
   useEffect(() => {
     if (!isAssigned) return;
     syncedStore.syncFromCloud(true);
+
     const interval = setInterval(() => {
-      syncedStore.syncFromCloud(true);
-    }, 2000);
-    return () => clearInterval(interval);
+      if (!document.hidden) {
+        syncedStore.syncFromCloud(true);
+      }
+    }, 3000);
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        syncedStore.syncFromCloud(true);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [isAssigned]);
 
   const handleSend = (e: React.FormEvent) => {
@@ -352,8 +367,8 @@ export const TrainerChatScreen: React.FC<TrainerChatScreenProps> = ({ client, tr
           );
         })()}
 
-        {/* Quick Check-in Chips */}
-        <div className="pt-2 pb-1 border-t border-slate-200/80 dark:border-white/5 flex items-center space-x-1.5 overflow-x-auto scrollbar-none">
+        {/* Quick Check-in Chips with 48dp minimum touch target */}
+        <div className="pt-2 pb-1 border-t border-slate-200/80 dark:border-white/5 flex items-center space-x-2 overflow-x-auto scrollbar-none py-1">
           {[
             { label: "✅ Done Today's Workout", text: "Coach, I have completed today's workout!" },
             { label: "🥗 On Track with Diet", text: "Coach, my meals and macros are on track today!" },
@@ -368,7 +383,7 @@ export const TrainerChatScreen: React.FC<TrainerChatScreenProps> = ({ client, tr
                 hapticTap();
                 syncedStore.sendMessage('client', chip.text, client.id, trainer?.id || client.trainerId, client.name);
               }}
-              className="px-2.5 py-1 rounded-xl bg-slate-100/80 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 text-[10px] font-tech text-slate-700 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-400 border border-slate-200 dark:border-white/10 flex-shrink-0 transition-all active:scale-95"
+              className="min-h-[48px] px-3.5 py-2 rounded-2xl bg-slate-100/80 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-tech text-slate-700 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-400 border border-slate-200 dark:border-white/10 flex-shrink-0 transition-all active:scale-95 cursor-pointer flex items-center justify-center whitespace-nowrap"
             >
               {chip.label}
             </button>
@@ -382,14 +397,15 @@ export const TrainerChatScreen: React.FC<TrainerChatScreenProps> = ({ client, tr
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             placeholder={`Type message to ${trainer.name}...`}
-            className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 focus:border-amber-500 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-white outline-none placeholder:text-slate-500 dark:placeholder:text-slate-400 transition-all"
+            className="flex-1 min-h-[48px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 focus:border-amber-500 rounded-2xl px-4 py-2.5 text-sm text-slate-900 dark:text-white outline-none placeholder:text-slate-500 dark:placeholder:text-slate-400 transition-all"
           />
           <button
             type="submit"
             disabled={!inputText.trim()}
-            className="p-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-bold disabled:opacity-40 disabled:cursor-not-allowed shadow transition-all active:scale-95"
+            aria-label="Send message"
+            className="min-h-[48px] min-w-[48px] rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-bold disabled:opacity-40 disabled:cursor-not-allowed shadow transition-all active:scale-95 flex items-center justify-center cursor-pointer"
           >
-            <Send className="w-4 h-4" />
+            <Send className="w-5 h-5" />
           </button>
         </form>
       </div>
