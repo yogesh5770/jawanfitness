@@ -40,38 +40,32 @@ An exhaustive security, reliability, data integrity, and UI/UX audit was conduct
 
 ---
 
-## 3. Database Migration & Concurrency Plan (Awaiting Approval)
+## 3. Database Migration & Concurrency Execution (SEC-04 & SEC-06 - Remediated in `470566b`)
 
-Per operating rules (*"Do not change database schema, API contracts, or auth flows without writing a migration plan and rollback plan first, and asking me to approve"*), the following migration plans are ready:
+Following explicit user authorization, both database migrations and server-side concurrency engines have been implemented and committed:
 
-### Concurrency Hardening (SEC-04)
-- **Problem**: Concurrent writers to the single `gym_sync_state` (`master`) row cause lost updates.
-- **Migration Plan**:
+### Concurrency Hardening (SEC-04 - Commit `470566b`)
+- **Migration SQL (`migrations/0001_add_sync_version.sql`)**:
   ```sql
-  -- D1 / SQLite:
   ALTER TABLE gym_sync_state ADD COLUMN version INTEGER NOT NULL DEFAULT 1;
   ```
 - **CAS Write Enforcement**:
-  ```sql
-  UPDATE gym_sync_state 
-  SET data = ?, version = version + 1, updated_at = datetime('now')
-  WHERE id = 'master' AND version = ?;
-  ```
-  If affected rows == 0, return `409 Conflict` allowing client retry with exponential backoff.
-- **Rollback Plan**:
-  ```sql
-  ALTER TABLE gym_sync_state DROP COLUMN version;
-  ```
+  - `functions/api/sync.ts` now verifies `expectedVersion` from incoming requests against `existingRow.version`.
+  - If conflicting writes occur concurrently, the endpoint issues an HTTP `409 Conflict` (`CONCURRENCY_CONFLICT`).
+  - `src/services/cloudDatabaseService.ts` tracks `currentSyncVersion`, sends it on state pushes, and automatically handles 409 re-fetch and retry.
+- **Rollback SQL**:
+  `migrations/0001_rollback_sync_version.sql`
 
-### Cryptographic Hash Hardening (SEC-06)
-- **Problem**: PBKDF2 iteration count is 100,000; current OWASP guidance for SHA-512 recommends 210,000 iterations.
-- **Migration Plan**:
-  1. Add `iterations INTEGER NOT NULL DEFAULT 100000` to `gym_users`.
-  2. On user login, verify against stored iterations, then re-hash using 210,000 iterations and update row.
-- **Rollback Plan**:
+### Cryptographic Hash Hardening (SEC-06 - Commit `470566b`)
+- **Migration SQL (`migrations/0002_upgrade_pbkdf2_iterations.sql`)**:
   ```sql
-  ALTER TABLE gym_users DROP COLUMN iterations;
+  ALTER TABLE gym_users ADD COLUMN iterations INTEGER NOT NULL DEFAULT 100000;
   ```
+- **Transparent Upgrade**:
+  - `functions/api/auth.ts` now uses OWASP-standard `210,000` iterations for all password hashing.
+  - Legacy users authenticated with 100,000 iterations are verified against their stored iteration count and transparently upgraded to `210,000` iterations in D1 upon successful login.
+- **Rollback SQL**:
+  `migrations/0002_rollback_pbkdf2_iterations.sql`
 
 ---
 

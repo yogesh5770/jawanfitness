@@ -2,9 +2,9 @@ ID,Title,Severity,OWASP_Ref,File_Line,Effort,Status
 SEC-01,Open CORS Wildcard with Credentials Allowed,Critical,OWASP Top 10 A01:2021 (Broken Access Control) / ASVS 14.5.3,functions/api/auth.ts:6-14; functions/api/sync.ts:16-24,S,Resolved in 61c83a5
 SEC-02,No Rate Limiting on Authentication Endpoints (Brute Force Vulnerability),Critical,OWASP Top 10 A07:2021 (Identification and Authentication Failures) / ASVS 2.2.1,functions/api/auth.ts:70-176,M,Resolved in d36c1e7
 SEC-03,Timing Attack and Account Enumeration on Login,High,OWASP ASVS 2.1.8 / 2.2.2,functions/api/auth.ts:88-126,S,Resolved in d36c1e7
-SEC-04,Missing Optimistic Concurrency and Lost Updates on Master Sync Row,Critical,OWASP Top 10 A04:2021 (Insecure Design) / ASVS 10.3.2,functions/api/sync.ts:501-575,M,Migration Plan Ready (Awaiting Approval)
+SEC-04,Missing Optimistic Concurrency and Lost Updates on Master Sync Row,Critical,OWASP Top 10 A04:2021 (Insecure Design) / ASVS 10.3.2,functions/api/sync.ts:501-575,M,Resolved in 470566b
 SEC-05,Temporary Password Stored in Local Storage and State Payloads,High,OWASP Top 10 A02:2021 (Cryptographic Failures) / ASVS 2.1.2,src/services/syncedStore.ts:29; src/components/admin/AdminScreen.tsx:288,S,Resolved in 538a508
-SEC-06,PBKDF2 Iteration Count (100k) Below Current OWASP Recommendations for SHA-512,Medium,OWASP ASVS 2.4.1 / Password Storage Cheat Sheet,functions/api/auth.ts:29; setup_auth_tables.cjs:5,M,Migration Plan Ready (Awaiting Approval)
+SEC-06,PBKDF2 Iteration Count (100k) Below Current OWASP Recommendations for SHA-512,Medium,OWASP ASVS 2.4.1 / Password Storage Cheat Sheet,functions/api/auth.ts:29; setup_auth_tables.cjs:5,M,Resolved in 470566b
 SEC-07,Plain LocalStorage Bearer Token on Android APK (Missing Hardware Keystore),High,OWASP MASVS-STORAGE-1 / MASVS-STORAGE-2,src/services/authService.ts:30; src/services/syncedStore.ts:85,M,In Progress
 SEC-08,Missing HTTP Security Headers (CSP, HSTS, X-Frame-Options, Sniff Protection),High,OWASP Top 10 A05:2021 (Security Misconfiguration) / ASVS 14.4.1,public/_headers:1-15,M,Resolved in 61c83a5
 SEC-09,Broken Authorization (IDOR) Scoping in Sync Engine,High,OWASP Top 10 A01:2021 (Broken Access Control) / ASVS 4.1.1,functions/api/sync.ts:100-240,M,Verified Secure (Role Scoped)
