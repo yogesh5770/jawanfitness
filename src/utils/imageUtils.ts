@@ -45,7 +45,7 @@ export async function compressImageFile(
           ctx.drawImage(img, 0, 0, width, height);
           const compressed = canvas.toDataURL('image/jpeg', quality);
           resolve(compressed);
-        } catch (err) {
+        } catch {
           resolve(result);
         }
       };

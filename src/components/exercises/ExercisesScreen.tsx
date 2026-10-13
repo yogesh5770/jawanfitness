@@ -3,7 +3,7 @@ import { Exercise, MuscleGroup } from '../../types';
 import { ExerciseService } from '../../services/exerciseService';
 import { AnatomicalExerciseIllustration } from '../anatomy/AnatomicalExerciseIllustration';
 import { ExerciseDetailModal } from './ExerciseDetailModal';
-import { Search, Star, Filter, X, Sparkles, Dumbbell } from 'lucide-react';
+import { Search, Star, X, Sparkles, Dumbbell } from 'lucide-react';
 import { hapticTap } from '../../utils/audioHaptics';
 
 interface ExercisesScreenProps {
@@ -33,8 +33,9 @@ export const ExercisesScreen: React.FC<ExercisesScreenProps> = ({ onStartExercis
 
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
 
-  // Reload favorites when the active user changes
-  useEffect(() => {
+  const [prevClientId, setPrevClientId] = useState(clientId);
+  if (prevClientId !== clientId) {
+    setPrevClientId(clientId);
     try {
       const key = clientId ? `jawan_favorite_exercises_${clientId}` : 'jawan_favorite_exercises';
       const saved = localStorage.getItem(key);
@@ -42,7 +43,7 @@ export const ExercisesScreen: React.FC<ExercisesScreenProps> = ({ onStartExercis
     } catch {
       setFavoriteIds(new Set());
     }
-  }, [clientId]);
+  }
 
   useEffect(() => {
     try {
@@ -116,19 +117,19 @@ export const ExercisesScreen: React.FC<ExercisesScreenProps> = ({ onStartExercis
   };
 
   return (
-    <div className="bg-black min-h-screen text-white text-left pb-28 -mx-4 -mt-4 px-4 pt-3">
+    <div className="bg-black min-h-screen text-slate-900 dark:text-white text-left pb-28 -mx-4 -mt-4 px-4 pt-3">
       {/* 1. Header Bar matching Fitness Online */}
-      <div className="flex items-center justify-between py-2 border-b border-white/5 mb-3">
+      <div className="flex items-center justify-between py-2 border-b border-slate-200/80 dark:border-white/5 mb-3">
         <div className="flex items-center space-x-2">
           {onBack && (
             <button
               onClick={onBack}
-              className="text-slate-300 hover:text-white p-1 rounded-full active:scale-95"
+              className="text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white p-1 rounded-full active:scale-95"
             >
               ←
             </button>
           )}
-          <h1 className="text-xl font-black text-white font-display tracking-wide">
+          <h1 className="text-xl font-black text-slate-900 dark:text-white font-display tracking-wide">
             {showOnlyFavorites ? '★ Favorites' : selectedCategory === 'All' ? 'All Exercises' : `${selectedCategory} Exercises`}
           </h1>
         </div>
@@ -142,7 +143,7 @@ export const ExercisesScreen: React.FC<ExercisesScreenProps> = ({ onStartExercis
             className={`flex items-center space-x-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all ${
               showOnlyFavorites
                 ? 'bg-amber-500 text-black shadow-[0_0_12px_rgba(245,158,11,0.4)]'
-                : 'bg-white/10 text-slate-300 hover:text-white'
+                : 'bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <Star className={`w-3.5 h-3.5 ${showOnlyFavorites ? 'fill-black' : ''}`} />
@@ -153,19 +154,19 @@ export const ExercisesScreen: React.FC<ExercisesScreenProps> = ({ onStartExercis
 
       {/* 2. Pill Search Bar */}
       <div className="relative mb-3">
-        <div className="flex items-center bg-[#1c1c1e] rounded-full px-4 py-2 text-slate-400 focus-within:ring-2 focus-within:ring-amber-500/50 transition-all">
-          <Search className="w-4 h-4 mr-2.5 text-slate-400 flex-shrink-0" />
+        <div className="flex items-center bg-slate-100 dark:bg-[#1c1c1e] rounded-full px-4 py-2 text-slate-500 dark:text-slate-400 focus-within:ring-2 focus-within:ring-amber-500/50 transition-all">
+          <Search className="w-4 h-4 mr-2.5 text-slate-500 dark:text-slate-400 flex-shrink-0" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search exercises (e.g. incline dumbbell)..."
-            className="bg-transparent text-white text-sm w-full outline-none placeholder-slate-500"
+            className="bg-transparent text-slate-900 dark:text-white text-sm w-full outline-none placeholder:text-slate-500 dark:placeholder:text-slate-400"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="p-1 hover:text-white text-slate-400"
+              className="p-1 hover:text-slate-900 dark:hover:text-white text-slate-500 dark:text-slate-400"
             >
               <X className="w-4 h-4" />
             </button>
@@ -188,7 +189,7 @@ export const ExercisesScreen: React.FC<ExercisesScreenProps> = ({ onStartExercis
                 className={`px-3.5 py-1.5 rounded-full text-xs font-tech font-bold whitespace-nowrap transition-all duration-150 ${
                   isSelected
                     ? 'bg-amber-500 text-black shadow-[0_0_12px_rgba(245,158,11,0.4)] scale-105'
-                    : 'bg-[#151a24] text-slate-300 hover:bg-[#1f2636] hover:text-white border border-white/5'
+                    : 'bg-white dark:bg-[#151a24] text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-[#1f2636] hover:text-slate-900 dark:hover:text-white border border-slate-200/80 dark:border-white/5'
                 }`}
               >
                 {cat}
@@ -199,17 +200,17 @@ export const ExercisesScreen: React.FC<ExercisesScreenProps> = ({ onStartExercis
       )}
 
       {/* 4. Equipment Filter Bar */}
-      <div className="flex items-center justify-between text-xs text-slate-400 mb-3 px-1">
+      <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-3 px-1">
         <span className="font-tech uppercase tracking-wider text-[11px]">
           {filteredExercises.length} {filteredExercises.length === 1 ? 'Exercise' : 'Exercises'} Found
         </span>
 
         <div className="flex items-center space-x-1">
-          <Dumbbell className="w-3 h-3 text-slate-400" />
+          <Dumbbell className="w-3 h-3 text-slate-500 dark:text-slate-400" />
           <select
             value={selectedEquipment}
             onChange={(e) => setSelectedEquipment(e.target.value)}
-            className="bg-[#151a24] text-slate-300 text-[11px] rounded-lg px-2 py-1 border border-white/10 outline-none"
+            className="bg-white dark:bg-[#151a24] text-slate-700 dark:text-slate-300 text-[11px] rounded-lg px-2 py-1 border border-slate-200 dark:border-white/10 outline-none"
           >
             {equipments.map((eq) => (
               <option key={eq} value={eq}>
@@ -232,10 +233,10 @@ export const ExercisesScreen: React.FC<ExercisesScreenProps> = ({ onStartExercis
                 hapticTap();
                 setActiveDetailExercise(exercise);
               }}
-              className="py-3 px-1 flex items-center space-x-3.5 cursor-pointer hover:bg-white/[0.04] active:bg-white/[0.08] transition-colors group select-none rounded-xl"
+              className="py-3 px-1 flex items-center space-x-3.5 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/[0.04] active:bg-white/[0.08] transition-colors group select-none rounded-xl"
             >
               {/* GymVisual 3D Anatomical Thumbnail with Neon Muscle Accent */}
-              <div className="w-20 h-16 flex-shrink-0 flex items-center justify-center bg-[#07090e] border border-white/5 rounded-lg overflow-hidden relative">
+              <div className="w-20 h-16 flex-shrink-0 flex items-center justify-center bg-slate-50 dark:bg-[#07090e] border border-slate-200/80 dark:border-white/5 rounded-lg overflow-hidden relative">
                 {exercise.thumbnailUrl ? (
                   <img
                     src={exercise.thumbnailUrl}
@@ -257,20 +258,20 @@ export const ExercisesScreen: React.FC<ExercisesScreenProps> = ({ onStartExercis
                     className="w-full h-full"
                   />
                 </div>
-                <div className="absolute bottom-1 right-1 bg-black/80 backdrop-blur border border-amber-500/30 text-[8px] font-tech font-black text-amber-400 px-1 py-0.2 rounded shadow flex items-center space-x-0.5 pointer-events-none">
-                  <span>3D</span>
+                <div className="absolute bottom-1 right-1 bg-black/80 backdrop-blur border border-amber-500/30 text-[8px] font-tech font-black text-amber-600 dark:text-amber-400 px-1 py-0.2 rounded shadow flex items-center space-x-0.5 pointer-events-none">
+                  <span>GIF</span>
                 </div>
               </div>
 
               {/* Exercise Title, Muscle & Equipment */}
               <div className="flex-1 min-w-0 pr-1">
-                <h3 className="text-[14px] text-white font-medium leading-snug group-hover:text-amber-400 transition-colors truncate">
+                <h3 className="text-[14px] text-slate-900 dark:text-white font-medium leading-snug group-hover:text-amber-400 transition-colors truncate">
                   {exercise.name}
                 </h3>
-                <div className="flex items-center space-x-2 mt-0.5 text-xs text-slate-400">
-                  <span className="text-amber-400/90 font-medium">{exercise.primaryMuscle}</span>
+                <div className="flex items-center space-x-2 mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                  <span className="text-amber-600 dark:text-amber-400/90 font-medium">{exercise.primaryMuscle}</span>
                   <span>•</span>
-                  <span className="text-slate-400">{exercise.equipment}</span>
+                  <span className="text-slate-500 dark:text-slate-400">{exercise.equipment}</span>
                 </div>
               </div>
 
@@ -278,12 +279,12 @@ export const ExercisesScreen: React.FC<ExercisesScreenProps> = ({ onStartExercis
               <button
                 type="button"
                 onClick={(e) => toggleFavorite(e, exercise.id)}
-                className="p-2 text-slate-500 hover:text-amber-400 transition-colors flex-shrink-0"
+                className="p-2 text-slate-500 hover:text-amber-600 dark:hover:text-amber-400 transition-colors flex-shrink-0"
                 aria-label={isFav ? 'Remove from favorites' : 'Add to favorites'}
               >
                 <Star
                   className={`w-4 h-4 transition-all ${
-                    isFav ? 'fill-amber-400 text-amber-400 scale-110' : 'text-slate-600'
+                    isFav ? 'fill-amber-400 text-amber-600 dark:text-amber-400 scale-110' : 'text-slate-600'
                   }`}
                 />
               </button>
@@ -294,7 +295,7 @@ export const ExercisesScreen: React.FC<ExercisesScreenProps> = ({ onStartExercis
         {filteredExercises.length === 0 && (
           <div className="py-16 text-center text-slate-500 space-y-2">
             <Sparkles className="w-8 h-8 mx-auto text-slate-600" />
-            <p className="text-sm font-medium text-slate-300">No exercises found</p>
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-300">No exercises found</p>
             <p className="text-xs text-slate-500 max-w-xs mx-auto">
               Try adjusting your search query or selecting a different muscle group.
             </p>
@@ -306,7 +307,7 @@ export const ExercisesScreen: React.FC<ExercisesScreenProps> = ({ onStartExercis
                   setSelectedEquipment('All');
                   setShowOnlyFavorites(false);
                 }}
-                className="mt-2 text-xs text-amber-400 underline font-bold"
+                className="mt-2 text-xs text-amber-600 dark:text-amber-400 underline font-bold"
               >
                 Reset All Filters
               </button>

@@ -16,6 +16,9 @@ function setCorsHeaders(req: VercelRequest, res: VercelResponse) {
   const origin = req.headers.origin || '';
   const defaultOrigins = [
     'http://localhost:5173',
+    'https://localhost',
+    'capacitor://localhost',
+    'https://jawan-fitness.pages.dev',
     'https://jawan-fitness-admin.vercel.app',
     'https://jawan-fitness-trainer.vercel.app',
     'https://jawan-fitness-app.vercel.app',

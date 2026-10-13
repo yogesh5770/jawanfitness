@@ -1,20 +1,6 @@
 import React, { useState } from 'react';
-import { WeightRecord } from '../../types';
-import { 
-  TrendingDown, 
-  TrendingUp,
-  Plus, 
-  Check, 
-  Trophy, 
-  Calendar, 
-  Ruler, 
-  Sparkles, 
-  Flame, 
-  Dumbbell, 
-  Droplets,
-  Award,
-  ChevronRight
-} from 'lucide-react';
+import { WeightRecord, WorkoutSession, LoggedMealItem } from '../../types';
+import { TrendingDown, TrendingUp, Plus, Check, Trophy, Dumbbell, Award } from 'lucide-react';
 import { hapticTap } from '../../utils/audioHaptics';
 import { calculateWeightProgress } from '../../utils/weightProgress';
 
@@ -24,6 +10,57 @@ interface ProgressScreenProps {
   goalWeightKg: number;
   currentWeightKg: number;
   onLogWeight: (weight: number) => void;
+  workoutHistory?: WorkoutSession[];
+  loggedMeals?: LoggedMealItem[];
+  dailyWaterLog?: Record<string, number>;
+}
+
+interface RealPR {
+  exercise: string;
+  prWeightKg: number;
+  reps: number;
+  date: string;
+  muscle: string;
+}
+
+function computeConsistency(
+  workoutHistory: WorkoutSession[],
+  loggedMeals: LoggedMealItem[],
+  dailyWaterLog: Record<string, number> = {}
+) {
+  const DAY = 86400000;
+  const since = Date.now() - 30 * DAY;
+  const localKey = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const sinceKey = localKey(new Date(since));
+  const todayKeyStr = localKey(new Date());
+  const dayKey = (d: Date) => d.toDateString();
+
+  const workoutDays = new Set(
+    workoutHistory
+      .filter((s) => s.startTime >= since)
+      .map((s) => dayKey(new Date(s.startTime)))
+  ).size;
+
+  const mealDays = new Set(
+    loggedMeals
+      .filter((m) => m.date && m.date >= sinceKey && m.date <= todayKeyStr)
+      .map((m) => m.date)
+  ).size;
+
+  const WATER_TARGET = 3000;
+  const waterDays = Object.entries(dailyWaterLog || {}).filter(([day, ml]) => {
+    if (day < sinceKey || day > todayKeyStr) return false;
+    return (ml || 0) >= WATER_TARGET;
+  }).length;
+
+  const workoutGoal = 17; // 4 sessions/week over 30 days
+  const workoutPct = Math.min(100, Math.round((workoutDays / workoutGoal) * 100));
+  const mealPct = Math.min(100, Math.round((mealDays / 30) * 100));
+  const waterPct = Math.min(100, Math.round((waterDays / 30) * 100));
+  const overall = Math.round((workoutPct + mealPct + waterPct) / 3);
+
+  return { workoutDays, workoutGoal, mealDays, waterDays, workoutPct, mealPct, waterPct, overall };
 }
 
 export const ProgressScreen: React.FC<ProgressScreenProps> = ({
@@ -31,33 +68,66 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
   startingWeightKg,
   goalWeightKg,
   currentWeightKg,
-  onLogWeight
+  onLogWeight,
+  workoutHistory = [],
+  loggedMeals = [],
+  dailyWaterLog = {}
 }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'measurements' | 'strength' | 'consistency'>('overview');
   const [newWeightInput, setNewWeightInput] = useState('');
   const [isLoggingWeight, setIsLoggingWeight] = useState(false);
 
-  // Measurements State (Stored locally for client demonstration)
+  // Measurements State — honest defaults (0 = not measured yet, never fabricated)
   const [measurements, setMeasurements] = useState<{ waistCm: number; chestCm: number; armCm: number; thighCm: number }>(() => {
     const saved = localStorage.getItem('jawan_client_measurements_v1');
-    return saved ? JSON.parse(saved) : { waistCm: 96, chestCm: 104, armCm: 37, thighCm: 61 };
+    return saved ? JSON.parse(saved) : { waistCm: 0, chestCm: 0, armCm: 0, thighCm: 0 };
+  });
+  // Baseline captured on first real save — deltas compare against it
+  const [baseline, setBaseline] = useState<{ waistCm: number; chestCm: number; armCm: number; thighCm: number } | null>(() => {
+    const saved = localStorage.getItem('jawan_client_measurements_baseline_v1');
+    return saved ? JSON.parse(saved) : null;
   });
   const [isEditingMeasurements, setIsEditingMeasurements] = useState(false);
   const [measForm, setMeasForm] = useState(measurements);
 
-  // Strength Personal Records (PRs)
-  const personalRecords = [
-    { exercise: 'Bench Press', prWeightKg: 75, reps: 5, date: 'Sep 12', muscle: 'Chest' },
-    { exercise: 'Barbell Back Squat', prWeightKg: 105, reps: 5, date: 'Sep 10', muscle: 'Legs' },
-    { exercise: 'Deadlift', prWeightKg: 125, reps: 3, date: 'Sep 14', muscle: 'Back' },
-    { exercise: 'Overhead Press', prWeightKg: 52.5, reps: 6, date: 'Sep 08', muscle: 'Shoulders' },
-    { exercise: 'Lat Pulldown', prWeightKg: 70, reps: 8, date: 'Sep 15', muscle: 'Back' },
-  ];
+  // REAL Personal Records — derived from completed sets in logged workout history
+  const personalRecords: RealPR[] = React.useMemo(() => {
+    const best = new Map<string, RealPR>();
+    for (const session of workoutHistory) {
+      const dateStr = new Date(session.startTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      for (const ex of session.exercises || []) {
+        const name = ex.exercise?.name;
+        if (!name) continue;
+        for (const set of ex.sets || []) {
+          if (!set.completed || set.isWarmup) continue;
+          const prev = best.get(name);
+          if (!prev || (set.weightKg || 0) > prev.prWeightKg) {
+            best.set(name, {
+              exercise: name,
+              prWeightKg: set.weightKg || 0,
+              reps: set.reps || 0,
+              date: dateStr,
+              muscle: ex.exercise?.primaryMuscle || ex.exercise?.category || ''
+            });
+          }
+        }
+      }
+    }
+    return Array.from(best.values()).sort((a, b) => b.prWeightKg - a.prWeightKg);
+  }, [workoutHistory]);
 
-  // Current and goal metrics
+  // REAL consistency metrics — last 30 days of actual logged activity
+  const consistency = React.useMemo(() => {
+    return computeConsistency(workoutHistory, loggedMeals, dailyWaterLog);
+  }, [workoutHistory, loggedMeals, dailyWaterLog]);
+
+  // Current and goal metrics — latest weight record by date (history may be unordered after sync merges)
   const startingWeight = startingWeightKg > 0 ? startingWeightKg : 70.0;
   const goalWeight = goalWeightKg > 0 ? goalWeightKg : 70.0;
-  const currentWeight = weightHistory.length > 0 ? weightHistory[weightHistory.length - 1].weightKg : (currentWeightKg || startingWeight);
+  const sortedWeightHistory = [...weightHistory].sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
+  const currentWeight = sortedWeightHistory.length > 0
+    ? sortedWeightHistory[sortedWeightHistory.length - 1].weightKg
+    : (currentWeightKg || startingWeight);
 
   const weightProgress = calculateWeightProgress(startingWeight, currentWeight, goalWeight);
   const progressPercent = weightProgress.progressPercent;
@@ -76,6 +146,11 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
     hapticTap();
     setMeasurements(measForm);
     localStorage.setItem('jawan_client_measurements_v1', JSON.stringify(measForm));
+    // Capture baseline on first save so deltas are real, not fabricated
+    if (!baseline) {
+      setBaseline(measForm);
+      localStorage.setItem('jawan_client_measurements_baseline_v1', JSON.stringify(measForm));
+    }
     setIsEditingMeasurements(false);
   };
 
@@ -196,9 +271,13 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
               </div>
 
               <div className="divide-y divide-slate-100 dark:divide-white/5">
-                {[...weightHistory].reverse().map((record) => (
+                {[...sortedWeightHistory].reverse().map((record) => (
                   <div key={record.id} className="py-2.5 flex items-center justify-between text-xs">
-                    <span className="font-tech text-slate-500">{record.date}</span>
+                    <span className="font-tech text-slate-500">
+                      {/^\d{4}-\d{2}-\d{2}$/.test(record.date)
+                        ? new Date(record.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                        : record.date}
+                    </span>
                     <span className="font-tech font-black text-slate-900 dark:text-white">{record.weightKg.toFixed(1)} kg</span>
                   </div>
                 ))}
@@ -279,34 +358,44 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
               </div>
             )}
 
-            {/* 4 Tape Stat Cards */}
+            {/* 4 Tape Stat Cards — real values, real deltas vs first-save baseline */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/5 space-y-1">
-                <span className="text-[10px] font-tech uppercase text-slate-500 block">Waist</span>
-                <span className="text-xl font-black text-slate-900 dark:text-white font-tech">{measurements.waistCm} cm</span>
-                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-tech block">-4.0 cm vs joining</span>
-              </div>
-              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/5 space-y-1">
-                <span className="text-[10px] font-tech uppercase text-slate-500 block">Chest</span>
-                <span className="text-xl font-black text-slate-900 dark:text-white font-tech">{measurements.chestCm} cm</span>
-                <span className="text-[10px] text-amber-600 dark:text-amber-400 font-tech block">+2.5 cm hypertrophy</span>
-              </div>
-              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/5 space-y-1">
-                <span className="text-[10px] font-tech uppercase text-slate-500 block">Arms (Bicep)</span>
-                <span className="text-xl font-black text-slate-900 dark:text-white font-tech">{measurements.armCm} cm</span>
-                <span className="text-[10px] text-amber-600 dark:text-amber-400 font-tech block">+1.8 cm hypertrophy</span>
-              </div>
-              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/5 space-y-1">
-                <span className="text-[10px] font-tech uppercase text-slate-500 block">Thighs</span>
-                <span className="text-xl font-black text-slate-900 dark:text-white font-tech">{measurements.thighCm} cm</span>
-                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-tech block">-2.0 cm lean definition</span>
-              </div>
+              {([
+                { label: 'Waist', key: 'waistCm' as const, goodWhenDown: true },
+                { label: 'Chest', key: 'chestCm' as const, goodWhenDown: false },
+                { label: 'Arms (Bicep)', key: 'armCm' as const, goodWhenDown: false },
+                { label: 'Thighs', key: 'thighCm' as const, goodWhenDown: false },
+              ]).map(({ label, key, goodWhenDown }) => {
+                const value = measurements[key];
+                const base = baseline?.[key];
+                const hasValue = value > 0;
+                const hasDelta = hasValue && base != null && base > 0;
+                const delta = hasDelta ? +(value - base).toFixed(1) : 0;
+                const deltaGood = goodWhenDown ? delta < 0 : delta > 0;
+                return (
+                  <div key={key} className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/5 space-y-1">
+                    <span className="text-[10px] font-tech uppercase text-slate-500 block">{label}</span>
+                    <span className="text-xl font-black text-slate-900 dark:text-white font-tech">
+                      {hasValue ? `${value} cm` : '—'}
+                    </span>
+                    {hasDelta ? (
+                      <span className={`text-[10px] font-tech block ${delta === 0 ? 'text-slate-400' : deltaGood ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                        {delta > 0 ? `+${delta}` : delta} cm vs baseline
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-slate-400 font-tech block">
+                        {hasValue ? 'Baseline pending' : 'Not measured yet'}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
       )}
 
-      {/* 3. STRENGTH: Personal Records (PRs) */}
+      {/* 3. STRENGTH: Personal Records (derived from real logged sessions) */}
       {activeTab === 'strength' && (
         <div className="space-y-4">
           <div className="p-4 rounded-3xl bg-gradient-to-r from-amber-500/20 via-amber-500/10 to-transparent border border-amber-500/30 flex items-center justify-between">
@@ -316,38 +405,52 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
               </div>
               <div>
                 <h4 className="text-sm font-black text-slate-900 dark:text-white font-display">
-                  5 Personal Records Logged
+                  {personalRecords.length > 0
+                    ? `${personalRecords.length} Personal Record${personalRecords.length > 1 ? 's' : ''} Logged`
+                    : 'No PRs Yet'}
                 </h4>
                 <p className="text-[11px] text-slate-500 font-tech">Maximum verified strength feats</p>
               </div>
             </div>
-            <span className="px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 font-tech font-bold text-[10px]">
-              Active Peak
-            </span>
+            {personalRecords.length > 0 && (
+              <span className="px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 font-tech font-bold text-[10px]">
+                Active Peak
+              </span>
+            )}
           </div>
 
-          <div className="bg-white dark:bg-[#0c101a] border border-slate-200 dark:border-white/10 rounded-3xl p-4 shadow-sm dark:shadow-md divide-y divide-slate-100 dark:divide-white/5 transition-colors duration-200">
-            {personalRecords.map((pr, idx) => (
-              <div key={idx} className="py-3 flex items-center justify-between">
-                <div>
-                  <h5 className="text-xs font-bold text-slate-900 dark:text-white font-display">{pr.exercise}</h5>
-                  <span className="text-[10px] text-slate-500 font-tech block">
-                    {pr.reps} reps • Verified on {pr.date}
-                  </span>
+          {personalRecords.length === 0 ? (
+            <div className="bg-white dark:bg-[#0c101a] border border-slate-200 dark:border-white/10 rounded-3xl p-8 shadow-sm dark:shadow-md text-center space-y-2 transition-colors duration-200">
+              <Dumbbell className="w-8 h-8 mx-auto text-slate-400 dark:text-slate-600 opacity-60" />
+              <p className="text-xs font-bold text-slate-700 dark:text-slate-300">No completed workouts logged yet</p>
+              <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
+                Finish a workout session and your personal records will appear here automatically.
+              </p>
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-[#0c101a] border border-slate-200 dark:border-white/10 rounded-3xl p-4 shadow-sm dark:shadow-md divide-y divide-slate-100 dark:divide-white/5 transition-colors duration-200">
+              {personalRecords.map((pr, idx) => (
+                <div key={`${pr.exercise}-${idx}`} className="py-3 flex items-center justify-between">
+                  <div>
+                    <h5 className="text-xs font-bold text-slate-900 dark:text-white font-display">{pr.exercise}</h5>
+                    <span className="text-[10px] text-slate-500 font-tech block">
+                      {pr.reps} reps • Verified on {pr.date}
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-base font-black text-amber-600 dark:text-amber-400 font-tech">
+                      {pr.prWeightKg} kg
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-tech block">{pr.muscle}</span>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <span className="text-base font-black text-amber-600 dark:text-amber-400 font-tech">
-                    {pr.prWeightKg} kg
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-tech block">{pr.muscle}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
-      {/* 4. CONSISTENCY: Monthly Workout & Diet Adherence */}
+      {/* 4. CONSISTENCY: Real 30-day workout / diet / hydration adherence */}
       {activeTab === 'consistency' && (
         <div className="space-y-4">
           <div className="bg-white dark:bg-[#0c101a] border border-slate-200 dark:border-white/10 rounded-3xl p-5 shadow-sm dark:shadow-md space-y-4 transition-colors duration-200">
@@ -364,43 +467,55 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
             <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between">
               <div>
                 <span className="text-[10px] font-tech uppercase text-emerald-600 dark:text-emerald-400 font-bold block">Overall Adherence</span>
-                <span className="text-2xl font-black text-slate-900 dark:text-white font-tech">84% Elite</span>
+                <span className="text-2xl font-black text-slate-900 dark:text-white font-tech">{consistency.overall}% (30 days)</span>
               </div>
               <Award className="w-8 h-8 text-emerald-500" />
             </div>
 
-            {/* 3 Pillars */}
+            {/* 3 Pillars — real counts */}
             <div className="space-y-3 pt-1">
               <div>
                 <div className="flex justify-between text-xs font-tech mb-1">
                   <span className="text-slate-600 dark:text-slate-300">Workout Attendance</span>
-                  <span className="font-bold text-amber-600 dark:text-amber-400">18 / 22 sessions (82%)</span>
+                  <span className="font-bold text-amber-600 dark:text-amber-400">
+                    {consistency.workoutDays} / {consistency.workoutGoal} sessions ({consistency.workoutPct}%)
+                  </span>
                 </div>
                 <div className="w-full bg-slate-100 dark:bg-slate-900 h-2 rounded-full overflow-hidden">
-                  <div className="bg-amber-500 h-full rounded-full" style={{ width: '82%' }} />
+                  <div className="bg-amber-500 h-full rounded-full transition-all" style={{ width: `${consistency.workoutPct}%` }} />
                 </div>
               </div>
 
               <div>
                 <div className="flex justify-between text-xs font-tech mb-1">
                   <span className="text-slate-600 dark:text-slate-300">Diet & Macro Logging</span>
-                  <span className="font-bold text-emerald-600 dark:text-emerald-400">20 / 22 days (91%)</span>
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                    {consistency.mealDays} / 30 days ({consistency.mealPct}%)
+                  </span>
                 </div>
                 <div className="w-full bg-slate-100 dark:bg-slate-900 h-2 rounded-full overflow-hidden">
-                  <div className="bg-emerald-500 h-full rounded-full" style={{ width: '91%' }} />
+                  <div className="bg-emerald-500 h-full rounded-full transition-all" style={{ width: `${consistency.mealPct}%` }} />
                 </div>
               </div>
 
               <div>
                 <div className="flex justify-between text-xs font-tech mb-1">
-                  <span className="text-slate-600 dark:text-slate-300">Hydration Target</span>
-                  <span className="font-bold text-cyan-600 dark:text-cyan-400">17 / 22 days (77%)</span>
+                  <span className="text-slate-600 dark:text-slate-300">Hydration Target (3L)</span>
+                  <span className="font-bold text-cyan-600 dark:text-cyan-400">
+                    {consistency.waterDays} / 30 days ({consistency.waterPct}%)
+                  </span>
                 </div>
                 <div className="w-full bg-slate-100 dark:bg-slate-900 h-2 rounded-full overflow-hidden">
-                  <div className="bg-cyan-500 h-full rounded-full" style={{ width: '77%' }} />
+                  <div className="bg-cyan-500 h-full rounded-full transition-all" style={{ width: `${consistency.waterPct}%` }} />
                 </div>
               </div>
             </div>
+
+            {consistency.workoutDays === 0 && consistency.mealDays === 0 && consistency.waterDays === 0 && (
+              <p className="text-[11px] text-slate-400 font-tech text-center">
+                No activity logged in the last 30 days yet — consistency builds as you log.
+              </p>
+            )}
           </div>
         </div>
       )}

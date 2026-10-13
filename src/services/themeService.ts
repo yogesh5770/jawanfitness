@@ -3,7 +3,7 @@ export type ThemeMode = 'dark' | 'light';
 const THEME_STORAGE_KEY = 'jawan_app_theme_v1';
 
 class ThemeService {
-  private currentTheme: ThemeMode = 'dark';
+  private currentTheme: ThemeMode = 'light';
   private listeners: Set<(theme: ThemeMode) => void> = new Set();
 
   constructor() {
@@ -11,13 +11,12 @@ class ThemeService {
   }
 
   private init() {
-    // Check localStorage or system preference
     const saved = localStorage.getItem(THEME_STORAGE_KEY) as ThemeMode | null;
     if (saved === 'dark' || saved === 'light') {
       this.currentTheme = saved;
     } else {
-      // Default to dark for elite gym aesthetic
-      this.currentTheme = 'dark';
+      // Default to light theme
+      this.currentTheme = 'light';
     }
     this.applyTheme();
   }

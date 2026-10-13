@@ -1,11 +1,11 @@
 import React from 'react';
 import { Live3SyncView } from './Live3SyncView';
-import { ShieldCheck, Dumbbell, Smartphone, RefreshCw, ArrowLeft } from 'lucide-react';
+
 import { navigateToRole } from '../../services/appRouter';
 
 export const DevSyncSimulator: React.FC = () => {
   return (
-    <div className="min-h-screen bg-[#04060a] text-slate-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#04060a] text-slate-900 dark:text-slate-100 flex flex-col font-sans">
       {/* Dev Simulator Top Header */}
       <header className="bg-purple-950/40 border-b border-purple-500/30 px-4 py-3 flex items-center justify-between sticky top-0 z-50 backdrop-blur-md">
         <div className="flex items-center space-x-3">
@@ -21,7 +21,7 @@ export const DevSyncSimulator: React.FC = () => {
                 DEVELOPMENT SIMULATOR ONLY
               </span>
             </div>
-            <p className="text-[10px] text-neutral-400">
+            <p className="text-[10px] text-slate-500 dark:text-neutral-400">
               Live multi-device pub/sub simulator for Admin, Trainer, and Client verification.
             </p>
           </div>
@@ -31,19 +31,19 @@ export const DevSyncSimulator: React.FC = () => {
         <div className="flex items-center space-x-2 text-xs">
           <button
             onClick={() => navigateToRole('admin')}
-            className="px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center space-x-1 font-semibold"
+            className="px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center space-x-1 font-semibold"
           >
             <span>👑 Test Admin Web</span>
           </button>
           <button
             onClick={() => navigateToRole('trainer')}
-            className="px-3 py-1.5 rounded-lg bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border border-orange-500/30 flex items-center space-x-1 font-semibold"
+            className="px-3 py-1.5 rounded-lg bg-orange-500/10 hover:bg-orange-500/20 text-orange-600 dark:text-orange-400 border border-orange-500/30 flex items-center space-x-1 font-semibold"
           >
             <span>🧑‍🏫 Test Trainer PWA</span>
           </button>
           <button
             onClick={() => navigateToRole('client')}
-            className="px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center space-x-1 font-semibold"
+            className="px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center space-x-1 font-semibold"
           >
             <span>📱 Test Client App</span>
           </button>

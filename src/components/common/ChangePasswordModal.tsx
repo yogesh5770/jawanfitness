@@ -88,24 +88,24 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
       <div 
-        className="w-full max-w-md bg-[#090d16] border border-amber-500/30 rounded-3xl p-6 shadow-2xl relative text-left overflow-hidden"
+        className="w-full max-w-md bg-white dark:bg-[#090d16] border border-amber-500/30 rounded-3xl p-6 shadow-2xl relative text-left max-h-[92dvh] overflow-y-auto overscroll-contain"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Glow effect */}
         <div className="absolute -top-16 -right-16 w-36 h-36 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
 
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-white/5 mb-5">
+        <div className="flex items-center justify-between pb-4 border-b border-slate-200/80 dark:border-white/5 mb-5">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+            <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400">
               <Lock className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-display font-black text-white text-base tracking-wider uppercase">
+              <h3 className="font-display font-black text-slate-900 dark:text-white text-base tracking-wider uppercase">
                 Change Password
               </h3>
-              <p className="text-[11px] text-slate-400">
-                {userName ? `Account: ${userName}` : 'Update your personal access credentials'}
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                {userName ? `${userRole} • ${userName}` : `Update your ${userRole.toLowerCase()} account credentials`}
               </p>
             </div>
           </div>
@@ -114,22 +114,22 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
               hapticTap();
               onClose();
             }}
-            className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
+            className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-rose-500/10 border border-rose-500/30 rounded-2xl flex items-start space-x-2 text-rose-300 text-xs animate-in shake">
-            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-rose-400" />
+          <div className="mb-4 p-3 bg-rose-500/10 border border-rose-500/30 rounded-2xl flex items-start space-x-2 text-rose-600 dark:text-rose-300 text-xs animate-in shake">
+            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
             <div className="leading-relaxed">{error}</div>
           </div>
         )}
 
         {success && (
-          <div className="mb-4 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex items-start space-x-2 text-emerald-300 text-xs animate-in zoom-in">
-            <Check className="w-4 h-4 flex-shrink-0 mt-0.5 text-emerald-400" />
+          <div className="mb-4 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex items-start space-x-2 text-emerald-700 dark:text-emerald-300 text-xs animate-in zoom-in">
+            <Check className="w-4 h-4 flex-shrink-0 mt-0.5 text-emerald-600 dark:text-emerald-400" />
             <div className="leading-relaxed font-bold">{success}</div>
           </div>
         )}
@@ -137,7 +137,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* 1. Old Password */}
           <div>
-            <label className="text-[11px] font-tech font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
+            <label className="text-[11px] font-tech font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1.5">
               Current / Temporary Password
             </label>
             <div className="relative">
@@ -147,7 +147,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
                 value={oldPassword}
                 onChange={(e) => setOldPassword(e.target.value)}
                 placeholder=""
-                className="w-full bg-slate-900/90 border border-white/10 focus:border-amber-500 rounded-xl px-4 py-3 pr-12 text-white text-sm outline-none transition-colors"
+                className="w-full bg-slate-100/90 dark:bg-slate-900/90 border border-slate-200 dark:border-white/10 focus:border-amber-500 rounded-xl px-4 py-3 pr-12 text-slate-900 dark:text-white text-sm outline-none transition-colors"
               />
               <button
                 type="button"
@@ -155,7 +155,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
                   hapticTap();
                   setShowOld(!showOld);
                 }}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-amber-400 p-1 transition-colors"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 p-1 transition-colors"
                 title={showOld ? 'Hide password' : 'Show password'}
               >
                 {showOld ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -165,8 +165,8 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
 
           {/* 2. New Password */}
           <div>
-            <label className="text-[11px] font-tech font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
-              New Password <span className="text-[10px] text-amber-400 font-normal lowercase">(min 6 characters)</span>
+            <label className="text-[11px] font-tech font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1.5">
+              New Password <span className="text-[10px] text-amber-600 dark:text-amber-400 font-normal lowercase">(min 6 characters)</span>
             </label>
             <div className="relative">
               <input
@@ -176,7 +176,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder=""
-                className="w-full bg-slate-900/90 border border-white/10 focus:border-amber-500 rounded-xl px-4 py-3 pr-12 text-white text-sm outline-none transition-colors"
+                className="w-full bg-slate-100/90 dark:bg-slate-900/90 border border-slate-200 dark:border-white/10 focus:border-amber-500 rounded-xl px-4 py-3 pr-12 text-slate-900 dark:text-white text-sm outline-none transition-colors"
               />
               <button
                 type="button"
@@ -184,7 +184,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
                   hapticTap();
                   setShowNew(!showNew);
                 }}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-amber-400 p-1 transition-colors"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 p-1 transition-colors"
                 title={showNew ? 'Hide password' : 'Show password'}
               >
                 {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -194,7 +194,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
 
           {/* 3. Confirm New Password */}
           <div>
-            <label className="text-[11px] font-tech font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
+            <label className="text-[11px] font-tech font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1.5">
               Confirm New Password
             </label>
             <div className="relative">
@@ -205,7 +205,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder=""
-                className="w-full bg-slate-900/90 border border-white/10 focus:border-amber-500 rounded-xl px-4 py-3 pr-12 text-white text-sm outline-none transition-colors"
+                className="w-full bg-slate-100/90 dark:bg-slate-900/90 border border-slate-200 dark:border-white/10 focus:border-amber-500 rounded-xl px-4 py-3 pr-12 text-slate-900 dark:text-white text-sm outline-none transition-colors"
               />
               <button
                 type="button"
@@ -213,7 +213,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
                   hapticTap();
                   setShowConfirm(!showConfirm);
                 }}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-amber-400 p-1 transition-colors"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 p-1 transition-colors"
                 title={showConfirm ? 'Hide password' : 'Show password'}
               >
                 {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}

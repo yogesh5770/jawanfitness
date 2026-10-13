@@ -3,20 +3,22 @@ import type { PoolClient } from 'pg';
 
 let pool: Pool | null = null;
 
-const DEFAULT_DB_HOST = 'aws-0-ap-south-1.pooler.supabase.com';
-const DEFAULT_DB_PORT = 6543;
-const DEFAULT_DB_USER = 'postgres.sjphtqnyptbxcrwadaxy';
-const DEFAULT_DB_PASSWORD = '6J9+qcE7nXRZxZ?';
-const DEFAULT_DB_NAME = 'postgres';
-
 export function getDbPool(): Pool {
   if (!pool) {
+    const host = process.env.SUPABASE_DB_HOST;
+    const password = process.env.SUPABASE_DB_PASSWORD;
+    const user = process.env.SUPABASE_DB_USER;
+    if (!host || !password || !user) {
+      throw new Error(
+        'Missing Supabase DB configuration. Set SUPABASE_DB_HOST, SUPABASE_DB_USER, SUPABASE_DB_PASSWORD (and optionally SUPABASE_DB_PORT / SUPABASE_DB_NAME).'
+      );
+    }
     pool = new Pool({
-      host: process.env.SUPABASE_DB_HOST || DEFAULT_DB_HOST,
-      port: Number(process.env.SUPABASE_DB_PORT || DEFAULT_DB_PORT),
-      user: process.env.SUPABASE_DB_USER || DEFAULT_DB_USER,
-      password: process.env.SUPABASE_DB_PASSWORD || DEFAULT_DB_PASSWORD,
-      database: process.env.SUPABASE_DB_NAME || DEFAULT_DB_NAME,
+      host,
+      port: Number(process.env.SUPABASE_DB_PORT || 6543),
+      user,
+      password,
+      database: process.env.SUPABASE_DB_NAME || 'postgres',
       ssl: { rejectUnauthorized: false },
       max: Number(process.env.DB_POOL_MAX || 5),
       idleTimeoutMillis: 30000,
@@ -68,7 +70,7 @@ export async function verifySessionToken(
   if (!token) return null;
 
   const sessionRes = await client.query(
-    `SELECT s.token, s.role, s.expires_at, u.id, u.email, u.name
+    `SELECT s.token, s.role, s.expires_at, u.id, u.email, u.name, u.phone, u.login_id
      FROM gym_sessions s
      JOIN gym_users u ON s.user_id = u.id
      WHERE s.token = $1 AND s.revoked = false AND s.expires_at > now()`,
@@ -87,7 +89,9 @@ export async function verifySessionToken(
       id: row.id as string,
       email: row.email as string,
       name: row.name as string,
-      role: row.role as 'ADMIN' | 'TRAINER' | 'CLIENT'
+      role: row.role as 'ADMIN' | 'TRAINER' | 'CLIENT',
+      phone: (row.phone as string) || null,
+      loginId: (row.login_id as string) || null
     }
   };
 }

@@ -1,21 +1,8 @@
 import React from 'react';
-import { 
-  User, 
-  KeyRound, 
-  LogOut, 
-  ShieldCheck, 
-  Smartphone, 
-  Phone, 
-  Scale, 
-  Ruler, 
-  Target, 
-  Award, 
-  ChevronRight,
-  Sparkles,
-  ExternalLink
-} from 'lucide-react';
+import { KeyRound, LogOut, Phone, ChevronRight } from 'lucide-react';
 import { hapticTap } from '../../utils/audioHaptics';
 import { ThemeToggle } from '../common/ThemeToggle';
+import { SyncStatusBadge } from '../common/SyncStatusBadge';
 import { ClientData, TrainerData } from '../../services/syncedStore';
 
 interface ProfileScreenProps {
@@ -68,8 +55,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           </div>
         </div>
 
-        {/* Biometrics Triad Bar */}
-        <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-slate-100 dark:border-white/5 text-center">
+        {/* Biometrics Bar */}
+        <div className="grid grid-cols-4 gap-2 mt-4 pt-3 border-t border-slate-100 dark:border-white/5 text-center">
           <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/5">
             <span className="text-[9px] font-tech uppercase text-slate-500 block">Height</span>
             <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white font-tech">
@@ -86,6 +73,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             <span className="text-[9px] font-tech uppercase text-slate-500 block">Target</span>
             <span className="text-xs sm:text-sm font-black text-emerald-600 dark:text-emerald-400 font-tech">
               {client.goalWeightKg} kg
+            </span>
+          </div>
+          <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/5">
+            <span className="text-[9px] font-tech uppercase text-slate-500 block">BMI</span>
+            <span className="text-xs sm:text-sm font-black text-sky-600 dark:text-sky-400 font-tech">
+              {currentBmi}
             </span>
           </div>
         </div>
@@ -174,9 +167,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         </div>
         <div className="flex items-center justify-between text-slate-500">
           <span>Cloud Sync & Database</span>
-          <span className="font-tech font-bold text-emerald-600 dark:text-emerald-400 flex items-center space-x-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span>Cloudflare D1 Live</span>
+          <span className="font-tech font-bold flex items-center space-x-2">
+            <SyncStatusBadge />
           </span>
         </div>
         <div className="flex items-center justify-between text-slate-500">

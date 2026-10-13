@@ -1,13 +1,24 @@
-import React, { useState, useEffect } from 'react';
-import { detectAppRole, AppRoleMode } from './services/appRouter';
-import { AdminApp } from './components/admin/AdminApp';
-import { TrainerApp } from './components/trainer/TrainerApp';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
+import { detectAppRole } from './services/appRouter';
 import { ClientApp } from './components/client/ClientApp';
-import { DevSyncSimulator } from './components/sync/DevSyncSimulator';
 import { UnifiedAuthGateway } from './components/auth/UnifiedAuthGateway';
 import { IOSInstallBanner } from './components/common/IOSInstallBanner';
 import { authService, AuthUser } from './services/authService';
 import { syncedStore } from './services/syncedStore';
+import { Loader2 } from 'lucide-react';
+
+const AdminApp = lazy(() => import('./components/admin/AdminApp').then((m) => ({ default: m.AdminApp })));
+const TrainerApp = lazy(() => import('./components/trainer/TrainerApp').then((m) => ({ default: m.TrainerApp })));
+
+const RoleLoadingFallback: React.FC<{ label: string }> = ({ label }) => (
+  <div className="min-h-screen bg-slate-50 dark:bg-[#06080e] flex flex-col items-center justify-center p-4">
+    <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 p-2 flex items-center justify-center shadow-lg shadow-amber-500/20 mb-4 animate-pulse">
+      <img src="/logo-3d-tight.png" alt="Jawan Fitness" className="w-full h-full object-contain" />
+    </div>
+    <Loader2 className="w-6 h-6 text-amber-500 animate-spin mb-2" />
+    <span className="text-xs text-slate-500 font-tech">{label}</span>
+  </div>
+);
 
 export const App: React.FC = () => {
   // Only restore authenticated user if token is actually present
@@ -62,6 +73,16 @@ export const App: React.FC = () => {
     }
   }, [activeRole]);
 
+  // Re-render when the hash changes (navigateToRole dispatches hashchange).
+  // Only affects the unauthenticated gateway — authenticated role comes from the
+  // verified session token, never from the URL.
+  const [, setHashTick] = useState(0);
+  useEffect(() => {
+    const onHashChange = () => setHashTick((t) => t + 1);
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
   const handleLoginSuccess = (user: AuthUser, role: 'CLIENT' | 'TRAINER' | 'ADMIN') => {
     setCurrentUser(user);
     setActiveRole(role);
@@ -96,12 +117,20 @@ export const App: React.FC = () => {
 
   // 2. ADMIN INTERFACE
   if (activeRole === 'ADMIN') {
-    return <AdminApp currentUser={currentUser} onLogout={handleUniversalLogout} />;
+    return (
+      <Suspense fallback={<RoleLoadingFallback label="Accessing Director Console..." />}>
+        <AdminApp currentUser={currentUser} onLogout={handleUniversalLogout} />
+      </Suspense>
+    );
   }
 
   // 3. TRAINER INTERFACE
   if (activeRole === 'TRAINER') {
-    return <TrainerApp currentUser={currentUser} onLogout={handleUniversalLogout} />;
+    return (
+      <Suspense fallback={<RoleLoadingFallback label="Accessing Coach Terminal..." />}>
+        <TrainerApp currentUser={currentUser} onLogout={handleUniversalLogout} />
+      </Suspense>
+    );
   }
 
   // 4. MEMBER INTERFACE (Default)

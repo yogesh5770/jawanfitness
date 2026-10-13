@@ -7,8 +7,8 @@ android {
         applicationId "com.jawanfitness.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 5
-        versionName "1.4"
+        versionCode 6
+        versionName "2.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,10 +16,25 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            // Provide JAWAN_KEYSTORE_PATH / JAWAN_KEYSTORE_PASSWORD / JAWAN_KEY_ALIAS /
+            // JAWAN_KEY_PASSWORD env vars (or gradle properties) for Play Store signing.
+            // When absent, the release build falls back to debug keys (still installable).
+            def ksPath = System.getenv("JAWAN_KEYSTORE_PATH") ?: project.findProperty("JAWAN_KEYSTORE_PATH")
+            if (ksPath != null && !ksPath.toString().isEmpty() && file(ksPath.toString()).exists()) {
+                storeFile file(ksPath.toString())
+                storePassword System.getenv("JAWAN_KEYSTORE_PASSWORD") ?: project.findProperty("JAWAN_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("JAWAN_KEY_ALIAS") ?: project.findProperty("JAWAN_KEY_ALIAS")
+                keyPassword System.getenv("JAWAN_KEY_PASSWORD") ?: project.findProperty("JAWAN_KEY_PASSWORD")
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release.storeFile != null ? signingConfigs.release : signingConfigs.debug
         }
     }
 }

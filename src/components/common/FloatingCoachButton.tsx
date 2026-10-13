@@ -1,5 +1,5 @@
 import React from 'react';
-import { MessageSquare, Sparkles } from 'lucide-react';
+import { MessageSquare } from 'lucide-react';
 import { hapticTap } from '../../utils/audioHaptics';
 
 interface FloatingCoachButtonProps {

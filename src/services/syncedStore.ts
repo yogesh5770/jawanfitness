@@ -176,6 +176,7 @@ class SyncedStore {
     if (this.pollInterval) clearInterval(this.pollInterval);
     this.pollInterval = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        this.checkDailyRollover();
         this.syncFromCloud(false);
       }
     }, 2500);
@@ -516,17 +517,23 @@ class SyncedStore {
 
   public deleteClient(clientId: string) {
     const client = this.state.clients.find((c) => c.id === clientId);
-    const updatedAssignedWorkouts = { ...this.state.assignedWorkouts };
-    delete updatedAssignedWorkouts[clientId];
-    const updatedAssignedDiets = { ...this.state.assignedDietPlans };
-    delete updatedAssignedDiets[clientId];
+    // Purge assignment keys — may be keyed by id, loginId or email
+    const deadKeys = new Set<string>(
+      [client?.id, client?.loginId, client?.email, clientId]
+        .filter(Boolean)
+        .map((v) => String(v).toLowerCase())
+    );
+    const purgeAssignments = <T,>(map: Record<string, T>): Record<string, T> =>
+      Object.fromEntries(
+        Object.entries(map).filter(([k]) => !deadKeys.has(String(k).toLowerCase()))
+      ) as Record<string, T>;
 
     this.state = {
       ...this.state,
       clients: this.state.clients.filter((c) => c.id !== clientId),
       activeClientId: this.state.activeClientId === clientId ? (this.state.clients[0]?.id || '') : this.state.activeClientId,
-      assignedWorkouts: updatedAssignedWorkouts,
-      assignedDietPlans: updatedAssignedDiets
+      assignedWorkouts: purgeAssignments({ ...this.state.assignedWorkouts }),
+      assignedDietPlans: purgeAssignments({ ...this.state.assignedDietPlans })
     };
 
     this.logEvent(
@@ -818,7 +825,10 @@ class SyncedStore {
     this.state = {
       ...this.state,
       activeWorkoutSession: null,
-      workoutHistory: [session, ...this.state.workoutHistory],
+      workoutHistory: [
+        { ...session, clientId: session.clientId || this.state.activeClientId || undefined },
+        ...this.state.workoutHistory
+      ],
       clients: this.state.clients.map((c) =>
         c.id === this.state.activeClientId
           ? {
@@ -893,7 +903,8 @@ class SyncedStore {
     const today = getTodayDateKey();
     const itemWithDate: LoggedMealItem = {
       ...item,
-      date: item.date || today
+      date: item.date || today,
+      clientId: item.clientId || this.state.activeClientId || undefined
     };
 
     this.state = {
@@ -999,12 +1010,10 @@ class SyncedStore {
 
   public clearClientChat(clientId?: string) {
     const targetId = clientId || this.state.activeClientId;
+    if (!targetId) return;
     this.state = {
       ...this.state,
-      messages: (this.state.messages || []).filter((m) => {
-        if (!targetId) return false;
-        return m.clientId !== targetId;
-      })
+      messages: (this.state.messages || []).filter((m) => m.clientId !== targetId)
     };
     this.notify();
   }
@@ -1028,11 +1037,12 @@ class SyncedStore {
   }
 
   public logWeight(weightKg: number) {
-    const todayStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const todayStr = getTodayDateKey();
     const newRecord: WeightRecord = {
       id: `w-${Date.now()}`,
       date: todayStr,
-      weightKg
+      weightKg,
+      clientId: this.state.activeClientId || undefined
     };
 
     this.state = {

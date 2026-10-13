@@ -1,22 +1,5 @@
 import React from 'react';
-import { 
-  Dumbbell, 
-  Flame, 
-  Droplets, 
-  TrendingDown, 
-  MessageSquare, 
-  Play, 
-  ChevronRight, 
-  ArrowRight,
-  Sparkles,
-  CheckCircle2,
-  Calendar,
-  Phone,
-  MessageCircle,
-  Apple,
-  RotateCcw,
-  Bell
-} from 'lucide-react';
+import { Dumbbell, Flame, Droplets, MessageSquare, Play, ChevronRight, ArrowRight, Sparkles, CheckCircle2, Calendar, MessageCircle, Apple, Bell } from 'lucide-react';
 import { 
   AssignedWorkout, 
   AssignedMealPlan, 
@@ -27,7 +10,8 @@ import {
   ChatMessage 
 } from '../../types';
 import { hapticTap } from '../../utils/audioHaptics';
-import { syncedStore, getTodayDateKey } from '../../services/syncedStore';
+import { getTodayDateKey } from '../../services/syncedStore';
+import { SyncStatusBadge } from '../common/SyncStatusBadge';
 import { TodayMissionCard } from './TodayMissionCard';
 import { calculateWeightProgress } from '../../utils/weightProgress';
 
@@ -44,6 +28,7 @@ interface HomeScreenProps {
   assignedMealPlan?: AssignedMealPlan | null;
   activeWorkoutSession?: WorkoutSession | null;
   loggedMeals: LoggedMealItem[];
+  workoutHistory?: WorkoutSession[];
   goals: DailyNutritionGoals;
   waterMl: number;
   weightHistory: WeightRecord[];
@@ -75,6 +60,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   assignedMealPlan,
   activeWorkoutSession,
   loggedMeals,
+  workoutHistory = [],
   goals,
   waterMl,
   weightHistory = [],
@@ -100,18 +86,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     return 'Good evening';
   };
 
-  // Safe fallback to store's assigned workout and diet if not passed directly
-  const effectiveWorkout = assignedWorkout || (() => {
-    const workouts = syncedStore.getState().assignedWorkouts || {};
-    const keys = Object.keys(workouts).filter((k) => workouts[k] != null);
-    return keys.length > 0 ? workouts[keys[0]] : null;
-  })();
-
-  const effectiveDiet = assignedMealPlan || (() => {
-    const diets = syncedStore.getState().assignedDietPlans || {};
-    const keys = Object.keys(diets).filter((k) => diets[k] != null);
-    return keys.length > 0 ? diets[keys[0]] : null;
-  })();
+  // Assigned workout / diet come ONLY from props (resolved per-member by ClientApp).
+  // Never fall back to the first key in the store — that leaks other members' plans.
+  const effectiveWorkout = assignedWorkout ?? null;
+  const effectiveDiet = assignedMealPlan ?? null;
 
   // Calculate dynamic initials
   const clientInitials = clientName
@@ -143,8 +121,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const totalFat = Math.round(todayLoggedMeals.reduce((sum, m) => sum + m.fat, 0));
   const totalFiber = Math.round(todayLoggedMeals.reduce((sum, m) => sum + (m.fiber || 0), 0));
 
-  // Check if a workout was completed TODAY
-  const workoutHistory = syncedStore.getState().workoutHistory || [];
+  // Check if a workout was completed TODAY (workoutHistory is the per-member prop)
   const completedWorkoutToday = workoutHistory.find((w) => {
     if (!w.startTime && !w.endTime) return false;
     const sessionTime = w.endTime || w.startTime;
@@ -164,6 +141,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   // Today's Mission Telemetry
   const weightLoggedToday = (weightHistory || []).some((w) => {
     if (!w.date) return false;
+    // ISO dates (YYYY-MM-DD) stored by logWeight — compare directly, timezone-safe
+    if (/^\d{4}-\d{2}-\d{2}$/.test(w.date)) return w.date === getTodayDateKey();
     const d = new Date(w.date);
     const n = new Date();
     return (
@@ -660,11 +639,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                         <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">
                           {isAssigned ? `Coach: ${trainerName}` : 'Coach: Unassigned'}
                         </h4>
-                        {isAssigned && (
-                          <span className="text-[9px] px-1.5 py-0.2 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-tech font-bold rounded border border-emerald-500/20 flex-shrink-0">
-                            LIVE
-                          </span>
-                        )}
+                        {isAssigned && <SyncStatusBadge compact />}
                       </div>
                       <span className="text-[10px] text-slate-500 dark:text-slate-400 block truncate">
                         {isAssigned ? trainerRole : 'No coach assigned by director'}

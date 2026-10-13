@@ -73,6 +73,7 @@ export interface WorkoutSession {
   feeling?: '🔥 Crushed it' | '💪 Good' | '⚡ Tough' | '😴 Exhausted';
   notes?: string;
   prsBroken?: string[];
+  clientId?: string;
 }
 
 export interface RoutineTemplate {
@@ -129,6 +130,7 @@ export interface LoggedMealItem {
   fiber: number;
   time: string;
   date?: string; // YYYY-MM-DD
+  clientId?: string;
 }
 
 export interface DailyNutritionGoals {
@@ -146,6 +148,7 @@ export interface WeightRecord {
   weightKg: number;
   bodyFat?: number;
   notes?: string;
+  clientId?: string;
 }
 
 export interface TrainerNote {

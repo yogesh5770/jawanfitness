@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Plus, Sparkles, Apple, Check } from 'lucide-react';
+import { X, Plus, Apple } from 'lucide-react';
 import { FoodItem, FoodCategory } from '../../types';
 import { syncedStore } from '../../services/syncedStore';
 import { hapticTap } from '../../utils/audioHaptics';
@@ -94,17 +94,17 @@ export const AddFoodModal: React.FC<AddFoodModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-[#0b0f1a] border border-amber-500/40 rounded-3xl p-5 sm:p-6 w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto text-left animate-in fade-in zoom-in-95 duration-200">
-        <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-4">
+      <div className="bg-white dark:bg-[#0b0f1a] border border-amber-500/40 rounded-3xl p-5 sm:p-6 w-full max-w-md shadow-2xl max-h-[90dvh] overflow-y-auto text-left animate-in fade-in zoom-in-95 duration-200 overscroll-contain">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-white/10 mb-4">
           <div className="flex items-center space-x-2.5">
-            <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-600 dark:text-amber-400">
               <Apple className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-sm font-black text-white font-display tracking-wide uppercase">
+              <h3 className="text-sm font-black text-slate-900 dark:text-white font-display tracking-wide uppercase">
                 Add New Food
               </h3>
-              <p className="text-[11px] text-slate-400 font-tech">
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-tech">
                 {sourceRole === 'ADMIN' ? 'Headquarters Menu Catalog' : 'Trainer Nutrition Prescription'}
               </p>
             </div>
@@ -114,21 +114,21 @@ export const AddFoodModal: React.FC<AddFoodModalProps> = ({
               hapticTap();
               onClose();
             }}
-            className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white"
+            className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {error && (
-          <div className="mb-4 p-2.5 rounded-xl bg-rose-950/40 border border-rose-500/40 text-rose-300 text-xs font-bold">
+          <div className="mb-4 p-2.5 rounded-xl bg-rose-950/40 border border-rose-500/40 text-rose-600 dark:text-rose-300 text-xs font-bold">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-3.5 text-xs">
           <div>
-            <label className="block text-[11px] font-tech font-bold uppercase text-slate-400 mb-1">
+            <label className="block text-[11px] font-tech font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">
               Food Item Name *
             </label>
             <input
@@ -136,20 +136,20 @@ export const AddFoodModal: React.FC<AddFoodModalProps> = ({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Grilled Chicken Breast with Herbs"
-              className="w-full bg-slate-900 border border-white/10 focus:border-amber-500 rounded-xl px-3 py-2 text-white outline-none placeholder-slate-500"
+              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 focus:border-amber-500 rounded-xl px-3 py-2 text-slate-900 dark:text-white outline-none placeholder:text-slate-500 dark:placeholder:text-slate-400"
               required
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[11px] font-tech font-bold uppercase text-slate-400 mb-1">
+              <label className="block text-[11px] font-tech font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">
                 Category
               </label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value as FoodCategory)}
-                className="w-full bg-slate-900 border border-white/10 focus:border-amber-500 rounded-xl px-3 py-2 text-white outline-none"
+                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 focus:border-amber-500 rounded-xl px-3 py-2 text-slate-900 dark:text-white outline-none"
               >
                 {CATEGORIES.map((cat) => (
                   <option key={cat} value={cat}>
@@ -160,7 +160,7 @@ export const AddFoodModal: React.FC<AddFoodModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-[11px] font-tech font-bold uppercase text-slate-400 mb-1">
+              <label className="block text-[11px] font-tech font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">
                 Portion / Serving Size
               </label>
               <input
@@ -168,14 +168,14 @@ export const AddFoodModal: React.FC<AddFoodModalProps> = ({
                 value={servingSize}
                 onChange={(e) => setServingSize(e.target.value)}
                 placeholder="e.g. 1 bowl (150g)"
-                className="w-full bg-slate-900 border border-white/10 focus:border-amber-500 rounded-xl px-3 py-2 text-white outline-none placeholder-slate-500"
+                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 focus:border-amber-500 rounded-xl px-3 py-2 text-slate-900 dark:text-white outline-none placeholder:text-slate-500 dark:placeholder:text-slate-400"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[11px] font-tech font-bold uppercase text-amber-400 mb-1">
+              <label className="block text-[11px] font-tech font-bold uppercase text-amber-600 dark:text-amber-400 mb-1">
                 Calories (kcal) *
               </label>
               <input
@@ -184,13 +184,13 @@ export const AddFoodModal: React.FC<AddFoodModalProps> = ({
                 value={calories}
                 onChange={(e) => setCalories(e.target.value === '' ? '' : Number(e.target.value))}
                 placeholder="e.g. 240"
-                className="w-full bg-slate-900 border border-white/10 focus:border-amber-500 rounded-xl px-3 py-2 text-white font-tech font-bold outline-none placeholder-slate-500"
+                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 focus:border-amber-500 rounded-xl px-3 py-2 text-slate-900 dark:text-white font-tech font-bold outline-none placeholder:text-slate-500 dark:placeholder:text-slate-400"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-[11px] font-tech font-bold uppercase text-amber-400 mb-1">
+              <label className="block text-[11px] font-tech font-bold uppercase text-amber-600 dark:text-amber-400 mb-1">
                 Protein (g)
               </label>
               <input
@@ -199,14 +199,14 @@ export const AddFoodModal: React.FC<AddFoodModalProps> = ({
                 value={protein}
                 onChange={(e) => setProtein(e.target.value === '' ? '' : Number(e.target.value))}
                 placeholder="e.g. 28"
-                className="w-full bg-slate-900 border border-white/10 focus:border-amber-500 rounded-xl px-3 py-2 text-white font-tech font-bold outline-none placeholder-slate-500"
+                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 focus:border-amber-500 rounded-xl px-3 py-2 text-slate-900 dark:text-white font-tech font-bold outline-none placeholder:text-slate-500 dark:placeholder:text-slate-400"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-3 gap-2.5">
             <div>
-              <label className="block text-[10px] font-tech font-bold uppercase text-cyan-400 mb-1">
+              <label className="block text-[10px] font-tech font-bold uppercase text-cyan-600 dark:text-cyan-400 mb-1">
                 Carbs (g)
               </label>
               <input
@@ -215,12 +215,12 @@ export const AddFoodModal: React.FC<AddFoodModalProps> = ({
                 value={carbs}
                 onChange={(e) => setCarbs(e.target.value === '' ? '' : Number(e.target.value))}
                 placeholder="0"
-                className="w-full bg-slate-900 border border-white/10 focus:border-cyan-500 rounded-xl px-2.5 py-1.5 text-white font-tech font-bold outline-none placeholder-slate-500"
+                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 focus:border-cyan-500 rounded-xl px-2.5 py-1.5 text-slate-900 dark:text-white font-tech font-bold outline-none placeholder:text-slate-500 dark:placeholder:text-slate-400"
               />
             </div>
 
             <div>
-              <label className="block text-[10px] font-tech font-bold uppercase text-rose-400 mb-1">
+              <label className="block text-[10px] font-tech font-bold uppercase text-rose-600 dark:text-rose-400 mb-1">
                 Fats (g)
               </label>
               <input
@@ -229,12 +229,12 @@ export const AddFoodModal: React.FC<AddFoodModalProps> = ({
                 value={fat}
                 onChange={(e) => setFat(e.target.value === '' ? '' : Number(e.target.value))}
                 placeholder="0"
-                className="w-full bg-slate-900 border border-white/10 focus:border-rose-500 rounded-xl px-2.5 py-1.5 text-white font-tech font-bold outline-none placeholder-slate-500"
+                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 focus:border-rose-500 rounded-xl px-2.5 py-1.5 text-slate-900 dark:text-white font-tech font-bold outline-none placeholder:text-slate-500 dark:placeholder:text-slate-400"
               />
             </div>
 
             <div>
-              <label className="block text-[10px] font-tech font-bold uppercase text-emerald-400 mb-1">
+              <label className="block text-[10px] font-tech font-bold uppercase text-emerald-600 dark:text-emerald-400 mb-1">
                 Fiber (g)
               </label>
               <input
@@ -243,7 +243,7 @@ export const AddFoodModal: React.FC<AddFoodModalProps> = ({
                 value={fiber}
                 onChange={(e) => setFiber(e.target.value === '' ? '' : Number(e.target.value))}
                 placeholder="0"
-                className="w-full bg-slate-900 border border-white/10 focus:border-emerald-500 rounded-xl px-2.5 py-1.5 text-white font-tech font-bold outline-none placeholder-slate-500"
+                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 focus:border-emerald-500 rounded-xl px-2.5 py-1.5 text-slate-900 dark:text-white font-tech font-bold outline-none placeholder:text-slate-500 dark:placeholder:text-slate-400"
               />
             </div>
           </div>
@@ -254,9 +254,9 @@ export const AddFoodModal: React.FC<AddFoodModalProps> = ({
               id="isIndianCheck"
               checked={isIndian}
               onChange={(e) => setIsIndian(e.target.checked)}
-              className="w-4 h-4 rounded bg-slate-900 border-white/20 text-amber-500 focus:ring-0 accent-amber-500"
+              className="w-4 h-4 rounded bg-white dark:bg-slate-900 border-slate-300 dark:border-white/20 text-amber-600 dark:text-amber-500 focus:ring-0 accent-amber-500"
             />
-            <label htmlFor="isIndianCheck" className="text-slate-300 font-tech text-xs cursor-pointer">
+            <label htmlFor="isIndianCheck" className="text-slate-700 dark:text-slate-300 font-tech text-xs cursor-pointer">
               Indian Culinary Preparation
             </label>
           </div>
@@ -268,7 +268,7 @@ export const AddFoodModal: React.FC<AddFoodModalProps> = ({
                 hapticTap();
                 onClose();
               }}
-              className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-tech font-bold transition-all"
+              className="flex-1 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-tech font-bold transition-all"
             >
               Cancel
             </button>

@@ -23,12 +23,14 @@ export const RestTimerModal: React.FC<RestTimerModalProps> = ({
   const [secondsRemaining, setSecondsRemaining] = useState(initialSeconds);
   const [isPaused, setIsPaused] = useState(false);
 
+  const prevIsOpenRef = React.useRef(isOpen);
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !prevIsOpenRef.current) {
       setTotalSeconds(initialSeconds);
       setSecondsRemaining(initialSeconds);
       setIsPaused(false);
     }
+    prevIsOpenRef.current = isOpen;
   }, [isOpen, initialSeconds]);
 
   useEffect(() => {
@@ -62,26 +64,26 @@ export const RestTimerModal: React.FC<RestTimerModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-lg animate-in fade-in duration-200">
-      <div className="relative w-full max-w-sm bg-[#0e121d] border border-amber-500/40 rounded-3xl p-6 text-center shadow-[0_20px_50px_rgba(0,0,0,0.9)]">
+      <div className="relative w-full max-w-sm bg-slate-100 dark:bg-[#0e121d] border border-amber-500/40 rounded-3xl p-6 text-center shadow-[0_20px_50px_rgba(0,0,0,0.9)]">
         {/* Dismiss Button */}
         <button
           onClick={() => {
             hapticTap();
             onClose();
           }}
-          className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-full bg-slate-800/80"
+          className="absolute top-4 right-4 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white p-1 rounded-full bg-slate-100/80 dark:bg-slate-800/80"
         >
           <X className="w-4 h-4" />
         </button>
 
         {/* Title */}
-        <div className="flex items-center justify-center space-x-1.5 text-xs font-tech text-amber-400 font-bold uppercase tracking-wider mb-2">
-          <Timer className="w-4 h-4 text-amber-500 animate-spin" />
+        <div className="flex items-center justify-center space-x-1.5 text-xs font-tech text-amber-600 dark:text-amber-400 font-bold uppercase tracking-wider mb-2">
+          <Timer className="w-4 h-4 text-amber-600 dark:text-amber-500 animate-spin" />
           <span>Rest Interval</span>
         </div>
 
-        <p className="text-xs text-slate-400">
-          Up next: <span className="text-white font-semibold">{exerciseName}</span> (Set {nextSetNumber})
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          Up next: <span className="text-slate-900 dark:text-white font-semibold">{exerciseName}</span> (Set {nextSetNumber})
         </p>
 
         {/* Circular Countdown Progress Dial */}
@@ -113,10 +115,10 @@ export const RestTimerModal: React.FC<RestTimerModalProps> = ({
 
           {/* Time digits */}
           <div className="absolute flex flex-col items-center justify-center">
-            <span className="text-4xl font-black text-white font-tech tracking-wider">
+            <span className="text-4xl font-black text-slate-900 dark:text-white font-tech tracking-wider">
               {formattedTime}
             </span>
-            <span className="text-[11px] text-amber-400 font-semibold tracking-wider uppercase mt-1">
+            <span className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold tracking-wider uppercase mt-1">
               Seconds
             </span>
           </div>
@@ -136,7 +138,7 @@ export const RestTimerModal: React.FC<RestTimerModalProps> = ({
               className={`px-2 py-1 rounded-lg text-[10px] font-tech font-bold transition-all ${
                 secondsRemaining === secs
                   ? 'bg-amber-500 text-black'
-                  : 'bg-slate-800/80 text-slate-300 hover:text-white border border-white/5'
+                  : 'bg-slate-100/80 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border border-slate-200/80 dark:border-white/5'
               }`}
             >
               {secs}s
@@ -152,9 +154,9 @@ export const RestTimerModal: React.FC<RestTimerModalProps> = ({
               setSecondsRemaining((prev) => prev + 30);
               setTotalSeconds((prev) => prev + 30);
             }}
-            className="flex flex-col items-center justify-center py-2.5 px-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-white/10 active:scale-95 transition-all text-xs font-semibold"
+            className="flex flex-col items-center justify-center py-2.5 px-2 rounded-xl bg-slate-100/80 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-white/10 active:scale-95 transition-all text-xs font-semibold"
           >
-            <Plus className="w-4 h-4 text-amber-400 mb-0.5" />
+            <Plus className="w-4 h-4 text-amber-600 dark:text-amber-400 mb-0.5" />
             <span>+30s</span>
           </button>
 
@@ -163,16 +165,16 @@ export const RestTimerModal: React.FC<RestTimerModalProps> = ({
               hapticTap();
               setIsPaused(!isPaused);
             }}
-            className="flex flex-col items-center justify-center py-2.5 px-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-white/10 active:scale-95 transition-all text-xs font-semibold"
+            className="flex flex-col items-center justify-center py-2.5 px-2 rounded-xl bg-slate-100/80 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-white/10 active:scale-95 transition-all text-xs font-semibold"
           >
             {isPaused ? (
               <>
-                <Play className="w-4 h-4 text-emerald-400 mb-0.5" />
+                <Play className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mb-0.5" />
                 <span>Resume</span>
               </>
             ) : (
               <>
-                <Pause className="w-4 h-4 text-amber-400 mb-0.5" />
+                <Pause className="w-4 h-4 text-amber-600 dark:text-amber-400 mb-0.5" />
                 <span>Pause</span>
               </>
             )}
@@ -183,9 +185,9 @@ export const RestTimerModal: React.FC<RestTimerModalProps> = ({
               hapticTap();
               onClose();
             }}
-            className="flex flex-col items-center justify-center py-2.5 px-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/40 active:scale-95 transition-all text-xs font-bold"
+            className="flex flex-col items-center justify-center py-2.5 px-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-600 dark:text-amber-400 border border-amber-500/40 active:scale-95 transition-all text-xs font-bold"
           >
-            <FastForward className="w-4 h-4 text-amber-400 mb-0.5" />
+            <FastForward className="w-4 h-4 text-amber-600 dark:text-amber-400 mb-0.5" />
             <span>Skip</span>
           </button>
         </div>

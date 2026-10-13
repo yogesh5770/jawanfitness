@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Dumbbell, Sparkles } from 'lucide-react';
+import { X, Dumbbell } from 'lucide-react';
 import { hapticTap } from '../../utils/audioHaptics';
 
 interface PlateCalculatorModalProps {
@@ -67,18 +67,18 @@ export const PlateCalculatorModal: React.FC<PlateCalculatorModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-lg flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
-      <div className="relative w-full max-w-md bg-[#0d111c] border border-amber-500/40 rounded-3xl p-5 sm:p-6 text-left shadow-[0_25px_60px_rgba(0,0,0,0.9)] space-y-4">
+      <div className="relative w-full max-w-md bg-white dark:bg-[#0d111c] border border-amber-500/40 rounded-3xl p-5 sm:p-6 text-left shadow-[0_25px_60px_rgba(0,0,0,0.9)] space-y-4">
         {/* Header */}
-        <div className="flex items-center justify-between pb-2 border-b border-white/10">
+        <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-white/10">
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+            <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-600 dark:text-amber-400">
               <Dumbbell className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-display font-black text-sm sm:text-base text-white uppercase tracking-wide">
+              <h3 className="font-display font-black text-sm sm:text-base text-slate-900 dark:text-white uppercase tracking-wide">
                 Olympic Plate Calculator
               </h3>
-              <p className="text-[10px] text-slate-400 font-tech">{exerciseName}</p>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 font-tech">{exerciseName}</p>
             </div>
           </div>
           <button
@@ -86,51 +86,51 @@ export const PlateCalculatorModal: React.FC<PlateCalculatorModalProps> = ({
               hapticTap();
               onClose();
             }}
-            className="p-1 rounded-full text-slate-400 hover:text-white bg-slate-800"
+            className="p-1 rounded-full text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-slate-800"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Target Weight Selector */}
-        <div className="bg-slate-900/80 p-3.5 rounded-2xl border border-white/10 text-center space-y-2">
-          <span className="text-[10px] font-tech uppercase text-slate-400 font-bold block">
+        <div className="bg-slate-100/80 dark:bg-slate-900/80 p-3.5 rounded-2xl border border-slate-200 dark:border-white/10 text-center space-y-2">
+          <span className="text-[10px] font-tech uppercase text-slate-500 dark:text-slate-400 font-bold block">
             Target Total Weight
           </span>
           <div className="flex items-center justify-center space-x-4">
             <button
               onClick={() => handleAdjustWeight(-5)}
-              className="w-9 h-9 rounded-xl bg-slate-800 text-white font-bold text-sm active:scale-95"
+              className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-bold text-sm active:scale-95"
             >
               -5
             </button>
             <button
               onClick={() => handleAdjustWeight(-2.5)}
-              className="w-8 h-8 rounded-xl bg-slate-800 text-slate-300 font-bold text-xs active:scale-95"
+              className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs active:scale-95"
             >
               -2.5
             </button>
 
-            <div className="text-3xl sm:text-4xl font-black text-white font-display">
-              {targetWeight} <span className="text-base text-amber-400 font-tech">kg</span>
+            <div className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white font-display">
+              {targetWeight} <span className="text-base text-amber-600 dark:text-amber-400 font-tech">kg</span>
             </div>
 
             <button
               onClick={() => handleAdjustWeight(2.5)}
-              className="w-8 h-8 rounded-xl bg-slate-800 text-slate-300 font-bold text-xs active:scale-95"
+              className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs active:scale-95"
             >
               +2.5
             </button>
             <button
               onClick={() => handleAdjustWeight(5)}
-              className="w-9 h-9 rounded-xl bg-slate-800 text-white font-bold text-sm active:scale-95"
+              className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-bold text-sm active:scale-95"
             >
               +5
             </button>
           </div>
 
           {/* Bar Selector */}
-          <div className="flex items-center justify-center space-x-2 pt-2 text-[11px] font-tech font-bold text-slate-400">
+          <div className="flex items-center justify-center space-x-2 pt-2 text-[11px] font-tech font-bold text-slate-500 dark:text-slate-400">
             <span>Bar:</span>
             {[
               { label: '20kg Olympic Men', w: 20 },
@@ -146,8 +146,8 @@ export const PlateCalculatorModal: React.FC<PlateCalculatorModalProps> = ({
                 }}
                 className={`px-2 py-0.5 rounded-md border transition-all ${
                   barWeight === bar.w
-                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                    : 'bg-black/30 border-white/5 text-slate-500'
+                    ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/40'
+                    : 'bg-black/30 border-slate-200/80 dark:border-white/5 text-slate-500'
                 }`}
               >
                 {bar.w}kg
@@ -157,25 +157,25 @@ export const PlateCalculatorModal: React.FC<PlateCalculatorModalProps> = ({
         </div>
 
         {/* Visual Barbell Graphic (Loaded Side View) */}
-        <div className="bg-[#080b13] p-4 rounded-2xl border border-white/5 space-y-2">
+        <div className="bg-slate-100 dark:bg-[#080b13] p-4 rounded-2xl border border-slate-200/80 dark:border-white/5 space-y-2">
           <div className="flex items-center justify-between text-xs">
-            <span className="font-tech text-slate-400 uppercase text-[10px] font-bold">
+            <span className="font-tech text-slate-500 dark:text-slate-400 uppercase text-[10px] font-bold">
               Load Each Side ({weightPerSide} kg per sleeve)
             </span>
             {remainingRemainder > 0 && (
-              <span className="text-[10px] text-amber-400 font-tech">
+              <span className="text-[10px] text-amber-600 dark:text-amber-400 font-tech">
                 ±{remainingRemainder} kg unaccounted
               </span>
             )}
           </div>
 
           {/* SVG/CSS Barbell representation */}
-          <div className="h-28 flex items-center justify-center relative overflow-hidden bg-black/40 rounded-xl p-2 border border-white/5">
+          <div className="h-28 flex items-center justify-center relative overflow-hidden bg-black/40 rounded-xl p-2 border border-slate-200/80 dark:border-white/5">
             {/* Bar sleeve */}
             <div className="absolute w-full h-3 bg-gradient-to-r from-slate-600 via-slate-400 to-slate-700 rounded-full shadow" />
 
             {/* Collar stopper */}
-            <div className="z-10 w-4 h-16 bg-slate-800 border border-slate-600 rounded-sm shadow-md" />
+            <div className="z-10 w-4 h-16 bg-slate-100 dark:bg-slate-800 border border-slate-600 rounded-sm shadow-md" />
 
             {/* Render Plates Side Stack */}
             <div className="z-10 flex items-center space-x-1 pl-2">
@@ -211,7 +211,7 @@ export const PlateCalculatorModal: React.FC<PlateCalculatorModalProps> = ({
 
         {/* Plate Count Breakdown List */}
         <div className="space-y-1.5">
-          <span className="text-[10px] font-tech uppercase text-slate-400 font-bold block">
+          <span className="text-[10px] font-tech uppercase text-slate-500 dark:text-slate-400 font-bold block">
             Plates Required Per Sleeve (Load 2 Sleeves)
           </span>
 
@@ -222,13 +222,13 @@ export const PlateCalculatorModal: React.FC<PlateCalculatorModalProps> = ({
               {plates.map(({ plate, count }) => (
                 <div
                   key={plate.weight}
-                  className="p-2 rounded-xl bg-slate-900/60 border border-white/5 flex items-center space-x-2 text-xs"
+                  className="p-2 rounded-xl bg-slate-100/70 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/5 flex items-center space-x-2 text-xs"
                 >
                   <div
                     style={{ backgroundColor: plate.color }}
-                    className="w-3.5 h-3.5 rounded-full border border-white/20 flex-shrink-0"
+                    className="w-3.5 h-3.5 rounded-full border border-slate-300 dark:border-white/20 flex-shrink-0"
                   />
-                  <div className="font-tech text-white">
+                  <div className="font-tech text-slate-900 dark:text-white">
                     <span className="font-bold">{count}x</span> {plate.weight} kg
                   </div>
                 </div>

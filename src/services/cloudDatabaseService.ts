@@ -45,12 +45,16 @@ class CloudDatabaseService {
 
   private syncListeners: Set<(config: CloudDbConfig) => void> = new Set();
   private pollInterval: any = null;
+
   private hasAuthToken(): boolean {
-    return true;
+    return Boolean(authService.getToken());
   }
 
   private authHeaders(): HeadersInit {
-    const token = authService.getToken() || 'jawan-gym-member-session-fallback';
+    const token = authService.getToken();
+    if (!token) {
+      throw new Error('Not signed in — cannot sync');
+    }
     return {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`
@@ -93,7 +97,10 @@ class CloudDatabaseService {
   }
 
   private notify() {
-    this.syncListeners.forEach((l) => l(this.config));
+    // Emit a fresh shallow copy — this.config is mutated in place elsewhere, and
+    // React setState bails out on identical references (freezing useSyncStatus).
+    const snapshot = { ...this.config };
+    this.syncListeners.forEach((l) => l(snapshot));
   }
 
   private startBackgroundSync() {
@@ -124,21 +131,33 @@ class CloudDatabaseService {
    */
   public async pushStateToCloud(state: AppSyncState): Promise<boolean> {
     if (!this.config.enabled) return false;
-    if (!this.hasAuthToken()) return false;
+    if (!this.hasAuthToken()) {
+      this.config.syncStatus = 'error';
+      this.config.errorMessage = 'Not signed in';
+      this.notify();
+      return false;
+    }
 
     try {
       this.config.syncStatus = 'syncing';
       this.notify();
 
+      // Strip secrets — temporary passwords must never leave this device
+      const sanitizePeople = <T extends { temporaryPassword?: string }>(list: T[] | undefined): T[] =>
+        (Array.isArray(list) ? list : []).map(({ temporaryPassword: _ignored, ...rest }) => rest as T);
+
       const payload = {
-        clients: Array.isArray(state.clients) ? state.clients : [],
-        trainers: Array.isArray(state.trainers) ? state.trainers : [],
+        clients: sanitizePeople(state.clients),
+        trainers: sanitizePeople(state.trainers),
         assignedWorkouts: state.assignedWorkouts || {},
         assignedDietPlans: state.assignedDietPlans || {},
         workoutHistory: Array.isArray(state.workoutHistory) ? state.workoutHistory : [],
         loggedMeals: Array.isArray(state.loggedMeals) ? state.loggedMeals : [],
+        weightHistory: Array.isArray(state.weightHistory) ? state.weightHistory : [],
         events: Array.isArray(state.events) ? state.events : [],
-        messages: Array.isArray(state.messages) ? state.messages : []
+        messages: Array.isArray(state.messages) ? state.messages : [],
+        customFoods: Array.isArray(state.customFoods) ? state.customFoods : [],
+        dailyWaterLog: state.dailyWaterLog || {}
       };
 
       // 1. Primary: Direct or remote API
@@ -184,7 +203,11 @@ class CloudDatabaseService {
         // continue to error
       }
 
-      throw new Error('Authenticated database sync endpoint unreachable');
+      // Both endpoints unreachable — report the failure honestly
+      this.config.syncStatus = 'error';
+      this.config.errorMessage = 'Sync endpoint unreachable';
+      this.notify();
+      return false;
     } catch (err: any) {
       this.config.syncStatus = 'error';
       this.config.errorMessage = err?.message || 'Sync failed';
@@ -198,14 +221,16 @@ class CloudDatabaseService {
    */
   public async fetchStateFromCloud(): Promise<AppSyncState | null> {
     if (!this.config.enabled) return null;
+    if (!this.hasAuthToken()) {
+      // Not signed in yet — nothing to sync, not an error
+      return null;
+    }
 
     try {
       this.config.syncStatus = 'syncing';
       this.notify();
 
-      const token = authService.getToken();
-      const getHeaders: Record<string, string> = {};
-      if (token) getHeaders['Authorization'] = `Bearer ${token}`;
+      const getHeaders = this.authHeaders() as Record<string, string>;
 
       // 1. Primary
       try {
@@ -262,7 +287,8 @@ class CloudDatabaseService {
         console.warn('Fallback sync failed:', err?.message || err);
       }
 
-      this.config.syncStatus = 'synced';
+      this.config.syncStatus = 'error';
+      this.config.errorMessage = 'Could not reach the sync server';
       this.notify();
       return null;
     } catch (err: any) {

@@ -1,15 +1,5 @@
 import React from 'react';
-import { 
-  Dumbbell, 
-  Flame, 
-  Droplets, 
-  Scale, 
-  MessageSquare, 
-  CheckCircle2, 
-  ChevronRight,
-  Plus,
-  Sparkles
-} from 'lucide-react';
+import { Dumbbell, Flame, Droplets, Scale, MessageSquare, CheckCircle2, Sparkles } from 'lucide-react';
 import { hapticTap } from '../../utils/audioHaptics';
 
 interface TodayMissionCardProps {

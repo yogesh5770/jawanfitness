@@ -1,23 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FoodItem, LoggedMealItem, DailyNutritionGoals } from '../../types';
 import { FoodService, CURATED_INDIAN_FOODS } from '../../data/foodDatabase';
-import {
-  Plus,
-  Trash2,
-  Droplets,
-  Search,
-  X,
-  Check,
-  Flame,
-  Award,
-  Sparkles,
-  Calendar,
-  ChevronLeft,
-  ChevronRight,
-  RotateCcw,
-  Clock,
-  AlertCircle
-} from 'lucide-react';
+import { Plus, Trash2, Droplets, Search, X, Check, Flame, Sparkles, Calendar, ChevronLeft, ChevronRight, RotateCcw, Clock } from 'lucide-react';
 import { hapticTap } from '../../utils/audioHaptics';
 import { syncedStore, getTodayDateKey } from '../../services/syncedStore';
 
@@ -70,36 +54,28 @@ export const DietScreen: React.FC<DietScreenProps> = ({
 
   const [activeMealCategory, setActiveMealCategory] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack' | null>(null);
   const [foodSearchQuery, setFoodSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<FoodItem[]>(CURATED_INDIAN_FOODS);
+  const [asyncResults, setAsyncResults] = useState<FoodItem[]>([]);
   const [isSearchingDb, setIsSearchingDb] = useState(false);
   const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
   const [servings, setServings] = useState(1);
   const [foodFilterCategory, setFoodFilterCategory] = useState<string>('All');
 
-  // Fallback to store's assigned meal plan if not directly passed in props
-  const effectivePlan = assignedMealPlan || (() => {
-    const plans = syncedStore.getState().assignedDietPlans || {};
-    const keys = Object.keys(plans).filter((k) => plans[k] != null);
-    return keys.length > 0 ? plans[keys[0]] : null;
-  })();
+  // Assigned meal plan comes ONLY from props (resolved per-member by ClientApp).
+  // Never fall back to the first key in the store — that leaks other members' plans.
+  const effectivePlan = assignedMealPlan ?? null;
 
   // Search dynamically with debounce across 8000+ foods
   useEffect(() => {
     let cancel = false;
     if (!foodSearchQuery.trim()) {
-      setSearchResults(
-        foodFilterCategory === 'All'
-          ? CURATED_INDIAN_FOODS
-          : CURATED_INDIAN_FOODS.filter((f) => f.category === foodFilterCategory)
-      );
       return;
     }
 
-    setIsSearchingDb(true);
     const timer = setTimeout(async () => {
+      setIsSearchingDb(true);
       const results = await FoodService.searchFullDatabase(foodSearchQuery, foodFilterCategory);
       if (!cancel) {
-        setSearchResults(results);
+        setAsyncResults(results);
         setIsSearchingDb(false);
       }
     }, 250);
@@ -109,6 +85,15 @@ export const DietScreen: React.FC<DietScreenProps> = ({
       clearTimeout(timer);
     };
   }, [foodSearchQuery, foodFilterCategory]);
+
+  const searchResults = React.useMemo(() => {
+    if (!foodSearchQuery.trim()) {
+      return foodFilterCategory === 'All'
+        ? CURATED_INDIAN_FOODS
+        : CURATED_INDIAN_FOODS.filter((f) => f.category === foodFilterCategory);
+    }
+    return asyncResults;
+  }, [foodSearchQuery, foodFilterCategory, asyncResults]);
 
   // Compute live intake totals strictly for the selected view scope
   const displayedMeals = loggedMeals.filter((m) => {
@@ -170,7 +155,7 @@ export const DietScreen: React.FC<DietScreenProps> = ({
   return (
     <div className="space-y-4 pb-28 text-left">
       {/* 0. Daily Date Navigator & Cycle Refresh Controller */}
-      <div className="bg-[#0c101a] border border-white/10 rounded-3xl p-4 shadow-lg space-y-3">
+      <div className="bg-white dark:bg-[#0c101a] border border-slate-200 dark:border-white/10 rounded-3xl p-4 shadow-lg space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <button
@@ -183,14 +168,14 @@ export const DietScreen: React.FC<DietScreenProps> = ({
                 setViewScope('custom' as any);
               }}
               title="Previous Day"
-              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
 
             <div className="flex items-center space-x-1.5">
-              <Calendar className="w-4 h-4 text-amber-500" />
-              <span className="text-xs sm:text-sm font-black text-white font-display">
+              <Calendar className="w-4 h-4 text-amber-600 dark:text-amber-500" />
+              <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white font-display">
                 {isViewingToday
                   ? `Today (${formatDisplayDate(todayKey)})`
                   : isViewingYesterday
@@ -217,7 +202,7 @@ export const DietScreen: React.FC<DietScreenProps> = ({
                 }
               }}
               title="Next Day"
-              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -229,7 +214,7 @@ export const DietScreen: React.FC<DietScreenProps> = ({
               setIsResetConfirmOpen(true);
             }}
             title="Reset today's meal diary"
-            className="px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs font-tech font-bold flex items-center space-x-1.5 transition-all active:scale-95"
+            className="px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-xs font-tech font-bold flex items-center space-x-1.5 transition-all active:scale-95"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span>Refresh Today</span>
@@ -237,7 +222,7 @@ export const DietScreen: React.FC<DietScreenProps> = ({
         </div>
 
         {/* Quick Scope Filter Tabs */}
-        <div className="flex items-center justify-between pt-1 border-t border-white/5">
+        <div className="flex items-center justify-between pt-1 border-t border-slate-200/80 dark:border-white/5">
           <div className="flex items-center space-x-1.5">
             <button
               onClick={() => {
@@ -248,7 +233,7 @@ export const DietScreen: React.FC<DietScreenProps> = ({
               className={`px-3 py-1 rounded-xl text-xs font-tech font-bold transition-all ${
                 viewScope === 'today' && selectedDate === todayKey
                   ? 'bg-amber-500 text-black shadow-md'
-                  : 'bg-slate-800/80 text-slate-400 hover:text-white'
+                  : 'bg-slate-100/80 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               Today
@@ -262,7 +247,7 @@ export const DietScreen: React.FC<DietScreenProps> = ({
               className={`px-3 py-1 rounded-xl text-xs font-tech font-bold transition-all ${
                 viewScope === 'yesterday' || (selectedDate === yesterdayKey && viewScope !== 'all')
                   ? 'bg-amber-500 text-black shadow-md'
-                  : 'bg-slate-800/80 text-slate-400 hover:text-white'
+                  : 'bg-slate-100/80 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               Yesterday
@@ -275,15 +260,15 @@ export const DietScreen: React.FC<DietScreenProps> = ({
               className={`px-3 py-1 rounded-xl text-xs font-tech font-bold transition-all ${
                 viewScope === 'all'
                   ? 'bg-amber-500 text-black shadow-md'
-                  : 'bg-slate-800/80 text-slate-400 hover:text-white'
+                  : 'bg-slate-100/80 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               All Logs
             </button>
           </div>
 
-          <div className="flex items-center space-x-1 text-[10px] text-slate-400 font-tech">
-            <Clock className="w-3 h-3 text-amber-400" />
+          <div className="flex items-center space-x-1 text-[10px] text-slate-500 dark:text-slate-400 font-tech">
+            <Clock className="w-3 h-3 text-amber-600 dark:text-amber-400" />
             <span className="hidden sm:inline">Daily Rollover at 12:00 AM</span>
           </div>
         </div>
@@ -292,23 +277,23 @@ export const DietScreen: React.FC<DietScreenProps> = ({
       {/* Reset Confirmation Modal */}
       {isResetConfirmOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
-          <div className="bg-[#0e131f] border border-amber-500/30 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl animate-scaleUp">
-            <div className="flex items-center space-x-3 text-amber-400">
-              <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-500">
+          <div className="bg-white dark:bg-[#0e131f] border border-amber-500/30 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl animate-scaleUp">
+            <div className="flex items-center space-x-3 text-amber-600 dark:text-amber-400">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-500">
                 <RotateCcw className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-base font-black text-white font-display">Refresh Today's Diary?</h3>
-                <p className="text-xs text-slate-400">Clear today's meals and water</p>
+                <h3 className="text-base font-black text-slate-900 dark:text-white font-display">Refresh Today's Diary?</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Clear today's meals and water</p>
               </div>
             </div>
-            <p className="text-xs text-slate-300 leading-relaxed">
+            <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
               This will clear meals logged for <strong>Today ({formatDisplayDate(todayKey)})</strong> and reset today's water to 0. All past days' records will remain preserved in your history.
             </p>
             <div className="flex items-center space-x-2 pt-2">
               <button
                 onClick={() => setIsResetConfirmOpen(false)}
-                className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold font-tech"
+                className="flex-1 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold font-tech"
               >
                 Cancel
               </button>
@@ -328,17 +313,17 @@ export const DietScreen: React.FC<DietScreenProps> = ({
       )}
 
       {/* 1. Daily Calories & Macro Target Dashboard */}
-      <div className="bg-[#0c101a] border border-white/10 rounded-3xl p-5 shadow-lg relative overflow-hidden">
+      <div className="bg-white dark:bg-[#0c101a] border border-slate-200 dark:border-white/10 rounded-3xl p-5 shadow-lg relative overflow-hidden">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <span className="text-[10px] font-tech uppercase tracking-widest text-amber-500 font-bold">
+            <span className="text-[10px] font-tech uppercase tracking-widest text-amber-600 dark:text-amber-500 font-bold">
               {isViewingToday ? "TODAY'S INTAKE DIARY" : `NUTRITION • ${formatDisplayDate(selectedDate).toUpperCase()}`}
             </span>
-            <h2 className="text-xl font-black text-white font-display">
+            <h2 className="text-xl font-black text-slate-900 dark:text-white font-display">
               {isViewingToday ? 'Daily Intake Tracker' : `Intake Log (${formatDisplayDate(selectedDate)})`}
             </h2>
           </div>
-          <div className="flex items-center space-x-1 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-full text-xs font-bold text-amber-400 font-tech">
+          <div className="flex items-center space-x-1 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-full text-xs font-bold text-amber-600 dark:text-amber-400 font-tech">
             <Flame className="w-3.5 h-3.5 fill-amber-400" />
             <span>{goals.calories - totalCalories > 0 ? `${goals.calories - totalCalories} kcal left` : 'Goal Met!'}</span>
           </div>
@@ -347,13 +332,13 @@ export const DietScreen: React.FC<DietScreenProps> = ({
         {/* Central Calorie Dial Bar */}
         <div className="mb-4">
           <div className="flex justify-between items-baseline mb-1">
-            <span className="text-2xl font-black text-white font-display">
+            <span className="text-2xl font-black text-slate-900 dark:text-white font-display">
               {totalCalories}{' '}
-              <span className="text-xs text-slate-400 font-normal">/ {goals.calories} kcal</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400 font-normal">/ {goals.calories} kcal</span>
             </span>
-            <span className="text-xs font-tech font-bold text-amber-400">{caloriePercent}%</span>
+            <span className="text-xs font-tech font-bold text-amber-600 dark:text-amber-400">{caloriePercent}%</span>
           </div>
-          <div className="w-full bg-slate-900 rounded-full h-3 overflow-hidden p-0.5 border border-white/5">
+          <div className="w-full bg-white dark:bg-slate-900 rounded-full h-3 overflow-hidden p-0.5 border border-slate-200/80 dark:border-white/5">
             <div
               className="bg-gradient-to-r from-amber-500 via-amber-400 to-emerald-400 h-full rounded-full transition-all duration-500"
               style={{ width: `${caloriePercent}%` }}
@@ -361,35 +346,45 @@ export const DietScreen: React.FC<DietScreenProps> = ({
           </div>
         </div>
 
-        {/* 3 Macro Cards */}
-        <div className="grid grid-cols-3 gap-2 text-center pt-2 border-t border-white/5">
-          <div className="bg-slate-900/60 p-2.5 rounded-2xl border border-white/5">
-            <span className="text-[10px] uppercase font-tech text-amber-400 font-bold block">Protein</span>
-            <span className="text-sm font-black text-white font-display mt-0.5 block">
-              {totalProtein}g <span className="text-[10px] text-slate-500 font-normal">/ {goals.protein}g</span>
+        {/* 4 Macro Cards */}
+        <div className="grid grid-cols-4 gap-2 text-center pt-2 border-t border-slate-200/80 dark:border-white/5">
+          <div className="bg-slate-100/70 dark:bg-slate-900/60 p-2 sm:p-2.5 rounded-2xl border border-slate-200/80 dark:border-white/5">
+            <span className="text-[9px] sm:text-[10px] uppercase font-tech text-amber-600 dark:text-amber-400 font-bold block">Protein</span>
+            <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white font-display mt-0.5 block">
+              {totalProtein}g
             </span>
-            <div className="w-full bg-slate-800 rounded-full h-1 mt-1.5 overflow-hidden">
+            <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1 mt-1.5 overflow-hidden">
               <div className="bg-amber-400 h-full rounded-full" style={{ width: `${proteinPercent}%` }} />
             </div>
           </div>
 
-          <div className="bg-slate-900/60 p-2.5 rounded-2xl border border-white/5">
-            <span className="text-[10px] uppercase font-tech text-cyan-400 font-bold block">Carbs</span>
-            <span className="text-sm font-black text-white font-display mt-0.5 block">
-              {totalCarbs}g <span className="text-[10px] text-slate-500 font-normal">/ {goals.carbs}g</span>
+          <div className="bg-slate-100/70 dark:bg-slate-900/60 p-2 sm:p-2.5 rounded-2xl border border-slate-200/80 dark:border-white/5">
+            <span className="text-[9px] sm:text-[10px] uppercase font-tech text-cyan-600 dark:text-cyan-400 font-bold block">Carbs</span>
+            <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white font-display mt-0.5 block">
+              {totalCarbs}g
             </span>
-            <div className="w-full bg-slate-800 rounded-full h-1 mt-1.5 overflow-hidden">
+            <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1 mt-1.5 overflow-hidden">
               <div className="bg-cyan-400 h-full rounded-full" style={{ width: `${carbsPercent}%` }} />
             </div>
           </div>
 
-          <div className="bg-slate-900/60 p-2.5 rounded-2xl border border-white/5">
-            <span className="text-[10px] uppercase font-tech text-rose-400 font-bold block">Fats</span>
-            <span className="text-sm font-black text-white font-display mt-0.5 block">
-              {totalFat}g <span className="text-[10px] text-slate-500 font-normal">/ {goals.fat}g</span>
+          <div className="bg-slate-100/70 dark:bg-slate-900/60 p-2 sm:p-2.5 rounded-2xl border border-slate-200/80 dark:border-white/5">
+            <span className="text-[9px] sm:text-[10px] uppercase font-tech text-rose-600 dark:text-rose-400 font-bold block">Fats</span>
+            <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white font-display mt-0.5 block">
+              {totalFat}g
             </span>
-            <div className="w-full bg-slate-800 rounded-full h-1 mt-1.5 overflow-hidden">
+            <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1 mt-1.5 overflow-hidden">
               <div className="bg-rose-400 h-full rounded-full" style={{ width: `${fatPercent}%` }} />
+            </div>
+          </div>
+
+          <div className="bg-slate-100/70 dark:bg-slate-900/60 p-2 sm:p-2.5 rounded-2xl border border-slate-200/80 dark:border-white/5">
+            <span className="text-[9px] sm:text-[10px] uppercase font-tech text-emerald-600 dark:text-emerald-400 font-bold block">Fiber</span>
+            <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white font-display mt-0.5 block">
+              {totalFiber}g
+            </span>
+            <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1 mt-1.5 overflow-hidden">
+              <div className="bg-emerald-400 h-full rounded-full" style={{ width: `${Math.min(100, Math.round((totalFiber / (goals.fiber || 35)) * 100))}%` }} />
             </div>
           </div>
         </div>
@@ -397,52 +392,52 @@ export const DietScreen: React.FC<DietScreenProps> = ({
 
       {/* 1.5. COACH PRESCRIBED DIET PLAN */}
       {effectivePlan ? (
-        <div className="bg-gradient-to-br from-[#0e1628] to-[#0a101d] border-2 border-amber-500/40 rounded-3xl p-3.5 sm:p-5 shadow-xl relative overflow-hidden text-left space-y-3.5">
+        <div className="bg-gradient-to-br from-white dark:from-[#0e1628] to-white dark:to-[#0a101d] border-2 border-amber-500/40 rounded-3xl p-3.5 sm:p-5 shadow-xl relative overflow-hidden text-left space-y-3.5">
           <div className="absolute top-0 right-0 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-white/10 pb-3 gap-2">
+          <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3 gap-2">
             <div className="flex items-center space-x-2.5 sm:space-x-3 min-w-0 flex-1">
-              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 font-bold shadow-inner flex-shrink-0">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-600 dark:text-amber-400 font-bold shadow-inner flex-shrink-0">
                 <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <span className="text-[10px] font-tech uppercase tracking-widest text-amber-400 font-bold block truncate">
+                <span className="text-[10px] font-tech uppercase tracking-widest text-amber-600 dark:text-amber-400 font-bold block truncate">
                   Prescribed by Coach {effectivePlan.assignedBy || trainerName}
                 </span>
-                <h3 className="text-base sm:text-lg font-black text-white font-display truncate">
+                <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white font-display truncate">
                   {effectivePlan.title}
                 </h3>
               </div>
             </div>
-            <span className="text-[10px] sm:text-xs font-tech font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full flex-shrink-0">
+            <span className="text-[10px] sm:text-xs font-tech font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full flex-shrink-0">
               Active Plan
             </span>
           </div>
 
           {/* Prescribed Macro Targets */}
           <div className="grid grid-cols-4 gap-1.5 sm:gap-2 text-center">
-            <div className="bg-slate-900/80 p-1.5 sm:p-2 rounded-xl border border-white/5">
-              <span className="text-[8px] sm:text-[9px] uppercase font-tech text-slate-400 block">Calories</span>
-              <p className="text-[11px] sm:text-sm font-black text-white font-display mt-0.5 truncate">{effectivePlan.dailyCalories} kcal</p>
+            <div className="bg-slate-100/80 dark:bg-slate-900/80 p-1.5 sm:p-2 rounded-xl border border-slate-200/80 dark:border-white/5">
+              <span className="text-[8px] sm:text-[9px] uppercase font-tech text-slate-500 dark:text-slate-400 block">Calories</span>
+              <p className="text-[11px] sm:text-sm font-black text-slate-900 dark:text-white font-display mt-0.5 truncate">{effectivePlan.dailyCalories} kcal</p>
             </div>
-            <div className="bg-slate-900/80 p-1.5 sm:p-2 rounded-xl border border-white/5">
-              <span className="text-[8px] sm:text-[9px] uppercase font-tech text-amber-400 block">Protein</span>
-              <p className="text-[11px] sm:text-sm font-black text-amber-400 font-display mt-0.5 truncate">{effectivePlan.dailyProtein}g</p>
+            <div className="bg-slate-100/80 dark:bg-slate-900/80 p-1.5 sm:p-2 rounded-xl border border-slate-200/80 dark:border-white/5">
+              <span className="text-[8px] sm:text-[9px] uppercase font-tech text-amber-600 dark:text-amber-400 block">Protein</span>
+              <p className="text-[11px] sm:text-sm font-black text-amber-600 dark:text-amber-400 font-display mt-0.5 truncate">{effectivePlan.dailyProtein}g</p>
             </div>
-            <div className="bg-slate-900/80 p-1.5 sm:p-2 rounded-xl border border-white/5">
-              <span className="text-[8px] sm:text-[9px] uppercase font-tech text-cyan-400 block">Carbs</span>
-              <p className="text-[11px] sm:text-sm font-black text-cyan-400 font-display mt-0.5 truncate">{effectivePlan.dailyCarbs}g</p>
+            <div className="bg-slate-100/80 dark:bg-slate-900/80 p-1.5 sm:p-2 rounded-xl border border-slate-200/80 dark:border-white/5">
+              <span className="text-[8px] sm:text-[9px] uppercase font-tech text-cyan-600 dark:text-cyan-400 block">Carbs</span>
+              <p className="text-[11px] sm:text-sm font-black text-cyan-600 dark:text-cyan-400 font-display mt-0.5 truncate">{effectivePlan.dailyCarbs}g</p>
             </div>
-            <div className="bg-slate-900/80 p-1.5 sm:p-2 rounded-xl border border-white/5">
-              <span className="text-[8px] sm:text-[9px] uppercase font-tech text-rose-400 block">Fat</span>
-              <p className="text-[11px] sm:text-sm font-black text-rose-400 font-display mt-0.5 truncate">{effectivePlan.dailyFat}g</p>
+            <div className="bg-slate-100/80 dark:bg-slate-900/80 p-1.5 sm:p-2 rounded-xl border border-slate-200/80 dark:border-white/5">
+              <span className="text-[8px] sm:text-[9px] uppercase font-tech text-rose-600 dark:text-rose-400 block">Fat</span>
+              <p className="text-[11px] sm:text-sm font-black text-rose-600 dark:text-rose-400 font-display mt-0.5 truncate">{effectivePlan.dailyFat}g</p>
             </div>
           </div>
 
           {/* Prescribed Meals List */}
           <div className="space-y-2 pt-1">
-            <h4 className="text-[11px] font-bold text-slate-300 font-tech uppercase tracking-wider flex items-center space-x-1.5">
+            <h4 className="text-[11px] font-bold text-slate-700 dark:text-slate-300 font-tech uppercase tracking-wider flex items-center space-x-1.5">
               <span>Prescribed Daily Meals</span>
             </h4>
 
@@ -455,13 +450,13 @@ export const DietScreen: React.FC<DietScreenProps> = ({
                   dinner: '🌙'
                 };
                 return (
-                  <div key={idx} className="bg-slate-900/90 rounded-2xl p-3 border border-white/10 space-y-2">
+                  <div key={idx} className="bg-slate-100/90 dark:bg-slate-900/90 rounded-2xl p-3 border border-slate-200 dark:border-white/10 space-y-2">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center space-x-2 min-w-0 flex-1">
                         <span className="text-base flex-shrink-0">{mealIcons[m.type] || '🍽️'}</span>
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold text-white capitalize truncate">{m.title || m.type}</p>
-                          <span className="text-[10px] text-amber-400 font-tech block truncate">
+                          <p className="text-xs font-bold text-slate-900 dark:text-white capitalize truncate">{m.title || m.type}</p>
+                          <span className="text-[10px] text-amber-600 dark:text-amber-400 font-tech block truncate">
                             {m.suggestedCalories} kcal • {m.suggestedProtein}g Protein
                           </span>
                         </div>
@@ -483,7 +478,7 @@ export const DietScreen: React.FC<DietScreenProps> = ({
                             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                           });
                         }}
-                        className="px-2 sm:px-2.5 py-1 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 text-[10px] font-bold border border-amber-500/30 transition-colors flex items-center space-x-1 flex-shrink-0"
+                        className="px-2 sm:px-2.5 py-1 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-600 dark:text-amber-400 text-[10px] font-bold border border-amber-500/30 transition-colors flex items-center space-x-1 flex-shrink-0"
                       >
                         <Plus className="w-3 h-3" />
                         <span>Log Meal</span>
@@ -495,7 +490,7 @@ export const DietScreen: React.FC<DietScreenProps> = ({
                       {(Array.isArray(m.items) ? m.items : [m.items]).map((item: string, iIdx: number) => (
                         <span
                           key={iIdx}
-                          className="text-[10px] px-2 py-0.5 rounded-lg bg-slate-800 text-slate-200 border border-white/5 font-medium break-words"
+                          className="text-[10px] px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200/80 dark:border-white/5 font-medium break-words"
                         >
                           {item}
                         </span>
@@ -508,29 +503,29 @@ export const DietScreen: React.FC<DietScreenProps> = ({
           </div>
         </div>
       ) : (
-        <div className="bg-[#0c101a] border border-white/10 rounded-2xl p-4 text-center space-y-2">
-          <Sparkles className="w-6 h-6 text-amber-500/40 mx-auto" />
-          <h4 className="text-xs font-bold text-white">General Nutrition Guidelines</h4>
-          <p className="text-[11px] text-slate-400 max-w-sm mx-auto leading-relaxed">
+        <div className="bg-white dark:bg-[#0c101a] border border-slate-200 dark:border-white/10 rounded-2xl p-4 text-center space-y-2">
+          <Sparkles className="w-6 h-6 text-amber-600 dark:text-amber-500/40 mx-auto" />
+          <h4 className="text-xs font-bold text-slate-900 dark:text-white">General Nutrition Guidelines</h4>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-sm mx-auto leading-relaxed">
             Your coach {trainerName} has not prescribed a customized meal plan yet. You can track your daily calorie and macro intake below using the food search.
           </p>
         </div>
       )}
 
       {/* 2. Water Hydration Card */}
-      <div className="bg-[#0c101a] border border-cyan-500/30 rounded-3xl p-4 flex items-center justify-between shadow-md">
+      <div className="bg-white dark:bg-[#0c101a] border border-cyan-500/30 rounded-3xl p-4 flex items-center justify-between shadow-md">
         <div className="flex items-center space-x-3">
-          <div className="w-11 h-11 rounded-2xl bg-cyan-950/40 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
+          <div className="w-11 h-11 rounded-2xl bg-cyan-950/40 border border-cyan-500/40 flex items-center justify-center text-cyan-600 dark:text-cyan-400">
             <Droplets className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center space-x-1.5">
-              <span className="text-sm font-black text-white font-display">Water Hydration</span>
-              <span className="text-[10px] bg-cyan-500/20 text-cyan-300 font-bold px-1.5 py-0.5 rounded font-tech">
+              <span className="text-sm font-black text-slate-900 dark:text-white font-display">Water Hydration</span>
+              <span className="text-[10px] bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 font-bold px-1.5 py-0.5 rounded font-tech">
                 {waterPercent}%
               </span>
             </div>
-            <p className="text-xs text-slate-400 font-tech">
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-tech">
               {(effectiveWater / 1000).toFixed(2)}L / {(goals.waterMl / 1000).toFixed(1)}L goal
             </p>
           </div>
@@ -543,7 +538,7 @@ export const DietScreen: React.FC<DietScreenProps> = ({
               hapticTap();
               onUpdateWater(250);
             }}
-            className="px-2.5 py-1.5 rounded-xl bg-cyan-950 border border-cyan-500/30 text-cyan-300 hover:bg-cyan-900 text-xs font-bold active:scale-95 transition-all"
+            className="px-2.5 py-1.5 rounded-xl bg-cyan-950 border border-cyan-500/30 text-cyan-700 dark:text-cyan-300 hover:bg-cyan-900 text-xs font-bold active:scale-95 transition-all"
           >
             +250ml
           </button>
@@ -567,15 +562,15 @@ export const DietScreen: React.FC<DietScreenProps> = ({
           const mealProtein = items.reduce((acc, i) => acc + i.protein, 0);
 
           return (
-            <div key={meal.type} className="rounded-2xl bg-[#0c101a] border border-white/5 p-4 shadow-md">
+            <div key={meal.type} className="rounded-2xl bg-white dark:bg-[#0c101a] border border-slate-200/80 dark:border-white/5 p-4 shadow-md">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center space-x-2">
                   <span className="text-base">{meal.icon}</span>
                   <div>
-                    <h4 className="text-sm font-black text-white font-display leading-none">
+                    <h4 className="text-sm font-black text-slate-900 dark:text-white font-display leading-none">
                       {meal.label}
                     </h4>
-                    <span className="text-[10px] text-slate-400 font-tech">
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-tech">
                       {mealCalories} kcal • {mealProtein}g P
                     </span>
                   </div>
@@ -586,7 +581,7 @@ export const DietScreen: React.FC<DietScreenProps> = ({
                     hapticTap();
                     setActiveMealCategory(meal.type);
                   }}
-                  className="flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-400 hover:text-amber-300 text-xs font-bold border border-white/5 transition-all"
+                  className="flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-amber-600 dark:text-amber-400 hover:text-amber-300 text-xs font-bold border border-slate-200/80 dark:border-white/5 transition-all"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Add Food</span>
@@ -599,13 +594,13 @@ export const DietScreen: React.FC<DietScreenProps> = ({
                   {items.map((item) => (
                     <div key={item.id} className="py-2 flex items-center justify-between text-xs">
                       <div>
-                        <span className="text-slate-200 font-medium">{item.name}</span>
+                        <span className="text-slate-800 dark:text-slate-200 font-medium">{item.name}</span>
                         <span className="text-[10px] text-slate-500 font-tech block">
                           {item.protein}g P • {item.carbs}g C • {item.fat}g F • {item.time}
                         </span>
                       </div>
                       <div className="flex items-center space-x-2.5">
-                        <span className="font-tech font-bold text-amber-400">
+                        <span className="font-tech font-bold text-amber-600 dark:text-amber-400">
                           {item.calories} kcal
                         </span>
                         <button
@@ -630,14 +625,14 @@ export const DietScreen: React.FC<DietScreenProps> = ({
       {/* 6. Food Search & Logger Modal */}
       {activeMealCategory && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/85 backdrop-blur-md">
-          <div className="relative w-full max-w-lg bg-[#0d121c] border border-white/10 rounded-t-3xl sm:rounded-3xl max-h-[85vh] flex flex-col overflow-hidden shadow-2xl">
+          <div className="relative w-full max-w-lg bg-white dark:bg-[#0d121c] border border-slate-200 dark:border-white/10 rounded-t-3xl sm:rounded-3xl h-[88dvh] max-h-[88dvh] sm:h-auto sm:max-h-[85vh] flex flex-col overflow-hidden shadow-2xl">
             {/* Modal Header */}
-            <div className="p-4 border-b border-white/10 flex items-center justify-between">
+            <div className="p-4 border-b border-slate-200 dark:border-white/10 flex items-center justify-between">
               <div>
-                <span className="text-[10px] font-tech uppercase tracking-wider text-amber-400 font-bold">
+                <span className="text-[10px] font-tech uppercase tracking-wider text-amber-600 dark:text-amber-400 font-bold">
                   Log into {activeMealCategory}
                 </span>
-                <h3 className="text-base font-black text-white font-display">
+                <h3 className="text-base font-black text-slate-900 dark:text-white font-display">
                   Food & Nutrition Catalog
                 </h3>
               </div>
@@ -646,26 +641,26 @@ export const DietScreen: React.FC<DietScreenProps> = ({
                   setActiveMealCategory(null);
                   setSelectedFood(null);
                 }}
-                className="p-1 rounded-full bg-slate-800 text-slate-400 hover:text-white"
+                className="p-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Search Input */}
-            <div className="p-3 border-b border-white/5 bg-[#090d15]">
-              <div className="flex items-center bg-[#151a24] rounded-xl px-3 py-2 text-slate-400 focus-within:ring-2 focus-within:ring-amber-500">
-                <Search className="w-4 h-4 mr-2 text-slate-400 flex-shrink-0" />
+            <div className="p-3 border-b border-slate-200/80 dark:border-white/5 bg-white dark:bg-[#090d15]">
+              <div className="flex items-center bg-white dark:bg-[#151a24] rounded-xl px-3 py-2 text-slate-500 dark:text-slate-400 focus-within:ring-2 focus-within:ring-amber-500">
+                <Search className="w-4 h-4 mr-2 text-slate-500 dark:text-slate-400 flex-shrink-0" />
                 <input
                   type="text"
                   value={foodSearchQuery}
                   onChange={(e) => setFoodSearchQuery(e.target.value)}
                   placeholder="Search idli, dosa, biryani, chicken, paneer, dal..."
-                  className="bg-transparent text-white text-xs w-full outline-none placeholder-slate-500"
+                  className="bg-transparent text-slate-900 dark:text-white text-xs w-full outline-none placeholder:text-slate-500 dark:placeholder:text-slate-400"
                   autoFocus
                 />
                 {isSearchingDb && (
-                  <span className="text-[10px] font-tech text-amber-400 animate-pulse">Searching...</span>
+                  <span className="text-[10px] font-tech text-amber-600 dark:text-amber-400 animate-pulse">Searching...</span>
                 )}
               </div>
 
@@ -698,7 +693,7 @@ export const DietScreen: React.FC<DietScreenProps> = ({
                     className={`px-2.5 py-1 rounded-lg flex-shrink-0 transition-all ${
                       foodFilterCategory === cat.id
                         ? 'bg-amber-500 text-black font-extrabold shadow'
-                        : 'bg-slate-900/80 text-slate-400 hover:text-white border border-white/5'
+                        : 'bg-slate-100/80 dark:bg-slate-900/80 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200/80 dark:border-white/5'
                     }`}
                   >
                     {cat.label}
@@ -719,23 +714,23 @@ export const DietScreen: React.FC<DietScreenProps> = ({
                       setSelectedFood(food);
                     }}
                     className={`py-2.5 px-3 rounded-xl flex items-center justify-between cursor-pointer transition-all ${
-                      isSelected ? 'bg-amber-500/20 border border-amber-500/40' : 'hover:bg-white/[0.03]'
+                      isSelected ? 'bg-amber-500/20 border border-amber-500/40' : 'hover:bg-slate-100 dark:hover:bg-white/[0.03]'
                     }`}
                   >
                     <div>
                       <div className="flex items-center space-x-2">
-                        <span className="text-xs font-bold text-white">{food.name}</span>
+                        <span className="text-xs font-bold text-slate-900 dark:text-white">{food.name}</span>
                         {food.verified && (
-                          <span className="text-[9px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 rounded font-tech">
+                          <span className="text-[9px] bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.2 rounded font-tech">
                             Verified
                           </span>
                         )}
                       </div>
-                      <span className="text-[10px] text-slate-400 font-tech block mt-0.5">
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 font-tech block mt-0.5">
                         {food.servingSize} • {food.protein}g P • {food.carbs}g C • {food.fat}g F
                       </span>
                     </div>
-                    <span className="text-xs font-tech font-bold text-amber-400">
+                    <span className="text-xs font-tech font-bold text-amber-600 dark:text-amber-400">
                       {food.calories} kcal
                     </span>
                   </div>
@@ -751,19 +746,19 @@ export const DietScreen: React.FC<DietScreenProps> = ({
 
             {/* Confirm Log Action Footer */}
             {selectedFood && (
-              <div className="p-4 bg-[#07090e] border-t border-white/10 flex items-center justify-between space-x-3">
+              <div className="p-4 bg-slate-50 dark:bg-[#07090e] border-t border-slate-200 dark:border-white/10 flex items-center justify-between space-x-3">
                 <div className="flex items-center space-x-2">
-                  <span className="text-xs text-slate-400">Servings:</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">Servings:</span>
                   <button
                     onClick={() => setServings(Math.max(1, servings - 1))}
-                    className="w-7 h-7 rounded-lg bg-slate-800 text-white font-bold flex items-center justify-center"
+                    className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-bold flex items-center justify-center"
                   >
                     -
                   </button>
-                  <span className="font-tech font-bold text-amber-400 px-1 text-sm">{servings}</span>
+                  <span className="font-tech font-bold text-amber-600 dark:text-amber-400 px-1 text-sm">{servings}</span>
                   <button
                     onClick={() => setServings(servings + 1)}
-                    className="w-7 h-7 rounded-lg bg-slate-800 text-white font-bold flex items-center justify-center"
+                    className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-bold flex items-center justify-center"
                   >
                     +
                   </button>

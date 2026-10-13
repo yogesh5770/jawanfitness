@@ -17,24 +17,13 @@ export default defineConfig({
         enabled: false,
         type: 'module'
       },
-      includeAssets: [
-        'favicon.svg',
-        'favicon.ico',
-        'favicon.png',
-        'logo.png',
-        'logo-3d-tight.png',
-        'apple-touch-icon.png',
-        'pwa-192x192.png',
-        'pwa-512x512.png',
-        'icons.svg',
-        'indianFoodDatabase.json'
-      ],
+
       manifest: {
         name: 'Jawan Fitness - 3D Workout & Diet Tracker',
         short_name: 'Jawan Fitness',
         description: 'Elite commercial-grade fitness training with 3D animated exercises, active workout set logger, and Indian macro & calorie counter. Built for Salem\'s top gym.',
-        theme_color: '#07090e',
-        background_color: '#07090e',
+        theme_color: '#f4f6fb',
+        background_color: '#f4f6fb',
         // display_override gives the browser a priority list:
         // window-controls-overlay = desktop PWA with title bar (Edge/Chrome on Win/Mac/Linux)
         // standalone = installed app without browser chrome (most mobile + desktop)
@@ -153,8 +142,8 @@ export default defineConfig({
         clientsClaim: true,
         // Allow large assets like exercise JSON and fonts
         maximumFileSizeToCacheInBytes: 20 * 1024 * 1024,
-        // Precache all static assets
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2,json}'],
+        // Precache build bundles and static assets (manifest icons are auto-precached by VitePWA)
+        globPatterns: ['**/*.{js,css,html,woff,woff2}', 'icons.svg', 'favicon.svg', 'favicon.ico', 'logo.png'],
         // Exclude large non-essential items from precache
         globIgnores: ['**/node_modules/**', '**/test_*', '**/*.map'],
         // Clean old caches on activation
@@ -163,10 +152,6 @@ export default defineConfig({
         // If the main shell is also not cached (first visit, no internet) serve /offline.html.
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api\//, /^\/offline\.html$/],
-        // Precache the offline fallback page itself so it's always available
-        additionalManifestEntries: [
-          { url: '/offline.html', revision: '1' }
-        ],
         runtimeCaching: [
           // Google Fonts stylesheets — CacheFirst 1 year
           {
@@ -261,6 +246,12 @@ export default defineConfig({
       output: {
         // Manual code splitting for better caching
         manualChunks(id) {
+          if (id.includes('allExercises.json')) {
+            return 'exercises-data';
+          }
+          if (id.includes('jawanMasterFoods.json')) {
+            return 'food-data';
+          }
           if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
             return 'react-vendor';
           }

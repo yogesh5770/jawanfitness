@@ -1,19 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Exercise } from '../../types';
-import {
-  Play,
-  Pause,
-  RotateCcw,
-  Zap,
-  Activity,
-  Flame,
-  Layers,
-  ChevronRight,
-  ShieldCheck,
-  Compass,
-  Eye,
-  Sparkles
-} from 'lucide-react';
+import { Play, Pause, Activity, Sparkles } from 'lucide-react';
 import { hapticTap } from '../../utils/audioHaptics';
 
 interface Cinematic3DMotionViewerProps {
@@ -295,7 +282,7 @@ export const Cinematic3DMotionViewer: React.FC<Cinematic3DMotionViewerProps> = (
   const isKettlebell = (exercise.equipment || '').toLowerCase().includes('kettlebell');
 
   return (
-    <div className={`relative rounded-2xl bg-[#070a12] border border-white/10 overflow-hidden shadow-2xl flex flex-col select-none ${className}`}>
+    <div className={`relative rounded-2xl bg-slate-100 dark:bg-[#070a12] border border-slate-200 dark:border-white/10 overflow-hidden shadow-2xl flex flex-col select-none ${className}`}>
       {/* 3D Viewport Header Overlay */}
       <div className="absolute top-2.5 left-2.5 right-2.5 z-20 flex items-center justify-between pointer-events-none">
         <div className="flex items-center space-x-1.5 pointer-events-auto">
@@ -303,7 +290,7 @@ export const Cinematic3DMotionViewer: React.FC<Cinematic3DMotionViewerProps> = (
             <Sparkles className="w-3 h-3 fill-black" />
             <span>3D Biomechanics</span>
           </span>
-          <span className="bg-black/70 backdrop-blur-md border border-white/10 text-slate-300 px-2 py-0.5 rounded-full text-[10px] font-tech">
+          <span className="bg-black/70 backdrop-blur-md border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-full text-[10px] font-tech">
             {motionPhase === 'concentric'
               ? '🔥 Concentric'
               : motionPhase === 'isometric'
@@ -313,7 +300,7 @@ export const Cinematic3DMotionViewer: React.FC<Cinematic3DMotionViewerProps> = (
         </div>
 
         {showControls && (
-          <div className="flex items-center space-x-1 bg-black/70 backdrop-blur-md border border-white/10 p-1 rounded-xl pointer-events-auto">
+          <div className="flex items-center space-x-1 bg-black/70 backdrop-blur-md border border-slate-200 dark:border-white/10 p-1 rounded-xl pointer-events-auto">
             {/* View Angle Switcher */}
             {(['front', 'angle', 'side'] as const).map((angle) => (
               <button
@@ -324,7 +311,7 @@ export const Cinematic3DMotionViewer: React.FC<Cinematic3DMotionViewerProps> = (
                   setViewAngle(angle);
                 }}
                 className={`px-1.5 py-0.5 rounded text-[9px] font-tech font-bold uppercase transition-all ${
-                  viewAngle === angle ? 'bg-amber-500 text-black' : 'text-slate-400 hover:text-white'
+                  viewAngle === angle ? 'bg-amber-500 text-black' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
                 {angle}
@@ -339,7 +326,7 @@ export const Cinematic3DMotionViewer: React.FC<Cinematic3DMotionViewerProps> = (
                 setActiveView(activeView === '3d' ? 'heatmap' : '3d');
               }}
               className={`px-1.5 py-0.5 rounded text-[9px] font-tech font-bold transition-all ml-1 ${
-                activeView === 'heatmap' ? 'bg-red-500 text-white' : 'text-slate-400 hover:text-white'
+                activeView === 'heatmap' ? 'bg-red-500 text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               {activeView === '3d' ? 'Heat' : 'Wire'}
@@ -349,7 +336,7 @@ export const Cinematic3DMotionViewer: React.FC<Cinematic3DMotionViewerProps> = (
       </div>
 
       {/* 3D Vector Biomechanical Canvas Simulation */}
-      <div className="relative flex-1 w-full h-full flex items-center justify-center bg-gradient-to-b from-[#0a0f1d] via-[#060911] to-[#04060a] overflow-hidden">
+      <div className="relative flex-1 w-full h-full flex items-center justify-center bg-gradient-to-b from-white dark:from-[#0a0f1d] via-white dark:via-[#060911] to-white dark:to-[#04060a] overflow-hidden">
         {/* Dynamic perspective grid lines */}
         <div className="absolute inset-0 opacity-20 pointer-events-none bg-[radial-gradient(#f59e0b_1px,transparent_1px)] [background-size:16px_16px]" />
 
@@ -431,12 +418,13 @@ export const Cinematic3DMotionViewer: React.FC<Cinematic3DMotionViewerProps> = (
               filter="url(#neonPulse)"
             />
 
-            {/* TORSO / CHEST / RIBS */}
+            {/* TORSO / CHEST / RIBS / LATS */}
             <path
               d={`M 102 ${shoulderY} L 138 ${shoulderY} L 132 ${hipY} L 108 ${hipY} Z`}
-              fill="url(#bodyMetallic)"
-              stroke="rgba(255,255,255,0.15)"
-              strokeWidth="1.5"
+              fill={isBack ? 'url(#targetRed)' : 'url(#bodyMetallic)'}
+              stroke={isBack ? '#ef4444' : 'rgba(255,255,255,0.15)'}
+              strokeWidth={isBack ? '2' : '1.5'}
+              filter={isBack ? 'url(#neonPulse)' : undefined}
             />
 
             {/* CHEST MUSCLE HEATMAP (PECS) */}
@@ -615,22 +603,22 @@ export const Cinematic3DMotionViewer: React.FC<Cinematic3DMotionViewerProps> = (
 
         {/* Biomechanical Telemetry Overlay */}
         <div className="absolute bottom-2.5 left-3 right-3 flex items-center justify-between text-[11px] font-tech pointer-events-none">
-          <div className="flex items-center space-x-2 bg-black/70 backdrop-blur-md px-2.5 py-1 rounded-xl border border-white/10 pointer-events-auto">
-            <span className="text-slate-400">Target:</span>
-            <span className="text-amber-400 font-bold">{exercise.primaryMuscle}</span>
+          <div className="flex items-center space-x-2 bg-black/70 backdrop-blur-md px-2.5 py-1 rounded-xl border border-slate-200 dark:border-white/10 pointer-events-auto">
+            <span className="text-slate-500 dark:text-slate-400">Target:</span>
+            <span className="text-amber-600 dark:text-amber-400 font-bold">{exercise.primaryMuscle}</span>
             <span className="text-slate-600">•</span>
             <span className="text-red-400 font-bold">{Math.round(60 + sinFactor * 40)}% LOAD</span>
           </div>
 
-          <div className="flex items-center space-x-1.5 bg-black/70 backdrop-blur-md px-2.5 py-1 rounded-xl border border-white/10 pointer-events-auto">
-            <Activity className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-            <span className="text-white font-bold">{Math.round(progress)}% ROM</span>
+          <div className="flex items-center space-x-1.5 bg-black/70 backdrop-blur-md px-2.5 py-1 rounded-xl border border-slate-200 dark:border-white/10 pointer-events-auto">
+            <Activity className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 animate-pulse" />
+            <span className="text-slate-900 dark:text-white font-bold">{Math.round(progress)}% ROM</span>
           </div>
         </div>
       </div>
 
       {/* Repetition Progression Bar & Controls Footer */}
-      <div className="w-full bg-slate-900/90 h-1.5 relative overflow-hidden">
+      <div className="w-full bg-slate-100/90 dark:bg-slate-900/90 h-1.5 relative overflow-hidden">
         <div
           className="bg-gradient-to-r from-amber-500 via-amber-400 to-red-500 h-full transition-all duration-75"
           style={{ width: `${progress}%` }}
@@ -638,7 +626,7 @@ export const Cinematic3DMotionViewer: React.FC<Cinematic3DMotionViewerProps> = (
       </div>
 
       {showControls && (
-        <div className="bg-[#05070d] px-3 py-1.5 flex items-center justify-between border-t border-white/5 text-[11px] font-tech text-slate-400">
+        <div className="bg-slate-50 dark:bg-[#05070d] px-3 py-1.5 flex items-center justify-between border-t border-slate-200/80 dark:border-white/5 text-[11px] font-tech text-slate-500 dark:text-slate-400">
           <div className="flex items-center space-x-2">
             <button
               type="button"
@@ -646,11 +634,11 @@ export const Cinematic3DMotionViewer: React.FC<Cinematic3DMotionViewerProps> = (
                 hapticTap();
                 setIsPlaying(!isPlaying);
               }}
-              className="p-1 hover:text-white transition-colors"
+              className="p-1 hover:text-slate-900 dark:hover:text-white transition-colors"
             >
               {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 fill-current" />}
             </button>
-            <span>Reps: <strong className="text-amber-400">{repCount}</strong></span>
+            <span>Reps: <strong className="text-amber-600 dark:text-amber-400">{repCount}</strong></span>
           </div>
 
           <div className="flex items-center space-x-1.5">
@@ -664,7 +652,7 @@ export const Cinematic3DMotionViewer: React.FC<Cinematic3DMotionViewerProps> = (
                   setPlaybackSpeed(spd);
                 }}
                 className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                  playbackSpeed === spd ? 'bg-amber-500 text-black' : 'text-slate-400 hover:text-white'
+                  playbackSpeed === spd ? 'bg-amber-500 text-black' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
                 {spd}x

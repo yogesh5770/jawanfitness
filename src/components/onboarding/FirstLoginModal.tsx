@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, CheckCircle2, ArrowRight, UserCheck, Dumbbell, Target } from 'lucide-react';
+import { Sparkles, CheckCircle2, ArrowRight } from 'lucide-react';
 import { hapticTap } from '../../utils/audioHaptics';
 
 interface FirstLoginModalProps {
@@ -49,30 +49,30 @@ export const FirstLoginModal: React.FC<FirstLoginModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl animate-fadeIn">
-      <div className="relative w-full max-w-sm bg-[#0c101a] border border-amber-500/40 rounded-3xl p-6 text-left shadow-[0_20px_60px_rgba(245,158,11,0.25)] overflow-hidden">
+      <div className="relative w-full max-w-sm bg-white dark:bg-[#0c101a] border border-amber-500/40 rounded-3xl p-6 text-left shadow-[0_20px_60px_rgba(245,158,11,0.25)] max-h-[92dvh] overflow-y-auto overscroll-contain">
         {/* Glow ambient */}
         <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/15 rounded-full blur-3xl pointer-events-none" />
 
         {step === 1 ? (
           <div className="space-y-4">
-            <div className="flex items-center space-x-2 text-xs font-tech font-bold uppercase tracking-wider text-amber-400">
+            <div className="flex items-center space-x-2 text-xs font-tech font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
               <Sparkles className="w-4 h-4" />
               <span>Member Onboarding</span>
             </div>
 
             <div>
-              <h2 className="text-2xl font-black text-white font-display">
+              <h2 className="text-2xl font-black text-slate-900 dark:text-white font-display">
                 Welcome {clientName} 👋
               </h2>
-              <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+              <p className="text-xs text-slate-700 dark:text-slate-300 mt-1 leading-relaxed">
                 Let's complete your official physique profile before training begins.
               </p>
             </div>
 
             <div className="space-y-3 pt-2">
               {/* Height */}
-              <div className="bg-slate-900/80 border border-white/10 rounded-2xl p-3">
-                <label className="text-[10px] font-tech uppercase text-slate-400 font-bold block mb-1">
+              <div className="bg-slate-100/80 dark:bg-slate-900/80 border border-slate-200 dark:border-white/10 rounded-2xl p-3">
+                <label className="text-[10px] font-tech uppercase text-slate-500 dark:text-slate-400 font-bold block mb-1">
                   Height
                 </label>
                 <div className="flex items-center justify-between">
@@ -80,15 +80,15 @@ export const FirstLoginModal: React.FC<FirstLoginModalProps> = ({
                     type="number"
                     value={heightCm}
                     onChange={(e) => setHeightCm(Number(e.target.value))}
-                    className="text-xl font-black text-white font-tech bg-transparent outline-none w-24"
+                    className="text-xl font-black text-slate-900 dark:text-white font-tech bg-transparent outline-none w-24"
                   />
-                  <span className="text-xs font-bold text-slate-400">cm</span>
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">cm</span>
                 </div>
               </div>
 
               {/* Starting Weight */}
-              <div className="bg-slate-900/80 border border-white/10 rounded-2xl p-3">
-                <label className="text-[10px] font-tech uppercase text-slate-400 font-bold block mb-1">
+              <div className="bg-slate-100/80 dark:bg-slate-900/80 border border-slate-200 dark:border-white/10 rounded-2xl p-3">
+                <label className="text-[10px] font-tech uppercase text-slate-500 dark:text-slate-400 font-bold block mb-1">
                   Starting Weight
                 </label>
                 <div className="flex items-center justify-between">
@@ -96,21 +96,21 @@ export const FirstLoginModal: React.FC<FirstLoginModalProps> = ({
                     type="number"
                     value={weightKg}
                     onChange={(e) => setWeightKg(Number(e.target.value))}
-                    className="text-xl font-black text-amber-400 font-tech bg-transparent outline-none w-24"
+                    className="text-xl font-black text-amber-600 dark:text-amber-400 font-tech bg-transparent outline-none w-24"
                   />
-                  <span className="text-xs font-bold text-slate-400">kg</span>
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">kg</span>
                 </div>
               </div>
 
               {/* Goal */}
-              <div className="bg-slate-900/80 border border-white/10 rounded-2xl p-3">
-                <label className="text-[10px] font-tech uppercase text-slate-400 font-bold block mb-1">
+              <div className="bg-slate-100/80 dark:bg-slate-900/80 border border-slate-200 dark:border-white/10 rounded-2xl p-3">
+                <label className="text-[10px] font-tech uppercase text-slate-500 dark:text-slate-400 font-bold block mb-1">
                   Primary Mission Goal
                 </label>
                 <select
                   value={goal}
                   onChange={(e) => setGoal(e.target.value)}
-                  className="w-full bg-[#151a24] text-white text-xs font-bold rounded-xl p-2 border border-white/5 outline-none"
+                  className="w-full bg-white dark:bg-[#151a24] text-slate-900 dark:text-white text-xs font-bold rounded-xl p-2 border border-slate-200/80 dark:border-white/5 outline-none"
                 >
                   <option value="Weight Loss">Weight Loss</option>
                   <option value="Muscle Hypertrophy">Muscle Hypertrophy</option>
@@ -120,8 +120,8 @@ export const FirstLoginModal: React.FC<FirstLoginModalProps> = ({
               </div>
 
               {/* Goal Weight */}
-              <div className="bg-slate-900/80 border border-white/10 rounded-2xl p-3">
-                <label className="text-[10px] font-tech uppercase text-slate-400 font-bold block mb-1">
+              <div className="bg-slate-100/80 dark:bg-slate-900/80 border border-slate-200 dark:border-white/10 rounded-2xl p-3">
+                <label className="text-[10px] font-tech uppercase text-slate-500 dark:text-slate-400 font-bold block mb-1">
                   Target Goal Weight
                 </label>
                 <div className="flex items-center justify-between">
@@ -129,9 +129,9 @@ export const FirstLoginModal: React.FC<FirstLoginModalProps> = ({
                     type="number"
                     value={goalWeightKg}
                     onChange={(e) => setGoalWeightKg(Number(e.target.value))}
-                    className="text-xl font-black text-emerald-400 font-tech bg-transparent outline-none w-24"
+                    className="text-xl font-black text-emerald-600 dark:text-emerald-400 font-tech bg-transparent outline-none w-24"
                   />
-                  <span className="text-xs font-bold text-slate-400">kg</span>
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">kg</span>
                 </div>
               </div>
             </div>
@@ -148,35 +148,35 @@ export const FirstLoginModal: React.FC<FirstLoginModalProps> = ({
           </div>
         ) : (
           <div className="space-y-5 text-center py-2">
-            <div className="w-16 h-16 rounded-3xl bg-emerald-500/20 border border-emerald-500/40 mx-auto flex items-center justify-center text-emerald-400 shadow-[0_0_25px_rgba(16,185,129,0.4)]">
+            <div className="w-16 h-16 rounded-3xl bg-emerald-500/20 border border-emerald-500/40 mx-auto flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-[0_0_25px_rgba(16,185,129,0.4)]">
               <CheckCircle2 className="w-9 h-9" />
             </div>
 
             <div>
-              <h3 className="text-2xl font-black text-white font-display">
+              <h3 className="text-2xl font-black text-slate-900 dark:text-white font-display">
                 You're ready 🎉
               </h3>
-              <p className="text-xs text-slate-300 mt-2 leading-relaxed max-w-xs mx-auto">
-                Your profile has been saved. <span className="font-bold text-white">{trainerName}</span> will prepare your personalized workout and nutrition plan.
+              <p className="text-xs text-slate-700 dark:text-slate-300 mt-2 leading-relaxed max-w-xs mx-auto">
+                Your profile has been saved. <span className="font-bold text-slate-900 dark:text-white">{trainerName}</span> will prepare your personalized workout and nutrition plan.
               </p>
             </div>
 
-            <div className="bg-slate-900/80 border border-white/10 rounded-2xl p-3 text-left space-y-1.5 text-xs">
-              <div className="flex justify-between text-slate-400">
+            <div className="bg-slate-100/80 dark:bg-slate-900/80 border border-slate-200 dark:border-white/10 rounded-2xl p-3 text-left space-y-1.5 text-xs">
+              <div className="flex justify-between text-slate-500 dark:text-slate-400">
                 <span>Height:</span>
-                <span className="font-bold text-white">{heightCm} cm</span>
+                <span className="font-bold text-slate-900 dark:text-white">{heightCm} cm</span>
               </div>
-              <div className="flex justify-between text-slate-400">
+              <div className="flex justify-between text-slate-500 dark:text-slate-400">
                 <span>Current Weight:</span>
-                <span className="font-bold text-amber-400">{weightKg} kg</span>
+                <span className="font-bold text-amber-600 dark:text-amber-400">{weightKg} kg</span>
               </div>
-              <div className="flex justify-between text-slate-400">
+              <div className="flex justify-between text-slate-500 dark:text-slate-400">
                 <span>Target Goal:</span>
-                <span className="font-bold text-emerald-400">{goalWeightKg} kg ({goal})</span>
+                <span className="font-bold text-emerald-600 dark:text-emerald-400">{goalWeightKg} kg ({goal})</span>
               </div>
-              <div className="flex justify-between text-slate-400">
+              <div className="flex justify-between text-slate-500 dark:text-slate-400">
                 <span>Assigned Coach:</span>
-                <span className="font-bold text-slate-200">{trainerName}</span>
+                <span className="font-bold text-slate-800 dark:text-slate-200">{trainerName}</span>
               </div>
             </div>
 

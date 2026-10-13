@@ -1,17 +1,5 @@
-import React, { useState } from 'react';
-import { 
-  X, 
-  Bell, 
-  Dumbbell, 
-  Flame, 
-  Droplets, 
-  Trophy, 
-  MessageSquare, 
-  Check, 
-  Trash2,
-  ChevronRight,
-  Clock
-} from 'lucide-react';
+import React from 'react';
+import { X, Bell, Dumbbell, Flame, Droplets, Trophy, MessageSquare, ChevronRight } from 'lucide-react';
 import { hapticTap } from '../../utils/audioHaptics';
 
 export interface NotificationItem {
@@ -22,6 +10,14 @@ export interface NotificationItem {
   timestamp: number;
   read: boolean;
   actionTab?: 'home' | 'workout' | 'diet' | 'progress' | 'trainer';
+}
+
+function formatNotificationTime(ts: number): string {
+  const diffMin = Math.round((Date.now() - ts) / 60000);
+  if (diffMin < 60) return `${Math.max(1, diffMin)}m ago`;
+  const diffHours = Math.round(diffMin / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  return new Date(ts).toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
 interface NotificationCenterModalProps {
@@ -60,17 +56,11 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
     }
   };
 
-  const formatTime = (ts: number) => {
-    const diffMin = Math.round((Date.now() - ts) / 60000);
-    if (diffMin < 60) return `${Math.max(1, diffMin)}m ago`;
-    const diffHours = Math.round(diffMin / 60);
-    if (diffHours < 24) return `${diffHours}h ago`;
-    return new Date(ts).toLocaleDateString([], { month: 'short', day: 'numeric' });
-  };
+  const formatTime = formatNotificationTime;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
-      <div className="bg-white dark:bg-[#0c101a] border border-slate-200 dark:border-white/10 rounded-t-3xl sm:rounded-3xl w-full max-w-md max-h-[85vh] flex flex-col shadow-2xl overflow-hidden text-left transition-colors duration-200">
+      <div className="bg-white dark:bg-[#0c101a] border border-slate-200 dark:border-white/10 rounded-t-3xl sm:rounded-3xl w-full max-w-md h-[80dvh] max-h-[80dvh] sm:h-auto sm:max-h-[80vh] flex flex-col shadow-2xl overflow-hidden text-left transition-colors duration-200 overscroll-contain">
         {/* Header */}
         <div className="p-4 border-b border-slate-200 dark:border-white/10 flex items-center justify-between">
           <div className="flex items-center space-x-2">

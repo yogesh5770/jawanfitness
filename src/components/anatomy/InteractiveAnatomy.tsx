@@ -30,21 +30,21 @@ export const InteractiveAnatomy: React.FC<InteractiveAnatomyProps> = ({
   };
 
   return (
-    <div className="bg-[#0e121d] rounded-2xl border border-white/10 p-4 relative overflow-hidden shadow-lg">
+    <div className="bg-slate-100 dark:bg-[#0e121d] rounded-2xl border border-slate-200 dark:border-white/10 p-4 relative overflow-hidden shadow-lg">
       {/* View Switcher: Front / Back */}
       <div className="flex items-center justify-between mb-3">
         <div>
-          <span className="text-[10px] font-tech uppercase tracking-widest text-amber-500 font-bold">
+          <span className="text-[10px] font-tech uppercase tracking-widest text-amber-600 dark:text-amber-500 font-bold">
             3D ANATOMY EXPLORER
           </span>
-          <h3 className="text-sm font-bold text-white font-display">Target Muscle Group</h3>
+          <h3 className="text-sm font-bold text-slate-900 dark:text-white font-display">Target Muscle Group</h3>
         </div>
 
-        <div className="flex items-center bg-black/50 p-1 rounded-xl border border-white/10">
+        <div className="flex items-center bg-black/50 p-1 rounded-xl border border-slate-200 dark:border-white/10">
           <button
             onClick={() => setView('front')}
             className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
-              view === 'front' ? 'bg-amber-500 text-black shadow' : 'text-slate-400 hover:text-white'
+              view === 'front' ? 'bg-amber-500 text-black shadow' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             Front
@@ -52,7 +52,7 @@ export const InteractiveAnatomy: React.FC<InteractiveAnatomyProps> = ({
           <button
             onClick={() => setView('back')}
             className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
-              view === 'back' ? 'bg-amber-500 text-black shadow' : 'text-slate-400 hover:text-white'
+              view === 'back' ? 'bg-amber-500 text-black shadow' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             Back
@@ -258,13 +258,13 @@ export const InteractiveAnatomy: React.FC<InteractiveAnatomyProps> = ({
         </svg>
 
         {/* Selected Muscle Overlay Badge */}
-        <div className="absolute bottom-1 right-2 bg-black/70 backdrop-blur border border-amber-500/30 px-2.5 py-1 rounded-full text-xs font-bold text-amber-400">
+        <div className="absolute bottom-1 right-2 bg-black/70 backdrop-blur border border-amber-500/30 px-2.5 py-1 rounded-full text-xs font-bold text-amber-600 dark:text-amber-400">
           Target: {selectedMuscle}
         </div>
       </div>
 
       {/* Horizontal Muscle Category Scroll Chips */}
-      <div className="flex items-center space-x-2 overflow-x-auto no-scrollbar pt-2 border-t border-white/5">
+      <div className="flex items-center space-x-2 overflow-x-auto no-scrollbar pt-2 border-t border-slate-200/80 dark:border-white/5">
         {muscleChips.map((chip) => {
           const isSelected = selectedMuscle === chip.group;
           return (
@@ -274,7 +274,7 @@ export const InteractiveAnatomy: React.FC<InteractiveAnatomyProps> = ({
               className={`flex-shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
                 isSelected
                   ? 'bg-amber-500 text-black shadow-[0_0_12px_rgba(245,158,11,0.4)]'
-                  : 'bg-slate-900/80 text-slate-300 hover:text-white border border-white/10'
+                  : 'bg-slate-100/80 dark:bg-slate-900/80 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-white/10'
               }`}
             >
               {chip.label}

@@ -299,39 +299,52 @@ class AuthService {
 
     try {
       if (token) {
-        const { data } = await safeApiCall('verify', {
+        const { data, error } = await safeApiCall('verify', {
           method: 'POST',
           body: { token },
           token
         });
 
-        if (data && data.valid && data.user) {
-          const normalizedUser: AuthUser = {
-            id: data.user.id,
-            email: data.user.email,
-            name: data.user.name,
-            role: data.user.role,
-            phone: data.user.phone,
-            loginId: data.user.loginId || data.user.login_id || undefined,
-            startingWeightKg: data.user.startingWeightKg ?? data.user.starting_weight_kg ?? undefined,
-            currentWeightKg: data.user.currentWeightKg ?? data.user.current_weight_kg ?? undefined,
-            goalWeightKg: data.user.goalWeightKg ?? data.user.goal_weight_kg ?? undefined,
-            heightCm: data.user.heightCm ?? data.user.height_cm ?? undefined,
-            goal: data.user.goal ?? undefined,
-            trainerId: data.user.trainerId ?? data.user.trainer_id ?? undefined,
-            trainerName: data.user.trainerName ?? data.user.trainer_name ?? undefined
-          };
-          this.currentSession = {
-            token,
-            expiresAt: data.expiresAt || '',
-            user: normalizedUser
-          };
+        // Server responded — trust its verdict
+        if (!error && data && typeof data.valid === 'boolean') {
+          if (data.valid && data.user) {
+            const normalizedUser: AuthUser = {
+              id: data.user.id,
+              email: data.user.email,
+              name: data.user.name,
+              role: data.user.role,
+              phone: data.user.phone,
+              loginId: data.user.loginId || data.user.login_id || undefined,
+              startingWeightKg: data.user.startingWeightKg ?? data.user.starting_weight_kg ?? undefined,
+              currentWeightKg: data.user.currentWeightKg ?? data.user.current_weight_kg ?? undefined,
+              goalWeightKg: data.user.goalWeightKg ?? data.user.goal_weight_kg ?? undefined,
+              heightCm: data.user.heightCm ?? data.user.height_cm ?? undefined,
+              goal: data.user.goal ?? undefined,
+              trainerId: data.user.trainerId ?? data.user.trainer_id ?? undefined,
+              trainerName: data.user.trainerName ?? data.user.trainer_name ?? undefined
+            };
+            this.currentSession = {
+              token,
+              expiresAt: data.expiresAt || '',
+              user: normalizedUser
+            };
+            try {
+              localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(normalizedUser));
+            } catch {
+              // fallback
+            }
+            return true;
+          }
+
+          // Server says the session is expired/revoked — force logout
+          this.currentSession = null;
           try {
-            localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(normalizedUser));
+            localStorage.removeItem(STORAGE_TOKEN_KEY);
+            localStorage.removeItem(STORAGE_USER_KEY);
           } catch {
             // fallback
           }
-          return true;
+          return false;
         }
       }
     } catch {

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en" class="light">
   <head>
     <meta charset="UTF-8" />
 
@@ -25,21 +25,12 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="shortcut icon" href="/favicon.ico" />
 
-    <!-- ===================================================================
-         PWA MANIFEST LINK — Firefox, Samsung Internet, and older browsers
-         that don't auto-detect the injected manifest need this explicit link
-         =================================================================== -->
-    <link rel="manifest" href="/manifest.webmanifest" />
 
     <!-- ===================================================================
-         THEME COLORS — per-OS adaptive
-         Chrome/Edge/Samsung Internet Android: dark obsidian
+         THEME COLORS — app is light by default (themeService can switch)
          =================================================================== -->
-    <meta name="theme-color" content="#07090e" />
-    <!-- Light mode fallback for browsers supporting media query on theme-color -->
-    <meta name="theme-color" content="#f4f6fb" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#07090e" media="(prefers-color-scheme: dark)" />
-    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#f4f6fb" />
+    <meta name="color-scheme" content="light dark" />
 
     <!-- ===================================================================
          ANDROID / CHROME META
@@ -53,7 +44,7 @@
          =================================================================== -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <!-- black-translucent = true edge-to-edge on iPhone notch/Dynamic Island -->
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Jawan Fitness" />
     <!-- Standard 180×180 touch icon (iPhone 6 Plus and later) -->
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -82,7 +73,7 @@
          MICROSOFT / WINDOWS META
          Pins the PWA to the Windows taskbar and Start menu correctly
          =================================================================== -->
-    <meta name="msapplication-TileColor" content="#07090e" />
+    <meta name="msapplication-TileColor" content="#f4f6fb" />
     <meta name="msapplication-TileImage" content="/pwa-512x512.png" />
     <meta name="msapplication-config" content="none" />
     <meta name="msapplication-starturl" content="/" />
@@ -125,7 +116,7 @@
       rel="stylesheet"
     />
   </head>
-  <body class="bg-[#07090e] text-slate-100 antialiased selection:bg-amber-500 selection:text-black min-h-screen overflow-x-hidden font-['Plus_Jakarta_Sans',sans-serif]">
+  <body class="antialiased selection:bg-amber-500 selection:text-black min-h-screen overflow-x-hidden font-['Plus_Jakarta_Sans',sans-serif]">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

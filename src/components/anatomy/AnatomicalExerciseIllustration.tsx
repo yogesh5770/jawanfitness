@@ -235,16 +235,28 @@ export const AnatomicalExerciseIllustration: React.FC<AnatomicalExerciseIllustra
             {/* Torso */}
             <path d="M46 38 L84 38 L78 94 L52 94 Z" fill="url(#bodyGrey)" />
 
-            {/* ACTIVE MUSCLE: PECTORALS OR TARGET */}
-            <g filter="url(#neonRed)">
-              <path
-                d="M48 40 L82 40 C80 58 74 68 65 70 C56 68 50 58 48 40 Z"
-                fill="url(#muscleGlow)"
-                stroke="#ffab91"
-                strokeWidth="1.5"
-              />
-              <path d="M52 46 L62 58 M78 46 L68 58" stroke="#ffffff" strokeWidth="0.8" opacity="0.6" />
-            </g>
+            {/* ACTIVE MUSCLE: PECTORALS OR ABS */}
+            {isAbs ? (
+              <g filter="url(#neonRed)">
+                {/* Rectus abdominis pack */}
+                <rect x="58" y="70" width="6" height="6" rx="1.5" fill="url(#muscleGlow)" stroke="#ffab91" strokeWidth="0.8" />
+                <rect x="66" y="70" width="6" height="6" rx="1.5" fill="url(#muscleGlow)" stroke="#ffab91" strokeWidth="0.8" />
+                <rect x="58" y="78" width="6" height="6" rx="1.5" fill="url(#muscleGlow)" stroke="#ffab91" strokeWidth="0.8" />
+                <rect x="66" y="78" width="6" height="6" rx="1.5" fill="url(#muscleGlow)" stroke="#ffab91" strokeWidth="0.8" />
+                <rect x="59" y="86" width="5" height="5" rx="1" fill="url(#muscleGlow)" stroke="#ffab91" strokeWidth="0.8" />
+                <rect x="66" y="86" width="5" height="5" rx="1" fill="url(#muscleGlow)" stroke="#ffab91" strokeWidth="0.8" />
+              </g>
+            ) : (
+              <g filter="url(#neonRed)">
+                <path
+                  d="M48 40 L82 40 C80 58 74 68 65 70 C56 68 50 58 48 40 Z"
+                  fill="url(#muscleGlow)"
+                  stroke="#ffab91"
+                  strokeWidth="1.5"
+                />
+                <path d="M52 46 L62 58 M78 46 L68 58" stroke="#ffffff" strokeWidth="0.8" opacity="0.6" />
+              </g>
+            )}
 
             {/* Biceps / Arms */}
             <g filter={isBiceps || isTriceps ? 'url(#neonRed)' : undefined}>

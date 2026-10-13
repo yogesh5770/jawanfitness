@@ -6,7 +6,7 @@ import {
   AssignedWorkout,
   AssignedMealPlan
 } from '../../types';
-import { syncedStore, AppSyncState } from '../../services/syncedStore';
+import { syncedStore, AppSyncState, ClientData } from '../../services/syncedStore';
 import { ExerciseService } from '../../services/exerciseService';
 import { HomeScreen } from '../home/HomeScreen';
 import { TrainerChatScreen } from './TrainerChatScreen';
@@ -18,8 +18,8 @@ import { ActiveWorkoutModal } from '../workout/ActiveWorkoutModal';
 import { FirstLoginModal } from '../onboarding/FirstLoginModal';
 import { IOSInstallBanner } from '../common/IOSInstallBanner';
 import { hapticTap } from '../../utils/audioHaptics';
-import { Users, Sparkles, LogOut, Eye, EyeOff, KeyRound, Loader2 } from 'lucide-react';
-import { navigateToRole } from '../../services/appRouter';
+import { LogOut, KeyRound, Loader2 } from 'lucide-react';
+
 import { authService, AuthUser } from '../../services/authService';
 import { ChangePasswordModal } from '../common/ChangePasswordModal';
 import { ThemeToggle } from '../common/ThemeToggle';
@@ -27,10 +27,140 @@ import { WorkoutHubScreen } from '../workout/WorkoutHubScreen';
 import { ProfileScreen } from '../profile/ProfileScreen';
 import { FloatingCoachButton } from '../common/FloatingCoachButton';
 import { NotificationCenterModal, NotificationItem } from '../common/NotificationCenterModal';
+import { SyncStatusBadge } from '../common/SyncStatusBadge';
 
 export interface ClientAppProps {
   currentUser?: AuthUser | null;
   onLogout?: () => void;
+}
+
+// Per-member record filter — records with no clientId are treated as belonging
+// to the active client (legacy data written before clientId stamping existed).
+function filterByClient<T extends { clientId?: string }>(
+  arr: T[] | undefined,
+  active: { id?: string; loginId?: string; email?: string } | null | undefined
+): T[] {
+  const list = arr || [];
+  if (!active) return list;
+  const id = active.id?.toLowerCase();
+  const login = active.loginId?.toLowerCase();
+  const email = active.email?.toLowerCase();
+  if (!id && !login && !email) return list;
+  return list.filter((r) => {
+    const cid = r.clientId?.toLowerCase();
+    if (!cid) return true;
+    if (id && cid === id) return true;
+    if (login && cid === login) return true;
+    if (email && cid === email) return true;
+    return false;
+  });
+}
+
+function getNotificationFirstSeen(key: string): number {
+  try {
+    const store = JSON.parse(localStorage.getItem('jawan_notif_firstseen_v1') || '{}');
+    if (store[key]) return store[key];
+    const now = Date.now();
+    store[key] = now;
+    localStorage.setItem('jawan_notif_firstseen_v1', JSON.stringify(store));
+    return now;
+  } catch {
+    return Date.now();
+  }
+}
+
+function buildClientNotifications(
+  syncState: AppSyncState,
+  assignedWorkout: AssignedWorkout | null,
+  assignedDiet: AssignedMealPlan | null,
+  activeClient: ClientData | null,
+  readNotifIds: string[]
+): NotificationItem[] {
+  const items: NotificationItem[] = [];
+  const clientId = activeClient?.id;
+
+  // 1. Coach message (latest)
+  const coachMsgs = (syncState.messages || []).filter(
+    (m) => m.sender === 'trainer' && (!m.clientId || !clientId || m.clientId === clientId)
+  );
+  const lastCoachMsg = coachMsgs[coachMsgs.length - 1];
+  if (lastCoachMsg) {
+    items.push({
+      id: `chat-${lastCoachMsg.id}`,
+      title: `Message from ${lastCoachMsg.senderName || 'your coach'}`,
+      description: lastCoachMsg.text,
+      type: 'chat',
+      timestamp: Number(lastCoachMsg.timestamp) || getNotificationFirstSeen(`chat-${lastCoachMsg.id}`),
+      read: readNotifIds.includes(`chat-${lastCoachMsg.id}`),
+      actionTab: 'trainer'
+    });
+  }
+
+  // 2. Assigned workout / diet
+  if (assignedWorkout) {
+    const key = `assign-workout-${assignedWorkout.id}`;
+    const parsed = Date.parse(assignedWorkout.assignedDate || '');
+    items.push({
+      id: key,
+      title: 'Workout Assigned',
+      description: `${assignedWorkout.title} — review your session plan.`,
+      type: 'workout',
+      timestamp: Number.isFinite(parsed) && parsed > 0 ? parsed : getNotificationFirstSeen(key),
+      read: readNotifIds.includes(key),
+      actionTab: 'workout'
+    });
+  }
+  if (assignedDiet) {
+    const key = `assign-diet-${assignedDiet.id}`;
+    const parsed = Date.parse((assignedDiet as any).assignedDate || '');
+    items.push({
+      id: key,
+      title: 'Diet Plan Assigned',
+      description: `${assignedDiet.title} — your coach set up your nutrition plan.`,
+      type: 'diet',
+      timestamp: Number.isFinite(parsed) && parsed > 0 ? parsed : getNotificationFirstSeen(key),
+      read: readNotifIds.includes(key),
+      actionTab: 'diet'
+    });
+  }
+
+  // 3. Latest completed workout session
+  const sessions = [...(syncState.workoutHistory || [])]
+    .filter((s) => !s.clientId || !clientId || s.clientId === clientId)
+    .sort((a, b) => (b.endTime || b.startTime) - (a.endTime || a.startTime));
+  const lastSession = sessions[0];
+  if (lastSession) {
+    const key = `session-${lastSession.id}`;
+    items.push({
+      id: key,
+      title: 'Workout Completed',
+      description: `${lastSession.routineName} — ${Math.round((lastSession.totalVolumeKg || 0)).toLocaleString()} kg total volume.`,
+      type: 'achievement',
+      timestamp: lastSession.endTime || lastSession.startTime,
+      read: readNotifIds.includes(key),
+      actionTab: 'workout'
+    });
+  }
+
+  // 4. Weight logged today
+  const todayISO = new Date();
+  const todayKey = `${todayISO.getFullYear()}-${String(todayISO.getMonth() + 1).padStart(2, '0')}-${String(todayISO.getDate()).padStart(2, '0')}`;
+  const todayWeight = [...(syncState.weightHistory || [])].reverse().find((w) => w.date === todayKey);
+  if (todayWeight) {
+    const key = `weight-${todayKey}`;
+    const midnight = new Date(todayISO.getFullYear(), todayISO.getMonth(), todayISO.getDate()).getTime();
+    items.push({
+      id: key,
+      title: 'Weight Logged',
+      description: `${todayWeight.weightKg.toFixed(1)} kg recorded today. Keep the streak going!`,
+      type: 'achievement',
+      timestamp: midnight,
+      read: readNotifIds.includes(key),
+      actionTab: 'progress'
+    });
+  }
+
+  return items.sort((a, b) => b.timestamp - a.timestamp).slice(0, 15);
 }
 
 export const ClientApp: React.FC<ClientAppProps> = ({ currentUser: initialUser, onLogout }) => {
@@ -45,41 +175,20 @@ export const ClientApp: React.FC<ClientAppProps> = ({ currentUser: initialUser, 
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [workoutSubTab, setWorkoutSubTab] = useState<'assigned' | 'library'>('assigned');
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-  const [notifications, setNotifications] = useState<NotificationItem[]>([
-    {
-      id: 'n-1',
-      title: 'Workout Prescribed',
-      description: 'Your coach configured your training session. Review movements and crush today!',
-      type: 'workout',
-      timestamp: Date.now() - 1000 * 60 * 35,
-      read: false,
-      actionTab: 'workout'
-    },
-    {
-      id: 'n-2',
-      title: 'Hydration Target',
-      description: 'Keep your daily water intake on track to support recovery and performance.',
-      type: 'water',
-      timestamp: Date.now() - 1000 * 60 * 120,
-      read: false,
-      actionTab: 'diet'
-    },
-    {
-      id: 'n-3',
-      title: 'Transformation Momentum',
-      description: 'Consistent adherence logged this week! Check your updated body telemetry.',
-      type: 'achievement',
-      timestamp: Date.now() - 1000 * 60 * 360,
-      read: true,
-      actionTab: 'progress'
+  // Read-state for real notifications, persisted locally
+  const [readNotifIds, setReadNotifIds] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('jawan_notif_read_v1') || '[]');
+    } catch {
+      return [];
     }
-  ]);
+  });
 
-  useEffect(() => {
-    if (initialUser) {
-      setCurrentUser(initialUser);
-    }
-  }, [initialUser]);
+  const [prevUserId, setPrevUserId] = useState(initialUser?.id);
+  if (initialUser && initialUser.id !== prevUserId) {
+    setPrevUserId(initialUser.id);
+    setCurrentUser(initialUser);
+  }
 
   useEffect(() => {
     const unsub = syncedStore.subscribe((newState) => {
@@ -177,12 +286,6 @@ export const ClientApp: React.FC<ClientAppProps> = ({ currentUser: initialUser, 
     }
   }
 
-  const handleSelectClient = (clientId: string) => {
-    hapticTap();
-    setPersistedClientId(clientId);
-    localStorage.setItem('jawan_active_client_id_v1', clientId);
-    syncedStore.setActiveClient(clientId);
-  };
 
   const handleLogoutClient = () => {
     hapticTap();
@@ -194,22 +297,6 @@ export const ClientApp: React.FC<ClientAppProps> = ({ currentUser: initialUser, 
     localStorage.removeItem('jawan_active_client_id_v1');
     if (onLogout) onLogout();
   };
-
-  // If activeClient is not resolved, transition back to Unified Auth Gateway
-  if (!activeClient) {
-    if (onLogout) {
-      setTimeout(() => onLogout(), 50);
-    }
-    return (
-      <div className="min-h-screen bg-[#04060a] text-white flex flex-col justify-center items-center p-4">
-        <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 p-2 flex items-center justify-center shadow-lg shadow-amber-500/20 mb-4 animate-pulse">
-          <img src="/logo-3d-tight.png" alt="Jawan Fitness" className="w-full h-full object-contain" />
-        </div>
-        <Loader2 className="w-6 h-6 text-amber-500 animate-spin mb-2" />
-        <span className="text-xs text-slate-400 font-tech tracking-wider">Accessing Jawan Member Session...</span>
-      </div>
-    );
-  }
 
   const resolveAssignedWorkout = (): AssignedWorkout | null => {
     const workouts = syncState.assignedWorkouts || {};
@@ -245,9 +332,6 @@ export const ClientApp: React.FC<ClientAppProps> = ({ currentUser: initialUser, 
       }
     }
 
-    if (validKeys.length === 1) {
-      return workouts[validKeys[0]];
-    }
     return null;
   };
 
@@ -285,14 +369,60 @@ export const ClientApp: React.FC<ClientAppProps> = ({ currentUser: initialUser, 
       }
     }
 
-    if (validKeys.length === 1) {
-      return diets[validKeys[0]];
-    }
     return null;
   };
 
   const assignedWorkout = resolveAssignedWorkout();
   const assignedDiet = resolveAssignedDiet();
+
+  // Per-member filtered history — computed once, reused by every child screen.
+  const clientWorkoutHistory = React.useMemo(
+    () => filterByClient(syncState.workoutHistory, activeClient),
+    [syncState.workoutHistory, activeClient]
+  );
+  const clientWeightHistory = React.useMemo(
+    () => filterByClient(syncState.weightHistory, activeClient),
+    [syncState.weightHistory, activeClient]
+  );
+  const clientLoggedMeals = React.useMemo(
+    () => filterByClient(syncState.loggedMeals, activeClient),
+    [syncState.loggedMeals, activeClient]
+  );
+
+  // REAL notifications — derived from synced state, never fabricated
+  const notifications = React.useMemo<NotificationItem[]>(() => {
+    return buildClientNotifications(syncState, assignedWorkout, assignedDiet, activeClient, readNotifIds);
+  }, [syncState, assignedWorkout, assignedDiet, activeClient, readNotifIds]);
+
+  // If activeClient is not resolved, transition back to Unified Auth Gateway
+  // (side effects belong in effects, never during render)
+  useEffect(() => {
+    if (!activeClient && onLogout) {
+      const t = setTimeout(() => onLogout(), 50);
+      return () => clearTimeout(t);
+    }
+  }, [activeClient, onLogout]);
+
+  // Keep store's activeClientId in sync with the logged-in member
+  // (logWeight and other member writes target activeClientId)
+  useEffect(() => {
+    const id = activeClient?.id;
+    if (id && syncState.activeClientId !== id) {
+      syncedStore.setActiveClient(id);
+    }
+  }, [activeClient?.id, syncState.activeClientId]);
+
+  if (!activeClient) {
+    return (
+      <div className="min-h-screen bg-[#f4f6fb] dark:bg-[#04060a] text-slate-900 dark:text-white flex flex-col justify-center items-center p-4">
+        <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 p-2 flex items-center justify-center shadow-lg shadow-amber-500/20 mb-4 animate-pulse">
+          <img src="/logo-3d-tight.png" alt="Jawan Fitness" className="w-full h-full object-contain" />
+        </div>
+        <Loader2 className="w-6 h-6 text-amber-500 animate-spin mb-2" />
+        <span className="text-xs text-slate-500 dark:text-slate-400 font-tech tracking-wider">Accessing Jawan Member Session...</span>
+      </div>
+    );
+  }
 
   const handleStartAssignedWorkout = () => {
     if (!assignedWorkout) return;
@@ -403,7 +533,16 @@ export const ClientApp: React.FC<ClientAppProps> = ({ currentUser: initialUser, 
   };
 
   const handleMarkAllNotificationsRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    const ids = notifications.map((n) => n.id);
+    setReadNotifIds((prev) => {
+      const next = Array.from(new Set([...prev, ...ids])).slice(-200);
+      try {
+        localStorage.setItem('jawan_notif_read_v1', JSON.stringify(next));
+      } catch {
+        // fallback
+      }
+      return next;
+    });
   };
 
   const isTrainerIdValid = Boolean(activeClient?.trainerId && activeClient.trainerId.trim() !== '' && activeClient.trainerId !== 'Unassigned');
@@ -429,11 +568,11 @@ export const ClientApp: React.FC<ClientAppProps> = ({ currentUser: initialUser, 
     : '';
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-[#04060a] text-slate-900 dark:text-slate-100 flex flex-col items-center justify-start p-0 font-sans select-none transition-colors duration-200">
+    <div className="min-h-screen bg-slate-100 dark:bg-[#04060a] text-slate-900 dark:text-slate-100 flex flex-col items-center justify-start p-0 font-sans transition-colors duration-200">
       {/* Responsive executive container: fluid on phone, wide and spacious on laptop/desktop */}
-      <div className="w-full max-w-lg md:max-w-3xl lg:max-w-5xl xl:max-w-6xl min-h-screen bg-white dark:bg-[#07090e] text-slate-900 dark:text-slate-100 flex flex-col relative overflow-x-hidden shadow-2xl text-left border-x border-slate-200 dark:border-white/5 transition-colors duration-200">
+      <div className="w-full max-w-lg md:max-w-3xl lg:max-w-5xl xl:max-w-6xl min-h-screen bg-white dark:bg-[#07090e] text-slate-900 dark:text-slate-100 flex flex-col relative shadow-2xl text-left border-x border-slate-200 dark:border-white/5 transition-colors duration-200">
         {/* Top Status Bar with Member Name, Assigned Coach, Password & Logout */}
-        <header className="px-3 sm:px-4 pt-safe py-2.5 sm:py-3 flex items-center justify-between bg-white/95 dark:bg-[#0c101a] border-b border-slate-200 dark:border-white/5 sticky top-0 z-40 backdrop-blur-md transition-colors duration-200 gap-2">
+        <header className="px-3 sm:px-4 pt-safe py-2.5 sm:py-3 flex items-center justify-between bg-white/95 dark:bg-[#0c101a]/95 border-b border-slate-200 dark:border-white/5 sticky top-0 z-40 backdrop-blur-md transition-colors duration-200 gap-2">
           <div className="flex items-center space-x-2 sm:space-x-2.5 min-w-0 flex-1">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center text-black font-black text-xs shadow-md shadow-amber-500/20 flex-shrink-0">
               {activeClient.name.slice(0, 2).toUpperCase()}
@@ -458,9 +597,8 @@ export const ClientApp: React.FC<ClientAppProps> = ({ currentUser: initialUser, 
 
           <div className="flex items-center space-x-1 sm:space-x-1.5 flex-shrink-0">
             <ThemeToggle />
-            <div className="hidden sm:flex items-center space-x-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span>LIVE</span>
+            <div className="hidden sm:flex">
+              <SyncStatusBadge compact />
             </div>
 
             <button
@@ -486,7 +624,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({ currentUser: initialUser, 
         </header>
 
         {/* Tab Router */}
-        <main className="flex-1 p-3 sm:p-4 overflow-y-auto scrollbar-none pb-24">
+        <main className="flex-1 p-3 sm:p-4 pb-32">
           {clientTab === 'home' && (
             <HomeScreen
               clientName={activeClient.name}
@@ -500,7 +638,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({ currentUser: initialUser, 
               assignedWorkout={assignedWorkout}
               assignedMealPlan={assignedDiet}
               activeWorkoutSession={syncState.activeWorkoutSession}
-              loggedMeals={syncState.loggedMeals}
+              loggedMeals={clientLoggedMeals}
               goals={{
                 calories: assignedDiet ? assignedDiet.dailyCalories : 2300,
                 protein: assignedDiet ? assignedDiet.dailyProtein : 150,
@@ -510,7 +648,8 @@ export const ClientApp: React.FC<ClientAppProps> = ({ currentUser: initialUser, 
                 waterMl: 3000
               }}
               waterMl={syncState.waterMl}
-              weightHistory={syncState.weightHistory}
+              weightHistory={clientWeightHistory}
+              workoutHistory={clientWorkoutHistory}
               latestMessage={syncState.messages.filter((m) => {
                 if (!m.clientId) return true;
                 if (m.clientId === activeClient.id) return true;
@@ -572,7 +711,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({ currentUser: initialUser, 
 
               {workoutSubTab === 'assigned' ? (
                 <WorkoutHubScreen
-                  workoutHistory={syncState.workoutHistory || []}
+                  workoutHistory={clientWorkoutHistory}
                   assignedWorkout={assignedWorkout}
                   onStartRoutine={handleStartRoutineTemplate}
                   onStartAssignedWorkout={handleStartAssignedWorkout}
@@ -590,7 +729,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({ currentUser: initialUser, 
           {clientTab === 'diet' && (
             <DietScreen
               trainerName={currentTrainerName}
-              loggedMeals={syncState.loggedMeals}
+              loggedMeals={clientLoggedMeals}
               waterMl={syncState.waterMl}
               goals={{
                 calories: assignedDiet ? assignedDiet.dailyCalories : 2300,
@@ -609,11 +748,14 @@ export const ClientApp: React.FC<ClientAppProps> = ({ currentUser: initialUser, 
 
           {clientTab === 'progress' && (
             <ProgressScreen
-              weightHistory={syncState.weightHistory}
+              weightHistory={clientWeightHistory}
               startingWeightKg={activeClient.startingWeightKg}
               goalWeightKg={activeClient.goalWeightKg}
               currentWeightKg={activeClient.currentWeightKg}
               onLogWeight={(w) => syncedStore.logWeight(w)}
+              workoutHistory={clientWorkoutHistory}
+              loggedMeals={clientLoggedMeals}
+              dailyWaterLog={syncState.dailyWaterLog}
             />
           )}
 

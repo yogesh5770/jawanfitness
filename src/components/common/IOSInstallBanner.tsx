@@ -14,17 +14,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-  Share,
-  PlusSquare,
-  X,
-  Download,
-  Monitor,
-  Smartphone,
-  Laptop,
-  Globe,
-  Apple
-} from 'lucide-react';
+import { Share, PlusSquare, X, Download, Monitor, Smartphone, Laptop, Apple } from 'lucide-react';
 import { hapticTap } from '../../utils/audioHaptics';
 
 // ─── Platform detection helpers ──────────────────────────────────────────────
@@ -76,32 +66,25 @@ const DISMISS_DURATION_MS = 3 * 24 * 60 * 60 * 1000; // 3 days before re-showing
 
 export const IOSInstallBanner: React.FC = () => {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  const [dismissed, setDismissed] = useState(false);
-  const [installed, setInstalled] = useState(false);
-  const [platform, setPlatform] = useState<ReturnType<typeof detectPlatform> | null>(null);
-
-  useEffect(() => {
-    // 1. Already standalone / native APK — never show
-    if (isRunningStandalone()) {
-      setInstalled(true);
-      return;
-    }
-
-    setPlatform(detectPlatform());
-
-    // 2. Check if user dismissed within the cooldown period
+  const [installed, setInstalled] = useState<boolean>(() => isRunningStandalone());
+  const [dismissed, setDismissed] = useState<boolean>(() => {
     try {
       const raw = localStorage.getItem(DISMISS_KEY);
       if (raw) {
         const ts = parseInt(raw, 10);
-        if (!isNaN(ts) && Date.now() - ts < DISMISS_DURATION_MS) {
-          setDismissed(true);
-          return;
-        }
+        return !isNaN(ts) && Date.now() - ts < DISMISS_DURATION_MS;
       }
     } catch {
-      // localStorage not available — still show the banner
+      // ignore
     }
+    return false;
+  });
+  const [platform] = useState<ReturnType<typeof detectPlatform> | null>(() =>
+    typeof window !== 'undefined' ? detectPlatform() : null
+  );
+
+  useEffect(() => {
+    if (installed) return;
 
     // 3. Capture standard Chromium beforeinstallprompt
     //    (Android Chrome, Samsung Internet, Windows/macOS/Linux Chrome & Edge)
@@ -122,7 +105,7 @@ export const IOSInstallBanner: React.FC = () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
       window.removeEventListener('appinstalled', handleAppInstalled);
     };
-  }, []);
+  }, [installed]);
 
   const handleInstallClick = useCallback(async () => {
     hapticTap();
@@ -156,7 +139,6 @@ export const IOSInstallBanner: React.FC = () => {
 
   // Determine what label/icon/instruction to show
   const isDesktop = isWindows || isMacOS || isLinux;
-  const isMobile = isIOS || isAndroid;
 
   // We always want to show the banner on:
   //  - iOS Safari (manual instructions)
@@ -189,8 +171,8 @@ export const IOSInstallBanner: React.FC = () => {
     // One-tap native install (Chromium beforeinstallprompt — Android, Windows, macOS, Linux)
     if (deferredPrompt) {
       return (
-        <div className="mt-3.5 pt-3 border-t border-white/10 flex items-center justify-between gap-3">
-          <div className="flex items-center space-x-1.5 text-[11px] text-slate-400 font-tech">
+        <div className="mt-3.5 pt-3 border-t border-slate-200 dark:border-white/10 flex items-center justify-between gap-3">
+          <div className="flex items-center space-x-1.5 text-[11px] text-slate-500 dark:text-slate-400 font-tech">
             <OsIcon className="w-3.5 h-3.5 flex-shrink-0" />
             <span>Ready to install on {osLabel}</span>
           </div>
@@ -208,24 +190,24 @@ export const IOSInstallBanner: React.FC = () => {
     // iOS / iPadOS Safari — Share → Add to Home Screen
     if (isIOS) {
       return (
-        <div className="mt-3.5 pt-3 border-t border-white/10 space-y-2">
-          <p className="text-[11px] text-slate-300 font-medium">Two quick steps in Safari:</p>
-          <div className="flex items-center justify-between text-[11px] text-slate-300 font-medium gap-2">
-            <div className="flex items-center space-x-1.5 bg-slate-800/60 px-2 py-1.5 rounded-lg border border-white/10">
-              <span className="text-slate-400">1.</span>
+        <div className="mt-3.5 pt-3 border-t border-slate-200 dark:border-white/10 space-y-2">
+          <p className="text-[11px] text-slate-700 dark:text-slate-300 font-medium">Two quick steps in Safari:</p>
+          <div className="flex items-center justify-between text-[11px] text-slate-700 dark:text-slate-300 font-medium gap-2">
+            <div className="flex items-center space-x-1.5 bg-slate-100 dark:bg-slate-800/60 px-2 py-1.5 rounded-lg border border-slate-200 dark:border-white/10">
+              <span className="text-slate-500 dark:text-slate-400">1.</span>
               <span>Tap</span>
-              <div className="p-1 rounded bg-sky-500/20 border border-sky-500/30 text-sky-400 inline-flex">
+              <div className="p-1 rounded bg-sky-500/20 border border-sky-500/30 text-sky-600 dark:text-sky-400 inline-flex">
                 <Share className="w-3.5 h-3.5" />
               </div>
-              <span className="text-slate-300">Share</span>
+              <span className="text-slate-700 dark:text-slate-300">Share</span>
             </div>
-            <span className="text-amber-400 font-bold flex-shrink-0">→</span>
-            <div className="flex items-center space-x-1.5 bg-slate-800/60 px-2 py-1.5 rounded-lg border border-white/10">
-              <span className="text-slate-400">2.</span>
-              <div className="p-1 rounded bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 inline-flex">
+            <span className="text-amber-600 dark:text-amber-400 font-bold flex-shrink-0">→</span>
+            <div className="flex items-center space-x-1.5 bg-slate-100 dark:bg-slate-800/60 px-2 py-1.5 rounded-lg border border-slate-200 dark:border-white/10">
+              <span className="text-slate-500 dark:text-slate-400">2.</span>
+              <div className="p-1 rounded bg-emerald-500/20 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 inline-flex">
                 <PlusSquare className="w-3.5 h-3.5" />
               </div>
-              <span className="text-slate-300 text-[10px]">'Add to Home Screen'</span>
+              <span className="text-slate-700 dark:text-slate-300 text-[10px]">'Add to Home Screen'</span>
             </div>
           </div>
         </div>
@@ -235,9 +217,9 @@ export const IOSInstallBanner: React.FC = () => {
     // Firefox (Android or Desktop) — manual instructions
     if (isFirefox) {
       return (
-        <div className="mt-3.5 pt-3 border-t border-white/10 text-[11px] text-slate-300 font-medium">
-          <span className="text-slate-400">In Firefox:</span>{' '}
-          tap the <span className="text-amber-400 font-bold">⋮ menu</span> → "Install" or "Add to Home Screen"
+        <div className="mt-3.5 pt-3 border-t border-slate-200 dark:border-white/10 text-[11px] text-slate-700 dark:text-slate-300 font-medium">
+          <span className="text-slate-500 dark:text-slate-400">In Firefox:</span>{' '}
+          tap the <span className="text-amber-600 dark:text-amber-400 font-bold">⋮ menu</span> → "Install" or "Add to Home Screen"
         </div>
       );
     }
@@ -245,9 +227,9 @@ export const IOSInstallBanner: React.FC = () => {
     // Safari macOS — manual instructions
     if (isSafariDesktop) {
       return (
-        <div className="mt-3.5 pt-3 border-t border-white/10 text-[11px] text-slate-300 font-medium">
-          <span className="text-slate-400">In Safari on Mac:</span>{' '}
-          go to <span className="text-amber-400 font-bold">File → Add to Dock…</span> to install
+        <div className="mt-3.5 pt-3 border-t border-slate-200 dark:border-white/10 text-[11px] text-slate-700 dark:text-slate-300 font-medium">
+          <span className="text-slate-500 dark:text-slate-400">In Safari on Mac:</span>{' '}
+          go to <span className="text-amber-600 dark:text-amber-400 font-bold">File → Add to Dock…</span> to install
         </div>
       );
     }
@@ -263,13 +245,13 @@ export const IOSInstallBanner: React.FC = () => {
       aria-label="Install Jawan Fitness App"
     >
       <div
-        className="relative bg-[#0c101a]/96 backdrop-blur-2xl border border-amber-500/40 rounded-3xl p-4 shadow-[0_20px_50px_rgba(0,0,0,0.9)] text-left"
+        className="relative bg-white dark:bg-[#0c101a]/96 backdrop-blur-2xl border border-amber-500/40 rounded-3xl p-4 shadow-[0_20px_50px_rgba(0,0,0,0.9)] text-left"
         style={{ animation: 'slideUpFadeIn 0.35s ease both' }}
       >
         {/* Dismiss button */}
         <button
           onClick={handleDismiss}
-          className="absolute top-3.5 right-3.5 text-slate-400 hover:text-white p-1 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+          className="absolute top-3.5 right-3.5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white p-1 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
           aria-label="Dismiss install banner"
         >
           <X className="w-4 h-4" />
@@ -282,14 +264,14 @@ export const IOSInstallBanner: React.FC = () => {
           </div>
           <div className="min-w-0">
             <div className="flex items-center space-x-1.5 mb-0.5 flex-wrap gap-y-1">
-              <h4 className="text-sm font-black text-white font-display uppercase tracking-wide leading-none">
+              <h4 className="text-sm font-black text-slate-900 dark:text-white font-display uppercase tracking-wide leading-none">
                 Install Jawan Fitness
               </h4>
-              <span className="text-[9px] bg-amber-500/20 border border-amber-500/40 text-amber-400 px-1.5 py-0.5 rounded font-black font-tech uppercase leading-none flex-shrink-0">
+              <span className="text-[9px] bg-amber-500/20 border border-amber-500/40 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded font-black font-tech uppercase leading-none flex-shrink-0">
                 {osLabel}
               </span>
             </div>
-            <p className="text-[11px] text-slate-300 leading-relaxed font-medium">
+            <p className="text-[11px] text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
               {isDesktop
                 ? 'Install on your PC / Laptop for a dedicated window — no browser bar, instant launch.'
                 : 'Install to your Home Screen for instant launch, offline support & full-screen workout view.'}

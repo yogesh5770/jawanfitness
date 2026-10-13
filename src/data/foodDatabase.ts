@@ -1,4 +1,4 @@
-import { FoodItem, FoodCategory } from '../types';
+import { FoodItem } from '../types';
 import masterFoodList from './jawanMasterFoods.json';
 import { syncedStore } from '../services/syncedStore';
 

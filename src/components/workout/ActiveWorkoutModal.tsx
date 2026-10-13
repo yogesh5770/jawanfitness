@@ -4,25 +4,10 @@ import { RestTimerModal } from './RestTimerModal';
 import { WorkoutCompleteModal } from './WorkoutCompleteModal';
 import { PlateCalculatorModal } from './PlateCalculatorModal';
 import { CalorieCalculator } from '../../utils/calorieCalculator';
-import {
-  X,
-  Check,
-  Plus,
-  Minus,
-  Trash2,
-  ChevronLeft,
-  ChevronRight,
-  Info,
-  Flame,
-  Clock,
-  Dumbbell,
-  Play,
-  Sparkles
-} from 'lucide-react';
+import { X, Check, Plus, Minus, ChevronLeft, ChevronRight, Info, Flame, Clock, Dumbbell, Sparkles } from 'lucide-react';
 import { hapticTap } from '../../utils/audioHaptics';
 import { Cinematic3DMotionViewer } from '../exercises/Cinematic3DMotionViewer';
 import { ExerciseDetailModal } from '../exercises/ExerciseDetailModal';
-import { R2MediaService } from '../../services/r2MediaService';
 
 interface ActiveWorkoutModalProps {
   session: WorkoutSession | null;
@@ -47,7 +32,10 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
   const [isRestTimerOpen, setIsRestTimerOpen] = useState(false);
   const [restSeconds, setRestSeconds] = useState(90);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const sessionStartTime = session?.startTime;
+  const [elapsedSeconds, setElapsedSeconds] = useState(() =>
+    sessionStartTime ? Math.max(0, Math.floor((Date.now() - sessionStartTime) / 1000)) : 0
+  );
 
   // Active set index tracking for sequential execution
   const [activeSetIndex, setActiveSetIndex] = useState(0);
@@ -55,18 +43,15 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
   const [activePlateCalcSetIdx, setActivePlateCalcSetIdx] = useState(0);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
-  // Timer counter
+  // Timer counter (resilient against background app sleep)
   useEffect(() => {
-    if (!session) return;
-    const initialElapsed = Math.floor((Date.now() - session.startTime) / 1000);
-    setElapsedSeconds(initialElapsed > 0 ? initialElapsed : 0);
-
+    if (!sessionStartTime) return;
     const interval = setInterval(() => {
-      setElapsedSeconds((prev) => prev + 1);
+      setElapsedSeconds(Math.max(0, Math.floor((Date.now() - sessionStartTime) / 1000)));
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [session?.startTime]);
+  }, [sessionStartTime]);
 
   if (!session || session.exercises.length === 0) return null;
 
@@ -226,14 +211,14 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
   );
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#07090e] text-white flex flex-col justify-between overflow-hidden animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 bg-slate-50 dark:bg-[#07090e] text-slate-900 dark:text-white flex flex-col justify-between overflow-hidden animate-in fade-in duration-150">
       {/* 1. Header Bar with Elapsed Time, Volume, and LIVE Calorie Counter */}
-      <div className="bg-[#0c101a] border-b border-white/10 px-4 py-3 flex items-center justify-between flex-shrink-0 pt-safe">
+      <div className="bg-white dark:bg-[#0c101a] border-b border-slate-200 dark:border-white/10 px-4 py-3 flex items-center justify-between flex-shrink-0 pt-safe">
         <div>
-          <span className="text-[10px] font-tech uppercase tracking-wider text-amber-500 font-bold block">
+          <span className="text-[10px] font-tech uppercase tracking-wider text-amber-600 dark:text-amber-500 font-bold block">
             LIVE WORKOUT
           </span>
-          <h2 className="text-sm sm:text-base font-black text-white font-display truncate max-w-[200px] sm:max-w-xs">
+          <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white font-display truncate max-w-[200px] sm:max-w-xs">
             {session.routineName}
           </h2>
         </div>
@@ -246,29 +231,29 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
                 hapticTap();
                 onMinimize();
               }}
-              className="p-1.5 rounded-xl bg-slate-900 border border-white/10 text-slate-300 hover:text-white flex items-center space-x-1 text-xs active:scale-95 transition-all"
+              className="p-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex items-center space-x-1 text-xs active:scale-95 transition-all"
               title="Minimize workout session"
             >
-              <ChevronLeft className="w-4 h-4 text-amber-400" />
-              <span className="font-tech text-[11px] text-slate-300">Minimize</span>
+              <ChevronLeft className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              <span className="font-tech text-[11px] text-slate-700 dark:text-slate-300">Minimize</span>
             </button>
           )}
 
           {/* Real MET Biometric Calories Burned */}
-          <div className="flex items-center space-x-1 bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 rounded-xl text-xs font-bold text-amber-400 font-tech">
+          <div className="flex items-center space-x-1 bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 rounded-xl text-xs font-bold text-amber-600 dark:text-amber-400 font-tech">
             <Flame className="w-3.5 h-3.5 fill-amber-400" />
             <span>{caloriesBurnedLive} kcal</span>
           </div>
 
           {/* Stopwatch */}
-          <div className="flex items-center space-x-1 bg-slate-900 border border-white/10 px-2.5 py-1 rounded-xl text-xs font-mono text-slate-200">
-            <Clock className="w-3.5 h-3.5 text-slate-400" />
+          <div className="flex items-center space-x-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 px-2.5 py-1 rounded-xl text-xs font-mono text-slate-800 dark:text-slate-200">
+            <Clock className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
             <span>{formatTime(elapsedSeconds)}</span>
           </div>
 
           <button
             onClick={onCancelWorkout}
-            className="p-1.5 rounded-xl bg-slate-800 text-slate-400 hover:text-white"
+            className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             title="Discard workout"
           >
             <X className="w-4 h-4" />
@@ -280,7 +265,7 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
       <div className="flex-1 overflow-y-auto p-4 space-y-4 text-left">
         {/* Exercise Horizontal Switcher (1 of N) */}
         <div>
-          <div className="flex items-center justify-between text-xs text-slate-400 mb-2 font-tech">
+          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-2 font-tech">
             <span>
               EXERCISE {currentExerciseIndex + 1} OF {session.exercises.length}
             </span>
@@ -304,8 +289,8 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
                     isCurrent
                       ? 'bg-amber-500 text-black shadow-[0_0_12px_rgba(245,158,11,0.4)]'
                       : allDone
-                      ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-500/40'
-                      : 'bg-slate-900 text-slate-400 border border-white/5'
+                      ? 'bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40'
+                      : 'bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border border-slate-200/80 dark:border-white/5'
                   }`}
                 >
                   <span>{idx + 1}. {item.exercise.name.split(' ').slice(0, 2).join(' ')}</span>
@@ -317,7 +302,7 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
         </div>
 
         {/* 3D Motion Demonstration Card (Full Visibility, No Crop) */}
-        <div className="relative rounded-2xl bg-[#0e1320] border border-white/10 p-3.5 shadow-lg">
+        <div className="relative rounded-2xl bg-slate-100 dark:bg-[#0e1320] border border-slate-200 dark:border-white/10 p-3.5 shadow-lg">
           <div className="flex items-center space-x-3.5">
             {/* 3D Real Human Exercise Frame */}
             <div
@@ -329,18 +314,16 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
               title="Tap for 3D Form Breakdown & Biomechanics"
             >
               {(() => {
-                const r2Url = R2MediaService.getVideoUrl(currentExercise);
+                const animSrc = currentExercise.animationUrl || currentExercise.thumbnailUrl;
                 const isVideo = Boolean(
-                  r2Url ||
-                  currentExercise.animationUrl?.endsWith('.mp4') ||
-                  currentExercise.animationUrl?.endsWith('.webm')
+                  animSrc &&
+                  (animSrc.endsWith('.mp4') || animSrc.endsWith('.webm'))
                 );
-                const vidSrc = r2Url || currentExercise.animationUrl;
 
-                if (isVideo && vidSrc) {
+                if (isVideo) {
                   return (
                     <video
-                      src={vidSrc}
+                      src={animSrc}
                       poster={currentExercise.thumbnailUrl}
                       autoPlay
                       loop
@@ -351,13 +334,17 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
                   );
                 }
 
-                const animImg = currentExercise.animationUrl || currentExercise.thumbnailUrl;
-                if (animImg) {
+                if (animSrc) {
                   return (
                     <img
-                      src={animImg}
+                      src={animSrc}
                       alt={currentExercise.name}
                       className="w-full h-full object-contain filter contrast-110 drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)]"
+                      onError={(e) => {
+                        if (currentExercise.thumbnailUrl && e.currentTarget.src !== currentExercise.thumbnailUrl) {
+                          e.currentTarget.src = currentExercise.thumbnailUrl;
+                        }
+                      }}
                     />
                   );
                 }
@@ -371,16 +358,16 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
                   />
                 );
               })()}
-              <div className="absolute top-1 left-1 bg-black/80 px-1.5 py-0.5 rounded text-[8px] font-tech text-amber-400 font-bold border border-amber-500/30 flex items-center space-x-0.5 shadow">
+              <div className="absolute top-1 left-1 bg-black/80 px-1.5 py-0.5 rounded text-[8px] font-tech text-amber-600 dark:text-amber-400 font-bold border border-amber-500/30 flex items-center space-x-0.5 shadow">
                 <Sparkles className="w-2.5 h-2.5 fill-amber-400" />
-                <span>3D</span>
+                <span>GIF</span>
               </div>
             </div>
 
             {/* Title & Muscle Tags */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-1.5 text-[10px] text-amber-400 font-bold uppercase font-tech">
+                <div className="flex items-center space-x-1.5 text-[10px] text-amber-600 dark:text-amber-400 font-bold uppercase font-tech">
                   <span>{currentExercise.category}</span>
                   <span>•</span>
                   <span>{currentExercise.equipment}</span>
@@ -391,24 +378,24 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
                     hapticTap();
                     setIsDetailModalOpen(true);
                   }}
-                  className="flex items-center space-x-1 text-[10px] font-tech font-bold text-amber-400 hover:text-amber-300 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-lg transition-all"
+                  className="flex items-center space-x-1 text-[10px] font-tech font-bold text-amber-600 dark:text-amber-400 hover:text-amber-300 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-lg transition-all"
                 >
                   <Sparkles className="w-2.5 h-2.5" />
                   <span>3D Form</span>
                 </button>
               </div>
-              <h3 className="text-sm sm:text-base font-black text-white font-display mt-0.5 truncate">
+              <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white font-display mt-0.5 truncate">
                 {currentExercise.name}
               </h3>
-              <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">
-                Primary: <span className="text-slate-200">{currentExercise.primaryMuscle}</span>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">
+                Primary: <span className="text-slate-800 dark:text-slate-200">{currentExercise.primaryMuscle}</span>
               </p>
             </div>
           </div>
 
           {currentExercise.trainerTip && (
-            <div className="mt-2.5 pt-2 border-t border-white/5 flex items-start space-x-2 text-xs text-amber-200/90 italic">
-              <Info className="w-3.5 h-3.5 text-amber-400 flex-shrink-0 mt-0.5" />
+            <div className="mt-2.5 pt-2 border-t border-slate-200/80 dark:border-white/5 flex items-start space-x-2 text-xs text-amber-800 dark:text-amber-200/90 italic">
+              <Info className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
               <span className="line-clamp-2">"{currentExercise.trainerTip}"</span>
             </div>
           )}
@@ -416,13 +403,13 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
 
         {/* 3. GUIDED SETS TABLE (Thumb-friendly mobile steppers) */}
         <div className="space-y-2.5">
-          <div className="flex items-center justify-between text-xs text-slate-400 px-1">
-            <span className="font-tech uppercase font-bold text-amber-400">
+          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 px-1">
+            <span className="font-tech uppercase font-bold text-amber-600 dark:text-amber-400">
               SET LOGGING ({currentActiveExercise.sets.filter((s) => s.completed).length} / {currentActiveExercise.sets.length} COMPLETE)
             </span>
             <button
               onClick={handleAddSet}
-              className="text-amber-400 hover:text-amber-300 font-bold flex items-center space-x-1 text-xs"
+              className="text-amber-600 dark:text-amber-400 hover:text-amber-300 font-bold flex items-center space-x-1 text-xs"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Add Set</span>
@@ -440,8 +427,8 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
                   isSetCompleted
                     ? 'bg-emerald-950/20 border-emerald-500/40'
                     : isFocused
-                    ? 'bg-[#121827] border-amber-500/60 shadow-[0_0_15px_rgba(245,158,11,0.15)]'
-                    : 'bg-[#0c101a] border-white/5'
+                    ? 'bg-slate-100 dark:bg-[#121827] border-amber-500/60 shadow-[0_0_15px_rgba(245,158,11,0.15)]'
+                    : 'bg-white dark:bg-[#0c101a] border-slate-200/80 dark:border-white/5'
                 }`}
               >
                 <div className="flex items-center justify-between">
@@ -453,12 +440,12 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
                           ? 'bg-emerald-500 text-black'
                           : isFocused
                           ? 'bg-amber-500 text-black'
-                          : 'bg-slate-800 text-slate-400'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
                       }`}
                     >
                       {set.setNumber}
                     </span>
-                    <span className="text-xs font-bold text-slate-300">
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
                       Set {set.setNumber}
                     </span>
                   </div>
@@ -469,7 +456,7 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
                     className={`min-h-[42px] px-4 rounded-xl flex items-center justify-center space-x-1.5 font-bold text-xs active:scale-95 transition-all ${
                       isSetCompleted
                         ? 'bg-emerald-500 text-black shadow-[0_0_12px_rgba(16,185,129,0.4)]'
-                        : 'bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-black border border-amber-500/40'
+                        : 'bg-amber-500/20 hover:bg-amber-500 text-amber-700 dark:text-amber-300 hover:text-black border border-amber-500/40'
                     }`}
                   >
                     <Check className="w-4 h-4 stroke-[3]" />
@@ -478,46 +465,46 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
                 </div>
 
                 {/* Steppers for Weight (KG) and Reps */}
-                <div className="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-white/5">
+                <div className="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-slate-200/80 dark:border-white/5">
                   {/* Weight Stepper */}
-                  <div className="bg-slate-900/80 rounded-xl p-2 flex items-center justify-between border border-white/5">
+                  <div className="bg-slate-100/80 dark:bg-slate-900/80 rounded-xl p-2 flex items-center justify-between border border-slate-200/80 dark:border-white/5">
                     <button
                       onClick={() => handleAdjustWeight(idx, -2.5)}
-                      className="w-9 h-9 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold flex items-center justify-center active:scale-90"
+                      className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-bold flex items-center justify-center active:scale-90"
                     >
                       <Minus className="w-3.5 h-3.5" />
                     </button>
                     <div className="text-center">
-                      <span className="text-sm font-black text-white font-tech block">
+                      <span className="text-sm font-black text-slate-900 dark:text-white font-tech block">
                         {set.weightKg} kg
                       </span>
-                      <span className="text-[9px] uppercase font-tech text-slate-400">Weight</span>
+                      <span className="text-[9px] uppercase font-tech text-slate-500 dark:text-slate-400">Weight</span>
                     </div>
                     <button
                       onClick={() => handleAdjustWeight(idx, 2.5)}
-                      className="w-9 h-9 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold flex items-center justify-center active:scale-90"
+                      className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-bold flex items-center justify-center active:scale-90"
                     >
                       <Plus className="w-3.5 h-3.5" />
                     </button>
                   </div>
 
                   {/* Reps Stepper */}
-                  <div className="bg-slate-900/80 rounded-xl p-2 flex items-center justify-between border border-white/5">
+                  <div className="bg-slate-100/80 dark:bg-slate-900/80 rounded-xl p-2 flex items-center justify-between border border-slate-200/80 dark:border-white/5">
                     <button
                       onClick={() => handleAdjustReps(idx, -1)}
-                      className="w-9 h-9 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold flex items-center justify-center active:scale-90"
+                      className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-bold flex items-center justify-center active:scale-90"
                     >
                       <Minus className="w-3.5 h-3.5" />
                     </button>
                     <div className="text-center">
-                      <span className="text-sm font-black text-white font-tech block">
+                      <span className="text-sm font-black text-slate-900 dark:text-white font-tech block">
                         {set.reps}
                       </span>
-                      <span className="text-[9px] uppercase font-tech text-slate-400">Reps</span>
+                      <span className="text-[9px] uppercase font-tech text-slate-500 dark:text-slate-400">Reps</span>
                     </div>
                     <button
                       onClick={() => handleAdjustReps(idx, 1)}
-                      className="w-9 h-9 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold flex items-center justify-center active:scale-90"
+                      className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-bold flex items-center justify-center active:scale-90"
                     >
                       <Plus className="w-3.5 h-3.5" />
                     </button>
@@ -525,10 +512,10 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
                 </div>
 
                 {/* Live 1RM & Barbell Plate Calculator Button */}
-                <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/5 text-[11px] font-tech">
+                <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-200/80 dark:border-white/5 text-[11px] font-tech">
                   <div className="flex items-center space-x-2">
-                    <span className="text-slate-400">
-                      Est. 1RM: <strong className="text-amber-400">{Math.round(set.weightKg * (1 + set.reps / 30) * 10) / 10} kg</strong>
+                    <span className="text-slate-500 dark:text-slate-400">
+                      Est. 1RM: <strong className="text-amber-600 dark:text-amber-400">{Math.round(set.weightKg * (1 + set.reps / 30) * 10) / 10} kg</strong>
                     </span>
                     <button
                       onClick={() => {
@@ -536,16 +523,16 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
                         setActivePlateCalcSetIdx(idx);
                         setIsPlateCalcOpen(true);
                       }}
-                      className="px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold border border-amber-500/30 flex items-center space-x-1 active:scale-95"
+                      className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-amber-700 dark:text-amber-300 font-bold border border-amber-500/30 flex items-center space-x-1 active:scale-95"
                       title="Open Olympic Barbell Plate Calculator"
                     >
-                      <Dumbbell className="w-3 h-3 text-amber-400" />
+                      <Dumbbell className="w-3 h-3 text-amber-600 dark:text-amber-400" />
                       <span>Plates</span>
                     </button>
                   </div>
 
                   {set.completed && set.reps >= 10 && (
-                    <span className="text-emerald-400 font-bold flex items-center space-x-1 animate-pulse">
+                    <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center space-x-1 animate-pulse">
                       <Sparkles className="w-3 h-3" />
                       <span>+2.5kg Overload Ready</span>
                     </span>
@@ -558,7 +545,7 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
       </div>
 
       {/* 4. Bottom Guided Navigation & Finish Button */}
-      <div className="p-4 bg-[#0a0d14] border-t border-white/10 flex items-center space-x-3 flex-shrink-0 pb-safe">
+      <div className="p-4 bg-white dark:bg-[#0a0d14] border-t border-slate-200 dark:border-white/10 flex items-center space-x-3 flex-shrink-0 pb-safe">
         {/* Previous Exercise */}
         <button
           disabled={currentExerciseIndex === 0}
@@ -567,7 +554,7 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
             setCurrentExerciseIndex(Math.max(0, currentExerciseIndex - 1));
             setActiveSetIndex(0);
           }}
-          className="p-3.5 rounded-xl bg-slate-800 text-slate-400 disabled:opacity-40 disabled:cursor-not-allowed hover:text-white"
+          className="p-3.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 disabled:opacity-40 disabled:cursor-not-allowed hover:text-slate-900 dark:hover:text-white"
         >
           <ChevronLeft className="w-5 h-5" />
         </button>
@@ -580,7 +567,7 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
               setCurrentExerciseIndex(currentExerciseIndex + 1);
               setActiveSetIndex(0);
             }}
-            className="flex-1 py-3.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-display font-bold text-xs uppercase tracking-wider flex items-center justify-center space-x-2 active:scale-95 transition-all"
+            className="flex-1 py-3.5 px-4 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-display font-bold text-xs uppercase tracking-wider flex items-center justify-center space-x-2 active:scale-95 transition-all"
           >
             <span>Next: {session.exercises[currentExerciseIndex + 1].exercise.name.split(' ')[0]}</span>
             <ChevronRight className="w-4 h-4" />
@@ -596,7 +583,7 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
             className={`flex-1 py-3.5 px-4 rounded-xl font-display font-black text-xs uppercase tracking-wider flex items-center justify-center space-x-2 transition-all ${
               allExercisesCompleted
                 ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 text-black shadow-[0_0_20px_rgba(16,185,129,0.4)] active:scale-95'
-                : 'bg-slate-800 text-slate-500 cursor-not-allowed border border-white/10'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-200 dark:border-white/10'
             }`}
           >
             <Check className="w-4 h-4 stroke-[3]" />
