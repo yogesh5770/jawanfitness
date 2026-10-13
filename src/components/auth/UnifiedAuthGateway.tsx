@@ -1,16 +1,12 @@
 import React, { useState } from 'react';
 import {
-  ShieldCheck,
-  Users,
   Lock,
   ArrowRight,
   Eye,
   EyeOff,
-  Dumbbell,
   AlertCircle,
   Loader2,
   Phone,
-  Mail,
   KeyRound
 } from 'lucide-react';
 import { authService, AuthUser } from '../../services/authService';
@@ -22,10 +18,8 @@ interface UnifiedAuthGatewayProps {
 }
 
 export const UnifiedAuthGateway: React.FC<UnifiedAuthGatewayProps> = ({
-  onLoginSuccess,
-  initialRole = 'CLIENT'
+  onLoginSuccess
 }) => {
-  const [selectedRole, setSelectedRole] = useState<'CLIENT' | 'TRAINER' | 'ADMIN'>(initialRole);
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -33,18 +27,10 @@ export const UnifiedAuthGateway: React.FC<UnifiedAuthGatewayProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleRoleChange = (role: 'CLIENT' | 'TRAINER' | 'ADMIN') => {
-    hapticTap();
-    setSelectedRole(role);
-    setErrorMessage(null);
-    setIdentifier('');
-    setPassword('');
-  };
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!identifier.trim() || !password) {
-      setErrorMessage('Please enter both your User ID / Email and Master Password.');
+      setErrorMessage('Please enter both your User ID / Email and Password.');
       return;
     }
 
@@ -56,12 +42,12 @@ export const UnifiedAuthGateway: React.FC<UnifiedAuthGatewayProps> = ({
       const result = await authService.login(
         identifier.trim(),
         password,
-        selectedRole,
+        'CLIENT',
         keepSignedIn
       );
 
       if (result.success && result.user) {
-        onLoginSuccess(result.user, selectedRole);
+        onLoginSuccess(result.user, (result.user.role || 'CLIENT') as 'CLIENT' | 'TRAINER' | 'ADMIN');
         return;
       }
 
@@ -121,74 +107,6 @@ export const UnifiedAuthGateway: React.FC<UnifiedAuthGatewayProps> = ({
           </div>
         </div>
 
-        {/* Triple Role Selector */}
-        <div className="mb-6 p-1.5 rounded-2xl bg-slate-100 dark:bg-[#060810]/90 border border-slate-200 dark:border-white/10 shadow-inner">
-          <div className="grid grid-cols-3 gap-1">
-            {/* Athlete Tab */}
-            <button
-              type="button"
-              onClick={() => handleRoleChange('CLIENT')}
-              className={`min-h-[44px] py-2 px-1 sm:px-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all duration-200 flex items-center justify-center space-x-1.5 cursor-pointer ${
-                selectedRole === 'CLIENT'
-                  ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-black shadow-[0_2px_15px_rgba(245,158,11,0.35)] font-black scale-[1.02]'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.04]'
-              }`}
-            >
-              <Dumbbell className="w-3.5 h-3.5 flex-shrink-0" />
-              <span>Athlete</span>
-            </button>
-
-            {/* Trainer Tab */}
-            <button
-              type="button"
-              onClick={() => handleRoleChange('TRAINER')}
-              className={`min-h-[44px] py-2 px-1 sm:px-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all duration-200 flex items-center justify-center space-x-1.5 cursor-pointer ${
-                selectedRole === 'TRAINER'
-                  ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-black shadow-[0_2px_15px_rgba(245,158,11,0.35)] font-black scale-[1.02]'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.04]'
-              }`}
-            >
-              <Users className="w-3.5 h-3.5 flex-shrink-0" />
-              <span>Trainer</span>
-            </button>
-
-            {/* Admin Tab */}
-            <button
-              type="button"
-              onClick={() => handleRoleChange('ADMIN')}
-              className={`min-h-[44px] py-2 px-1 sm:px-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all duration-200 flex items-center justify-center space-x-1.5 cursor-pointer ${
-                selectedRole === 'ADMIN'
-                  ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-black shadow-[0_2px_15px_rgba(245,158,11,0.35)] font-black scale-[1.02]'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.04]'
-              }`}
-            >
-              <ShieldCheck className="w-3.5 h-3.5 flex-shrink-0" />
-              <span>Director</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Dynamic Context Header */}
-        <div className="mb-5 p-3 rounded-2xl bg-gradient-to-r from-white/[0.04] to-white/[0.01] border border-slate-200 dark:border-white/10 flex items-center space-x-3 text-left">
-          <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-600 dark:text-amber-400 flex-shrink-0">
-            {selectedRole === 'CLIENT' && <Dumbbell className="w-4 h-4" />}
-            {selectedRole === 'TRAINER' && <Users className="w-4 h-4" />}
-            {selectedRole === 'ADMIN' && <ShieldCheck className="w-4 h-4" />}
-          </div>
-          <div className="min-w-0 flex-1">
-            <span className="font-bold text-slate-900 dark:text-white text-xs block truncate font-display">
-              {selectedRole === 'CLIENT' && 'Member Training & Nutrition Terminal'}
-              {selectedRole === 'TRAINER' && 'Coach Roster & Workout Engineering'}
-              {selectedRole === 'ADMIN' && 'Director Console & Operations Command'}
-            </span>
-            <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate block mt-0.5">
-              {selectedRole === 'CLIENT' && 'Real-time splits, 3D biomechanics motion, and diet'}
-              {selectedRole === 'TRAINER' && 'Member roster, daily compliance, and split creator'}
-              {selectedRole === 'ADMIN' && 'Gym administration, coach assignor, and member telemetry'}
-            </span>
-          </div>
-        </div>
-
         {/* Error Notification */}
         {errorMessage && (
           <div className="mb-5 p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-300 text-xs flex items-start space-x-2.5 animate-in fade-in">
@@ -203,11 +121,7 @@ export const UnifiedAuthGateway: React.FC<UnifiedAuthGatewayProps> = ({
           <div className="space-y-1.5">
             <div className="flex items-center justify-between text-xs px-0.5">
               <label className="text-slate-700 dark:text-slate-300 font-semibold tracking-wide">
-                {selectedRole === 'CLIENT'
-                  ? 'Member ID / Phone / Email'
-                  : selectedRole === 'TRAINER'
-                  ? 'Trainer ID / Phone / Email'
-                  : 'Director Email or ID'}
+                User ID / Phone Number / Email
               </label>
             </div>
 
@@ -217,17 +131,11 @@ export const UnifiedAuthGateway: React.FC<UnifiedAuthGatewayProps> = ({
                 required
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
-                placeholder={
-                  selectedRole === 'CLIENT'
-                    ? 'e.g. JWM-5200 or 8248345770'
-                    : selectedRole === 'TRAINER'
-                    ? 'e.g. JWT-7195 or 9360345770'
-                    : 'admin@jawan.fit'
-                }
+                placeholder="e.g. 8248345770, JWM-5200, JWT-7195, or email"
                 className="w-full min-h-[48px] bg-slate-100 dark:bg-[#060810]/90 border border-slate-200 dark:border-white/10 focus:border-amber-500 focus:bg-white dark:focus:bg-[#0a0d18] rounded-2xl px-4 py-3 text-base sm:text-sm text-slate-900 dark:text-white outline-none transition-all duration-200 placeholder:text-slate-500 dark:placeholder:text-slate-400 shadow-inner focus:shadow-[0_0_20px_rgba(245,158,11,0.15)] pr-11"
               />
               <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none group-focus-within:text-amber-400 transition-colors">
-                {selectedRole === 'CLIENT' ? <Phone className="w-4 h-4" /> : <Mail className="w-4 h-4" />}
+                <Phone className="w-4 h-4" />
               </div>
             </div>
           </div>
@@ -289,9 +197,7 @@ export const UnifiedAuthGateway: React.FC<UnifiedAuthGatewayProps> = ({
               </>
             ) : (
               <>
-                <span>
-                  Log In as {selectedRole === 'CLIENT' ? 'Athlete' : selectedRole === 'TRAINER' ? 'Trainer' : 'Director'}
-                </span>
+                <span>Sign In to Portal</span>
                 <ArrowRight className="w-4 h-4 stroke-[3]" />
               </>
             )}
