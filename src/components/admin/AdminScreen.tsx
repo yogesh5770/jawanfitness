@@ -11,6 +11,8 @@ import { CredentialInfo, getUnifiedPortalUrl } from '../../utils/credentialUtils
 import { ThemeToggle } from '../common/ThemeToggle';
 import { AddFoodModal } from '../common/AddFoodModal';
 import { SyncStatusBadge } from '../common/SyncStatusBadge';
+import { Exercise } from '../../types';
+import { ExerciseDetailModal } from '../exercises/ExerciseDetailModal';
 
 type AdminTab =
   | 'dashboard'
@@ -79,6 +81,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
   // Exercise search in admin
   const [exerciseSearch, setExerciseSearch] = useState('');
   const [exerciseCategory, setExerciseCategory] = useState('All');
+  const [selectedExerciseForModal, setSelectedExerciseForModal] = useState<Exercise | null>(null);
 
   // Food search in admin
   const [foodSearch, setFoodSearch] = useState('');
@@ -778,7 +781,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                           </div>
                         </div>
 
-                        <div className="p-3 bg-black/40 rounded-xl border border-slate-200/80 dark:border-white/5 space-y-2">
+                        <div className="p-3 bg-slate-50 dark:bg-black/40 rounded-xl border border-slate-200 dark:border-white/5 space-y-2">
                           <div className="flex items-center justify-between text-xs">
                             <span className="text-slate-500 dark:text-slate-400 font-tech uppercase text-[10px]">Assigned Members</span>
                             <span className="font-bold text-amber-600 dark:text-amber-400 font-tech">{assignedMembers.length} Active</span>
@@ -994,7 +997,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                           <th className="p-4 text-right">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-white/5">
+                      <tbody className="divide-y divide-slate-200/80 dark:divide-white/5">
                         {syncState.clients
                           .filter((c) => c.name.toLowerCase().includes(clientSearch.toLowerCase()))
                           .map((client) => (
@@ -1254,20 +1257,47 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                 {filteredExercises.slice(0, 30).map((exercise) => (
                   <div
                     key={exercise.id}
-                    className="p-3.5 bg-white dark:bg-[#0b0f1a] border border-slate-200 dark:border-white/10 rounded-2xl hover:border-amber-500/40 transition-all text-xs space-y-1.5"
+                    onClick={() => {
+                      hapticTap();
+                      setSelectedExerciseForModal(exercise);
+                    }}
+                    className="p-3.5 bg-white dark:bg-[#0b0f1a] border border-slate-200 dark:border-white/10 rounded-2xl hover:border-amber-500/40 hover:shadow-md transition-all text-xs space-y-2 cursor-pointer group"
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-tech font-bold px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                        {exercise.category}
-                      </span>
-                      <span className="text-[10px] text-slate-500 font-tech">
-                        {exercise.equipment}
-                      </span>
+                    <div className="flex items-center space-x-3">
+                      <div className="w-14 h-12 rounded-xl bg-slate-100 dark:bg-black/40 border border-slate-200 dark:border-white/10 overflow-hidden flex-shrink-0 flex items-center justify-center relative">
+                        {exercise.thumbnailUrl ? (
+                          <img
+                            src={exercise.thumbnailUrl}
+                            alt={exercise.name}
+                            loading="lazy"
+                            className="w-full h-full object-contain filter contrast-125"
+                          />
+                        ) : null}
+                        <div className="absolute bottom-0.5 right-0.5 bg-black/85 px-1 py-0.2 rounded text-[7px] font-tech text-amber-300 font-bold">
+                          GIF
+                        </div>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center space-x-1.5 mb-0.5">
+                          <span className="text-[9px] font-tech font-bold px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                            {exercise.category}
+                          </span>
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-tech truncate">
+                            {exercise.equipment}
+                          </span>
+                        </div>
+                        <h4 className="font-bold text-slate-900 dark:text-white text-xs group-hover:text-amber-500 dark:group-hover:text-amber-400 transition-colors truncate">
+                          {exercise.name}
+                        </h4>
+                      </div>
                     </div>
-                    <h4 className="font-bold text-slate-900 dark:text-white text-sm truncate">{exercise.name}</h4>
                     <p className="text-slate-500 dark:text-slate-400 text-[11px] line-clamp-2">
                       {exercise.trainerTip || exercise.instructions?.[0] || 'Targeted biomechanics movement'}
                     </p>
+                    <div className="pt-1.5 flex items-center justify-between text-[10px] font-tech text-amber-600 dark:text-amber-400 font-bold border-t border-slate-100 dark:border-white/5">
+                      <span>View 3D GIF & Technique</span>
+                      <span>➔</span>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1344,7 +1374,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
 
             <form onSubmit={handleCreateTrainer} className="space-y-3 text-xs">
               {/* Trainer Photo Upload & Live Avatar Preview */}
-              <div className="p-3 bg-black/40 border border-slate-200 dark:border-white/10 rounded-2xl flex items-center space-x-3.5">
+              <div className="p-3 bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-white/10 rounded-2xl flex items-center space-x-3.5">
                 <div className="w-16 h-16 rounded-2xl bg-amber-500/20 border-2 border-amber-500/40 flex items-center justify-center font-bold text-amber-600 dark:text-amber-400 text-lg overflow-hidden flex-shrink-0 shadow-md">
                   {newTrainerPhoto ? (
                     <img src={newTrainerPhoto} alt="Trainer Preview" className="w-full h-full object-cover" />
@@ -1422,7 +1452,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
               </div>
 
               {/* Auto-generated Credentials Preview */}
-              <div className="p-3 bg-black/60 border border-amber-500/20 rounded-2xl space-y-2">
+              <div className="p-3.5 bg-amber-500/5 dark:bg-amber-950/20 border border-amber-500/30 rounded-2xl space-y-2">
                 <div className="flex items-center space-x-1.5 text-amber-600 dark:text-amber-400 font-tech font-bold text-[10px] uppercase">
                   <Key className="w-3.5 h-3.5" />
                   <span>Auto-Generated Credentials</span>
@@ -1610,7 +1640,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
               </div>
 
               {/* Auto-generated Credentials Preview */}
-              <div className="p-3 bg-black/60 border border-amber-500/20 rounded-2xl space-y-2">
+              <div className="p-3.5 bg-amber-500/5 dark:bg-amber-950/20 border border-amber-500/30 rounded-2xl space-y-2">
                 <div className="flex items-center space-x-1.5 text-amber-600 dark:text-amber-400 font-tech font-bold text-[10px] uppercase">
                   <Key className="w-3.5 h-3.5" />
                   <span>Auto-Generated Credentials</span>
@@ -1725,6 +1755,14 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
         onClose={() => setIsAddFoodOpen(false)}
         sourceRole="ADMIN"
       />
+
+      {/* MODAL 6: EXERCISE DETAIL & GIF MODAL */}
+      {selectedExerciseForModal && (
+        <ExerciseDetailModal
+          exercise={selectedExerciseForModal}
+          onClose={() => setSelectedExerciseForModal(null)}
+        />
+      )}
     </div>
   );
 };

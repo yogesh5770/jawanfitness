@@ -161,7 +161,7 @@ export const AddFoodModal: React.FC<AddFoodModalProps> = ({
         </div>
 
         {error && (
-          <div className="mb-3 p-3 rounded-xl bg-rose-950/40 border border-rose-500/40 text-rose-600 dark:text-rose-300 text-xs font-bold flex-shrink-0">
+          <div className="mb-3 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-500/40 text-rose-700 dark:text-rose-300 text-xs font-bold flex-shrink-0">
             {error}
           </div>
         )}

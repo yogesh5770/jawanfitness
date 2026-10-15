@@ -21,35 +21,28 @@ export const TrainerChatScreen: React.FC<TrainerChatScreenProps> = ({ client, tr
     return unsub;
   }, []);
 
-  // Find assigned trainer strictly by ID or exact name, with fallback to gym's head coach
-  const foundTrainer = syncState.trainers.find(
-    (t) =>
-      (client.trainerId && t.id === client.trainerId) ||
-      (trainerName && trainerName !== 'Unassigned' && t.name.toLowerCase() === trainerName.toLowerCase())
-  ) || (syncState.trainers.length === 1 ? syncState.trainers[0] : undefined);
-
-  const hasTrainerId = Boolean(
-    (client.trainerId && client.trainerId.trim() !== '' && client.trainerId !== 'Unassigned') ||
-    foundTrainer
+  // Find assigned trainer strictly by valid ID or exact registered name in syncState.trainers
+  const isTrainerIdValid = Boolean(
+    client.trainerId &&
+    client.trainerId.trim() !== '' &&
+    client.trainerId !== 'Unassigned'
+  );
+  const isTrainerNameValid = Boolean(
+    trainerName &&
+    trainerName.trim() !== '' &&
+    trainerName !== 'Unassigned'
   );
 
-  const hasTrainerName = Boolean(
-    (trainerName && trainerName.trim() !== '' && trainerName !== 'Unassigned') ||
-    foundTrainer
-  );
+  const foundTrainer = (isTrainerIdValid || isTrainerNameValid)
+    ? syncState.trainers.find(
+        (t) =>
+          (isTrainerIdValid && t.id === client.trainerId) ||
+          (isTrainerNameValid && t.name.toLowerCase() === trainerName.toLowerCase())
+      )
+    : undefined;
 
-  const isAssigned = Boolean(foundTrainer || hasTrainerId || hasTrainerName);
-
-  const trainer: TrainerData | undefined = foundTrainer || (isAssigned ? {
-    id: client.trainerId || 'trainer-assigned',
-    name: (trainerName && trainerName !== 'Unassigned') ? trainerName : 'Assigned Coach',
-    role: 'Head Strength Coach & Nutritionist',
-    email: '',
-    phone: '',
-    status: 'Active',
-    clientsCount: 1,
-    avgAdherence: 95
-  } : undefined);
+  const isAssigned = Boolean(foundTrainer);
+  const trainer: TrainerData | undefined = foundTrainer;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

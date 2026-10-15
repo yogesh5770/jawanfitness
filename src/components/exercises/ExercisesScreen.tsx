@@ -206,7 +206,8 @@ export const ExercisesScreen: React.FC<ExercisesScreenProps> = ({ onStartExercis
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="p-1 hover:text-slate-900 dark:hover:text-white text-slate-500 dark:text-slate-400"
+              aria-label="Clear search query"
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -226,7 +227,7 @@ export const ExercisesScreen: React.FC<ExercisesScreenProps> = ({ onStartExercis
                   hapticTap();
                   setSelectedCategory(cat);
                 }}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-tech font-bold whitespace-nowrap transition-all duration-150 ${
+                className={`min-h-[40px] px-3.5 py-2 rounded-full text-xs font-tech font-bold whitespace-nowrap transition-all duration-150 flex items-center justify-center cursor-pointer ${
                   isSelected
                     ? 'bg-amber-500 text-black shadow-[0_0_12px_rgba(245,158,11,0.4)] scale-105'
                     : 'bg-white dark:bg-[#151a24] text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-[#1f2636] hover:text-slate-900 dark:hover:text-white border border-slate-200/80 dark:border-white/5'
@@ -245,12 +246,13 @@ export const ExercisesScreen: React.FC<ExercisesScreenProps> = ({ onStartExercis
           {filteredExercises.length} {filteredExercises.length === 1 ? 'Exercise' : 'Exercises'} Found
         </span>
 
-        <div className="flex items-center space-x-1">
-          <Dumbbell className="w-3 h-3 text-slate-500 dark:text-slate-400" />
+        <div className="flex items-center space-x-1.5">
+          <Dumbbell className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 flex-shrink-0" />
           <select
             value={selectedEquipment}
             onChange={(e) => setSelectedEquipment(e.target.value)}
-            className="bg-white dark:bg-[#151a24] text-slate-700 dark:text-slate-300 text-[11px] rounded-lg px-2 py-1 border border-slate-200 dark:border-white/10 outline-none"
+            aria-label="Filter by equipment"
+            className="min-h-[40px] bg-white dark:bg-[#151a24] text-slate-700 dark:text-slate-300 text-xs rounded-xl px-3 py-1.5 border border-slate-200 dark:border-white/10 outline-none cursor-pointer"
           >
             {equipments.map((eq) => (
               <option key={eq} value={eq}>
@@ -298,7 +300,7 @@ export const ExercisesScreen: React.FC<ExercisesScreenProps> = ({ onStartExercis
                     className="w-full h-full"
                   />
                 </div>
-                <div className="absolute bottom-1 right-1 bg-black/80 backdrop-blur border border-amber-500/30 text-[8px] font-tech font-black text-amber-600 dark:text-amber-400 px-1 py-0.2 rounded shadow flex items-center space-x-0.5 pointer-events-none">
+                <div className="absolute bottom-1 right-1 bg-black/80 backdrop-blur border border-amber-500/30 text-[8px] font-tech font-black text-amber-300 px-1 py-0.2 rounded shadow flex items-center space-x-0.5 pointer-events-none">
                   <span>GIF</span>
                 </div>
               </div>

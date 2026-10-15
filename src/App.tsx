@@ -3,6 +3,7 @@ import { detectAppRole } from './services/appRouter';
 import { ClientApp } from './components/client/ClientApp';
 import { UnifiedAuthGateway } from './components/auth/UnifiedAuthGateway';
 import { IOSInstallBanner } from './components/common/IOSInstallBanner';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { authService, AuthUser } from './services/authService';
 import { syncedStore } from './services/syncedStore';
 import { nativePlatform } from './services/nativePlatformService';
@@ -108,36 +109,44 @@ export const App: React.FC = () => {
     const detected = detectAppRole();
     const defaultInitial = detected === 'admin' ? 'ADMIN' : detected === 'trainer' ? 'TRAINER' : 'CLIENT';
     return (
-      <>
+      <ErrorBoundary portalLabel="Authentication Gateway">
         <UnifiedAuthGateway
           onLoginSuccess={handleLoginSuccess}
           initialRole={defaultInitial}
         />
         <IOSInstallBanner />
-      </>
+      </ErrorBoundary>
     );
   }
 
   // 2. ADMIN INTERFACE
   if (activeRole === 'ADMIN') {
     return (
-      <Suspense fallback={<RoleLoadingFallback label="Accessing Director Console..." />}>
-        <AdminApp currentUser={currentUser} onLogout={handleUniversalLogout} />
-      </Suspense>
+      <ErrorBoundary portalLabel="Director Console" onResetToLogin={handleUniversalLogout}>
+        <Suspense fallback={<RoleLoadingFallback label="Accessing Director Console..." />}>
+          <AdminApp currentUser={currentUser} onLogout={handleUniversalLogout} />
+        </Suspense>
+      </ErrorBoundary>
     );
   }
 
   // 3. TRAINER INTERFACE
   if (activeRole === 'TRAINER') {
     return (
-      <Suspense fallback={<RoleLoadingFallback label="Accessing Coach Terminal..." />}>
-        <TrainerApp currentUser={currentUser} onLogout={handleUniversalLogout} />
-      </Suspense>
+      <ErrorBoundary portalLabel="Coach Terminal" onResetToLogin={handleUniversalLogout}>
+        <Suspense fallback={<RoleLoadingFallback label="Accessing Coach Terminal..." />}>
+          <TrainerApp currentUser={currentUser} onLogout={handleUniversalLogout} />
+        </Suspense>
+      </ErrorBoundary>
     );
   }
 
   // 4. MEMBER INTERFACE (Default)
-  return <ClientApp currentUser={currentUser} onLogout={handleUniversalLogout} />;
+  return (
+    <ErrorBoundary portalLabel="Member Portal" onResetToLogin={handleUniversalLogout}>
+      <ClientApp currentUser={currentUser} onLogout={handleUniversalLogout} />
+    </ErrorBoundary>
+  );
 };
 
 export default App;

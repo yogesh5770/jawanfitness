@@ -7,6 +7,7 @@ import {
   WeightRecord,
   FoodItem
 } from '../types';
+import { isMemberOnboarded, markMemberOnboarded } from '../utils/onboardingStorage';
 export interface ClientData {
   id: string;
   name: string;
@@ -276,18 +277,46 @@ class SyncedStore {
         if (force || newSig !== this.lastStateHash) {
           this.lastStateHash = newSig;
           
-          // Smart merge clients: protect local assigned trainer if remote is momentarily blank
+          // Smart merge clients: protect local assigned trainer if remote is momentarily blank,
+          // and protect firstLoginCompleted so remote never reverts a completed onboarding!
           const mergedClients = Array.isArray(cloudData.clients) ? cloudData.clients.map((remoteC: any) => {
-            const localC = this.state.clients.find(c => c.id === remoteC.id || (c.loginId && c.loginId === remoteC.loginId));
-            if (localC && localC.trainerId && (!remoteC.trainerId || remoteC.trainerId === 'Unassigned')) {
-              // Local has trainer assigned, preserve it!
-              return {
-                ...remoteC,
-                trainerId: localC.trainerId,
-                trainerName: localC.trainerName || 'Assigned Coach'
-              };
+            const localC = this.state.clients.find(c =>
+              c.id === remoteC.id ||
+              (c.loginId && remoteC.loginId && c.loginId.toLowerCase() === remoteC.loginId.toLowerCase()) ||
+              (c.email && remoteC.email && c.email.toLowerCase() === remoteC.email.toLowerCase())
+            );
+
+            const isDone =
+              localC?.firstLoginCompleted === true ||
+              remoteC?.firstLoginCompleted === true ||
+              isMemberOnboarded(localC) ||
+              isMemberOnboarded(remoteC);
+
+            // Validate trainer assignment against active trainers list
+            const allTrainers: TrainerData[] = Array.isArray(cloudData.trainers) ? cloudData.trainers : this.state.trainers;
+            const deletedIds = (this.state.deletedTrainerIds || []).map((d) => String(d).toLowerCase());
+
+            let trainerId = remoteC.trainerId || '';
+            let trainerName = remoteC.trainerName || 'Unassigned';
+
+            const isValidTrainer = Boolean(
+              trainerId &&
+              trainerId !== 'Unassigned' &&
+              !deletedIds.includes(trainerId.toLowerCase()) &&
+              allTrainers.some((t) => t.id === trainerId || t.name.toLowerCase() === trainerName.toLowerCase())
+            );
+
+            if (!isValidTrainer) {
+              trainerId = '';
+              trainerName = 'Unassigned';
             }
-            return remoteC;
+
+            return {
+              ...remoteC,
+              trainerId,
+              trainerName,
+              firstLoginCompleted: Boolean(isDone)
+            };
           }) : this.state.clients;
 
           // Union-merge chat messages by unique id
@@ -694,10 +723,22 @@ class SyncedStore {
   }
 
   public completeClientOnboarding(clientId: string, heightCm: number, startingWeightKg: number, goal: string, goalWeightKg: number) {
+    const targetMatch = (c: ClientData) =>
+      c.id === clientId ||
+      (c.loginId && c.loginId.toLowerCase() === clientId.toLowerCase()) ||
+      (c.email && c.email.toLowerCase() === clientId.toLowerCase());
+
+    const client = this.state.clients.find(targetMatch);
+    if (client) {
+      markMemberOnboarded(client);
+    } else {
+      markMemberOnboarded({ id: clientId });
+    }
+
     this.state = {
       ...this.state,
       clients: this.state.clients.map((c) =>
-        c.id === clientId
+        targetMatch(c)
           ? {
               ...c,
               heightCm,
@@ -711,26 +752,32 @@ class SyncedStore {
       )
     };
 
-    const client = this.state.clients.find((c) => c.id === clientId);
     this.logEvent(
       'CLIENT',
       'Profile Onboarding Completed',
       `${client?.name || 'Client'} confirmed biometric setup: ${heightCm}cm, ${startingWeightKg}kg → target ${goalWeightKg}kg`,
       'Client'
     );
+    this.persist();
+    cloudDbService.pushStateToCloud(this.state);
   }
 
   // 2. TRAINER ACTIONS
   public assignWorkout(clientId: string, workout: AssignedWorkout) {
-    const client = this.state.clients.find((c) => c.id === clientId || c.loginId === clientId);
+    const client = this.state.clients.find((c) => c.id === clientId || c.loginId === clientId || c.email === clientId);
+    const targetId = client?.id || clientId;
+    const stampedWorkout: AssignedWorkout = {
+      ...workout,
+      clientId: targetId
+    };
     const updatedAssigned = {
       ...this.state.assignedWorkouts,
-      [clientId]: workout
+      [clientId]: stampedWorkout
     };
     if (client) {
-      if (client.id) updatedAssigned[client.id] = workout;
-      if (client.loginId) updatedAssigned[client.loginId] = workout;
-      if (client.email) updatedAssigned[client.email] = workout;
+      if (client.id) updatedAssigned[client.id] = stampedWorkout;
+      if (client.loginId) updatedAssigned[client.loginId] = stampedWorkout;
+      if (client.email) updatedAssigned[client.email] = stampedWorkout;
     }
 
     this.state = {
@@ -762,15 +809,20 @@ class SyncedStore {
   }
 
   public assignDietPlan(clientId: string, plan: AssignedMealPlan) {
-    const client = this.state.clients.find((c) => c.id === clientId || c.loginId === clientId);
+    const client = this.state.clients.find((c) => c.id === clientId || c.loginId === clientId || c.email === clientId);
+    const targetId = client?.id || clientId;
+    const stampedPlan: AssignedMealPlan = {
+      ...plan,
+      clientId: targetId
+    };
     const updatedDiets = {
       ...this.state.assignedDietPlans,
-      [clientId]: plan
+      [clientId]: stampedPlan
     };
     if (client) {
-      if (client.id) updatedDiets[client.id] = plan;
-      if (client.loginId) updatedDiets[client.loginId] = plan;
-      if (client.email) updatedDiets[client.email] = plan;
+      if (client.id) updatedDiets[client.id] = stampedPlan;
+      if (client.loginId) updatedDiets[client.loginId] = stampedPlan;
+      if (client.email) updatedDiets[client.email] = stampedPlan;
     }
 
     this.state = {
@@ -1145,15 +1197,17 @@ class SyncedStore {
         c.id === activeClientId ||
         (c.loginId && activeClientId && c.loginId.toLowerCase() === activeClientId.toLowerCase()) ||
         (c.email && activeClientId && c.email.toLowerCase() === activeClientId.toLowerCase())
-    ) || (this.state.clients.length === 1 ? this.state.clients[0] : undefined);
+    );
 
     const activeTrainerId = targetTrainerId || client?.trainerId || this.state.activeTrainerId;
-    const trainer = this.state.trainers.find(
-      (t) =>
-        t.id === activeTrainerId ||
-        (client?.trainerName && t.name.toLowerCase() === client.trainerName.toLowerCase()) ||
-        (t.loginId && activeTrainerId && t.loginId.toLowerCase() === activeTrainerId.toLowerCase())
-    ) || (this.state.trainers.length === 1 ? this.state.trainers[0] : undefined);
+    const trainer = (activeTrainerId && activeTrainerId !== 'Unassigned')
+      ? this.state.trainers.find(
+          (t) =>
+            t.id === activeTrainerId ||
+            (client?.trainerName && client.trainerName !== 'Unassigned' && t.name.toLowerCase() === client.trainerName.toLowerCase()) ||
+            (t.loginId && t.loginId.toLowerCase() === activeTrainerId.toLowerCase())
+        )
+      : undefined;
 
     const senderName = explicitSenderName || (sender === 'client' ? client?.name || 'Client' : trainer?.name || 'Coach');
 

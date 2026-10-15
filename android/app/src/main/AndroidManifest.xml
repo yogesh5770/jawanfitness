@@ -11,6 +11,10 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- Vibration for haptic feedback on button taps -->
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Native Notification permission (Android 13+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Reschedule workout & hydration alarms after device reboot -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <!-- ─── Feature Declarations ────────────────────────────────────────── -->
     <!-- Declare touchscreen is required (all Android phones have one) -->

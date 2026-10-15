@@ -401,7 +401,7 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
                   />
                 );
               })()}
-              <div className="absolute top-1 left-1 bg-black/80 px-1.5 py-0.5 rounded text-[8px] font-tech text-amber-600 dark:text-amber-400 font-bold border border-amber-500/30 flex items-center space-x-0.5 shadow">
+              <div className="absolute top-1 left-1 bg-black/80 px-1.5 py-0.5 rounded text-[8px] font-tech text-amber-300 font-bold border border-amber-500/30 flex items-center space-x-0.5 shadow">
                 <Sparkles className="w-2.5 h-2.5 fill-amber-400" />
                 <span>GIF</span>
               </div>

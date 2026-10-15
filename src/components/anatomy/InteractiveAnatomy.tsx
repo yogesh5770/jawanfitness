@@ -40,11 +40,11 @@ export const InteractiveAnatomy: React.FC<InteractiveAnatomyProps> = ({
           <h3 className="text-sm font-bold text-slate-900 dark:text-white font-display">Target Muscle Group</h3>
         </div>
 
-        <div className="flex items-center bg-black/50 p-1 rounded-xl border border-slate-200 dark:border-white/10">
+        <div className="flex items-center bg-slate-100 dark:bg-black/50 p-1 rounded-xl border border-slate-200 dark:border-white/10">
           <button
             onClick={() => setView('front')}
             className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
-              view === 'front' ? 'bg-amber-500 text-black shadow' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              view === 'front' ? 'bg-amber-500 text-black shadow' : 'text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             Front
@@ -52,7 +52,7 @@ export const InteractiveAnatomy: React.FC<InteractiveAnatomyProps> = ({
           <button
             onClick={() => setView('back')}
             className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
-              view === 'back' ? 'bg-amber-500 text-black shadow' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              view === 'back' ? 'bg-amber-500 text-black shadow' : 'text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             Back
@@ -258,7 +258,7 @@ export const InteractiveAnatomy: React.FC<InteractiveAnatomyProps> = ({
         </svg>
 
         {/* Selected Muscle Overlay Badge */}
-        <div className="absolute bottom-1 right-2 bg-black/70 backdrop-blur border border-amber-500/30 px-2.5 py-1 rounded-full text-xs font-bold text-amber-600 dark:text-amber-400">
+        <div className="absolute bottom-1 right-2 bg-black/80 backdrop-blur border border-amber-500/40 px-2.5 py-1 rounded-full text-xs font-bold text-amber-300 shadow">
           Target: {selectedMuscle}
         </div>
       </div>

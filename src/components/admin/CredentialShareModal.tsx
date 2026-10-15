@@ -82,19 +82,20 @@ export const CredentialShareModal: React.FC<CredentialShareModalProps> = ({ info
         </div>
 
         {/* Info card */}
-        <div className="bg-slate-100/90 dark:bg-slate-900/90 border border-slate-200 dark:border-white/10 rounded-2xl p-4 mb-5 space-y-3.5">
+        <div className="bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/10 rounded-2xl p-4 sm:p-5 mb-5 space-y-4">
           {/* User ID Field */}
           <div>
-            <span className="text-[10px] font-tech text-slate-500 dark:text-slate-400 uppercase tracking-wider font-bold block mb-1">
+            <span className="text-[10px] font-tech text-slate-600 dark:text-slate-400 uppercase tracking-wider font-bold block mb-1.5">
               User ID / Login ID
             </span>
-            <div className="flex items-center justify-between bg-black/60 border border-slate-200 dark:border-white/10 rounded-xl px-3.5 py-2.5">
-              <code className="text-amber-600 dark:text-amber-400 font-tech font-bold text-sm select-all">
+            <div className="flex items-center justify-between bg-white dark:bg-black/60 border border-slate-200 dark:border-white/10 rounded-xl px-3.5 py-2.5 shadow-xs">
+              <code className="text-amber-600 dark:text-amber-400 font-tech font-black text-base select-all tracking-wide">
                 {info.loginId}
               </code>
               <button
+                type="button"
                 onClick={() => handleCopy(info.loginId, 'loginId')}
-                className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center space-x-1 transition-colors ml-2"
+                className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/15 text-slate-700 dark:text-slate-200 font-tech font-bold text-xs flex items-center space-x-1.5 transition-colors ml-2"
                 title="Copy User ID"
               >
                 {copiedField === 'loginId' ? (
@@ -104,7 +105,7 @@ export const CredentialShareModal: React.FC<CredentialShareModalProps> = ({ info
                   </span>
                 ) : (
                   <span className="flex items-center space-x-1">
-                    <Copy className="w-3.5 h-3.5" />
+                    <Copy className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
                     <span>Copy</span>
                   </span>
                 )}
@@ -114,25 +115,26 @@ export const CredentialShareModal: React.FC<CredentialShareModalProps> = ({ info
 
           {/* Password Field */}
           <div>
-            <span className="text-[10px] font-tech text-slate-500 dark:text-slate-400 uppercase tracking-wider font-bold block mb-1">
+            <span className="text-[10px] font-tech text-slate-600 dark:text-slate-400 uppercase tracking-wider font-bold block mb-1.5">
               Temporary Password
             </span>
-            <div className="flex items-center justify-between bg-black/60 border border-slate-200 dark:border-white/10 rounded-xl px-3.5 py-2.5">
-              <code className="text-emerald-600 dark:text-emerald-400 font-tech font-bold text-sm tracking-wider select-all">
+            <div className="flex items-center justify-between bg-white dark:bg-black/60 border border-slate-200 dark:border-white/10 rounded-xl px-3.5 py-2.5 shadow-xs">
+              <code className="text-emerald-600 dark:text-emerald-400 font-tech font-black text-base tracking-wider select-all">
                 {showPassword ? info.temporaryPassword : '••••••••••••'}
               </code>
               <div className="flex items-center space-x-2 ml-2">
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors p-1"
+                  className="px-2 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/15 text-slate-700 dark:text-slate-300 transition-colors"
                   title={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                 </button>
                 <button
+                  type="button"
                   onClick={() => handleCopy(info.temporaryPassword, 'password')}
-                  className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center space-x-1 transition-colors"
+                  className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/15 text-slate-700 dark:text-slate-200 font-tech font-bold text-xs flex items-center space-x-1.5 transition-colors"
                   title="Copy Password"
                 >
                   {copiedField === 'password' ? (
@@ -142,7 +144,7 @@ export const CredentialShareModal: React.FC<CredentialShareModalProps> = ({ info
                     </span>
                   ) : (
                     <span className="flex items-center space-x-1">
-                      <Copy className="w-3.5 h-3.5" />
+                      <Copy className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
                       <span>Copy</span>
                     </span>
                   )}
@@ -153,35 +155,40 @@ export const CredentialShareModal: React.FC<CredentialShareModalProps> = ({ info
 
           {/* Target Portal Link */}
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] font-tech text-slate-500 dark:text-slate-400 uppercase tracking-wider font-bold">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[10px] font-tech text-slate-600 dark:text-slate-400 uppercase tracking-wider font-bold">
                 App & Web Portal (Use Here or in App)
               </span>
-              <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500 dark:text-amber-400 font-medium">
+              <span className="text-[9px] px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-700 dark:text-amber-400 font-bold border border-amber-500/30">
                 Slide to {info.role === 'TRAINER' ? 'Trainer' : 'Member'}
               </span>
             </div>
-            <div className="flex items-center justify-between bg-black/60 border border-slate-200 dark:border-white/10 rounded-xl px-3.5 py-2.5">
+            <div className="flex items-center justify-between bg-white dark:bg-black/60 border border-slate-200 dark:border-white/10 rounded-xl px-3.5 py-2.5 shadow-xs">
               <a
                 href={info.portalUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="text-xs text-blue-600 dark:text-blue-400 hover:underline truncate max-w-[240px] sm:max-w-xs flex items-center space-x-1"
+                className="text-xs text-blue-600 dark:text-sky-400 hover:underline truncate max-w-[220px] sm:max-w-xs flex items-center space-x-1.5 font-medium"
               >
                 <span>{info.portalUrl}</span>
                 <ExternalLink className="w-3 h-3 flex-shrink-0" />
               </a>
               <button
+                type="button"
                 onClick={() => handleCopy(info.portalUrl, 'portalUrl')}
-                className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center space-x-1 transition-colors ml-2"
+                className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/15 text-slate-700 dark:text-slate-200 font-tech font-bold text-xs flex items-center space-x-1.5 transition-colors ml-2"
                 title="Copy Portal Link"
               >
                 {copiedField === 'portalUrl' ? (
                   <span className="text-emerald-600 dark:text-emerald-400 flex items-center space-x-1 font-bold">
                     <Check className="w-3.5 h-3.5" />
+                    <span>Copied</span>
                   </span>
                 ) : (
-                  <Copy className="w-3.5 h-3.5" />
+                  <span className="flex items-center space-x-1">
+                    <Copy className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                    <span>Copy</span>
+                  </span>
                 )}
               </button>
             </div>
@@ -189,14 +196,14 @@ export const CredentialShareModal: React.FC<CredentialShareModalProps> = ({ info
         </div>
 
         {/* WhatsApp Preview Note */}
-        <div className="bg-[#128C7E]/10 border border-[#25D366]/30 rounded-2xl p-3 mb-5 text-xs text-emerald-700 dark:text-emerald-300/90 flex items-start space-x-2.5">
+        <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-500/30 rounded-2xl p-3.5 mb-5 text-xs text-emerald-800 dark:text-emerald-200 flex items-start space-x-2.5">
           <MessageCircle className="w-4 h-4 text-[#25D366] flex-shrink-0 mt-0.5" />
           <div className="space-y-0.5">
-            <p className="font-bold text-slate-900 dark:text-white text-[11px]">
+            <p className="font-bold text-slate-900 dark:text-white text-xs">
               Direct WhatsApp Delivery
             </p>
-            <p className="text-[11px] text-emerald-600 dark:text-emerald-400/80 leading-relaxed">
-              Click the button below to open WhatsApp with the User ID, Password, and Login Link pre-written for <span className="text-slate-900 dark:text-white font-semibold">{info.phone}</span>.
+            <p className="text-[11px] text-emerald-700 dark:text-emerald-300 leading-relaxed font-medium">
+              Click the button below to open WhatsApp with the User ID, Password, and Login Link pre-written for <span className="text-slate-900 dark:text-white font-bold">{info.phone}</span>.
             </p>
           </div>
         </div>
@@ -216,12 +223,12 @@ export const CredentialShareModal: React.FC<CredentialShareModalProps> = ({ info
           <div className="grid grid-cols-2 gap-2 pt-1">
             <button
               onClick={handleCopyAll}
-              className="py-2.5 px-3 bg-slate-100/90 dark:bg-slate-800/90 hover:bg-slate-750 border border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white text-xs font-semibold rounded-xl flex items-center justify-center space-x-1.5 transition-all"
+              className="py-2.5 px-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/90 dark:hover:bg-slate-700/90 border border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20 text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white text-xs font-semibold rounded-xl flex items-center justify-center space-x-1.5 transition-all"
             >
               {copiedAll ? (
                 <>
                   <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <span className="text-emerald-600 dark:text-emerald-400">All Copied!</span>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-bold">All Copied!</span>
                 </>
               ) : (
                 <>
@@ -233,7 +240,7 @@ export const CredentialShareModal: React.FC<CredentialShareModalProps> = ({ info
 
             <button
               onClick={onClose}
-              className="py-2.5 px-3 bg-slate-100 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white text-xs font-semibold rounded-xl transition-all"
+              className="py-2.5 px-3 bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white text-xs font-semibold rounded-xl transition-all"
             >
               Done
             </button>

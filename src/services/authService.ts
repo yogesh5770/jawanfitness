@@ -4,6 +4,7 @@
  */
 
 import { Capacitor } from '@capacitor/core';
+import { markMemberOnboarded, isMemberOnboarded } from '../utils/onboardingStorage';
 
 export interface AuthUser {
   id: string;
@@ -19,6 +20,7 @@ export interface AuthUser {
   goal?: string;
   trainerId?: string;
   trainerName?: string;
+  firstLoginCompleted?: boolean;
 }
 
 export interface AuthSession {
@@ -226,9 +228,18 @@ class AuthService {
         goalWeightKg: data.user.goalWeightKg ?? data.user.goal_weight_kg ?? undefined,
         heightCm: data.user.heightCm ?? data.user.height_cm ?? undefined,
         goal: data.user.goal ?? undefined,
-        trainerId: data.user.trainerId ?? data.user.trainer_id ?? undefined,
-        trainerName: data.user.trainerName ?? data.user.trainer_name ?? undefined
+        trainerId: (data.user.trainerId && data.user.trainerId !== 'Unassigned') ? data.user.trainerId : (data.user.trainer_id && data.user.trainer_id !== 'Unassigned' ? data.user.trainer_id : undefined),
+        trainerName: (data.user.trainerName && data.user.trainerName !== 'Unassigned') ? data.user.trainerName : (data.user.trainer_name && data.user.trainer_name !== 'Unassigned' ? data.user.trainer_name : 'Unassigned'),
+        firstLoginCompleted: Boolean(
+          data.user.firstLoginCompleted ||
+          ((data.user.startingWeightKg || data.user.starting_weight_kg) && (data.user.heightCm || data.user.height_cm)) ||
+          isMemberOnboarded(data.user)
+        )
       };
+
+      if (user.firstLoginCompleted) {
+        markMemberOnboarded(user);
+      }
 
       // Save verified session
       this.currentSession = {
@@ -320,9 +331,18 @@ class AuthService {
               goalWeightKg: data.user.goalWeightKg ?? data.user.goal_weight_kg ?? undefined,
               heightCm: data.user.heightCm ?? data.user.height_cm ?? undefined,
               goal: data.user.goal ?? undefined,
-              trainerId: data.user.trainerId ?? data.user.trainer_id ?? undefined,
-              trainerName: data.user.trainerName ?? data.user.trainer_name ?? undefined
+              trainerId: (data.user.trainerId && data.user.trainerId !== 'Unassigned') ? data.user.trainerId : (data.user.trainer_id && data.user.trainer_id !== 'Unassigned' ? data.user.trainer_id : undefined),
+              trainerName: (data.user.trainerName && data.user.trainerName !== 'Unassigned') ? data.user.trainerName : (data.user.trainer_name && data.user.trainer_name !== 'Unassigned' ? data.user.trainer_name : 'Unassigned'),
+              firstLoginCompleted: Boolean(
+                data.user.firstLoginCompleted ||
+                ((data.user.startingWeightKg || data.user.starting_weight_kg) && (data.user.heightCm || data.user.height_cm)) ||
+                isMemberOnboarded(this.getUser()) ||
+                isMemberOnboarded(data.user)
+              )
             };
+            if (normalizedUser.firstLoginCompleted) {
+              markMemberOnboarded(normalizedUser);
+            }
             this.currentSession = {
               token,
               expiresAt: data.expiresAt || '',

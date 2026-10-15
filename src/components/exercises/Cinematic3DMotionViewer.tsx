@@ -290,7 +290,7 @@ export const Cinematic3DMotionViewer: React.FC<Cinematic3DMotionViewerProps> = (
             <Sparkles className="w-3 h-3 fill-black" />
             <span>3D Biomechanics</span>
           </span>
-          <span className="bg-black/70 backdrop-blur-md border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-full text-[10px] font-tech">
+          <span className="bg-black/80 backdrop-blur-md border border-white/15 text-slate-200 px-2.5 py-0.5 rounded-full text-[10px] font-tech font-bold">
             {motionPhase === 'concentric'
               ? '🔥 Concentric'
               : motionPhase === 'isometric'
@@ -300,7 +300,7 @@ export const Cinematic3DMotionViewer: React.FC<Cinematic3DMotionViewerProps> = (
         </div>
 
         {showControls && (
-          <div className="flex items-center space-x-1 bg-black/70 backdrop-blur-md border border-slate-200 dark:border-white/10 p-1 rounded-xl pointer-events-auto">
+          <div className="flex items-center space-x-1 bg-black/80 backdrop-blur-md border border-white/15 p-1 rounded-xl pointer-events-auto">
             {/* View Angle Switcher */}
             {(['front', 'angle', 'side'] as const).map((angle) => (
               <button
@@ -311,7 +311,7 @@ export const Cinematic3DMotionViewer: React.FC<Cinematic3DMotionViewerProps> = (
                   setViewAngle(angle);
                 }}
                 className={`px-1.5 py-0.5 rounded text-[9px] font-tech font-bold uppercase transition-all ${
-                  viewAngle === angle ? 'bg-amber-500 text-black' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  viewAngle === angle ? 'bg-amber-500 text-black font-black' : 'text-slate-300 hover:text-white'
                 }`}
               >
                 {angle}
@@ -603,16 +603,16 @@ export const Cinematic3DMotionViewer: React.FC<Cinematic3DMotionViewerProps> = (
 
         {/* Biomechanical Telemetry Overlay */}
         <div className="absolute bottom-2.5 left-3 right-3 flex items-center justify-between text-[11px] font-tech pointer-events-none">
-          <div className="flex items-center space-x-2 bg-black/70 backdrop-blur-md px-2.5 py-1 rounded-xl border border-slate-200 dark:border-white/10 pointer-events-auto">
-            <span className="text-slate-500 dark:text-slate-400">Target:</span>
-            <span className="text-amber-600 dark:text-amber-400 font-bold">{exercise.primaryMuscle}</span>
-            <span className="text-slate-600">•</span>
+          <div className="flex items-center space-x-2 bg-black/80 backdrop-blur-md px-2.5 py-1 rounded-xl border border-white/15 pointer-events-auto">
+            <span className="text-slate-300">Target:</span>
+            <span className="text-amber-300 font-bold">{exercise.primaryMuscle}</span>
+            <span className="text-slate-400">•</span>
             <span className="text-red-400 font-bold">{Math.round(60 + sinFactor * 40)}% LOAD</span>
           </div>
 
-          <div className="flex items-center space-x-1.5 bg-black/70 backdrop-blur-md px-2.5 py-1 rounded-xl border border-slate-200 dark:border-white/10 pointer-events-auto">
-            <Activity className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 animate-pulse" />
-            <span className="text-slate-900 dark:text-white font-bold">{Math.round(progress)}% ROM</span>
+          <div className="flex items-center space-x-1.5 bg-black/80 backdrop-blur-md px-2.5 py-1 rounded-xl border border-white/15 pointer-events-auto">
+            <Activity className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+            <span className="text-white font-bold">{Math.round(progress)}% ROM</span>
           </div>
         </div>
       </div>

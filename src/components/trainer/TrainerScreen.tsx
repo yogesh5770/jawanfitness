@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Users, ShieldCheck, Dumbbell, Apple, Send, Plus, Trash2, Check, Search, X, MessageSquare, Activity, Smartphone, Eye } from 'lucide-react';
 import { ExerciseService } from '../../services/exerciseService';
 import { FoodService, FOOD_CATEGORIES } from '../../data/foodDatabase';
-import { AssignedWorkout, AssignedMealPlan } from '../../types';
+import { AssignedWorkout, AssignedMealPlan, Exercise } from '../../types';
 import { syncedStore, AppSyncState } from '../../services/syncedStore';
 import { hapticTap } from '../../utils/audioHaptics';
 
 import { AddFoodModal } from '../common/AddFoodModal';
 import { SyncStatusBadge } from '../common/SyncStatusBadge';
+import { ExerciseDetailModal } from '../exercises/ExerciseDetailModal';
 
 interface TrainerScreenProps {
   activeTrainerId?: string;
@@ -27,58 +28,21 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [inputMessage, setInputMessage] = useState('');
   const [actionNotice, setActionNotice] = useState<string | null>(null);
+  const [selectedExerciseDetail, setSelectedExerciseDetail] = useState<Exercise | null>(null);
 
-  // Specification 5: Monday Chest + Triceps workout builder state
-  const [workoutTitle, setWorkoutTitle] = useState('Monday — Chest + Triceps');
-  const [workoutSplit, setWorkoutSplit] = useState('Push Day');
+  // Workout builder state — dynamically loaded per active client
+  const [workoutTitle, setWorkoutTitle] = useState('Personalized Workout Plan');
+  const [workoutSplit, setWorkoutSplit] = useState('Custom Split');
   const [estimatedMinutes, setEstimatedMinutes] = useState(45);
-  const [builderExercises, setBuilderExercises] = useState([
-    {
-      exerciseId: '0314',
-      exerciseName: 'Incline Dumbbell Press',
-      targetSets: 3,
-      targetReps: 10,
-      targetWeightKg: 12,
-      restSeconds: 90,
-      notes: 'Upper chest angle. 2s negative.'
-    },
-    {
-      exerciseId: '0025',
-      exerciseName: 'Machine Chest Press',
-      targetSets: 3,
-      targetReps: 12,
-      targetWeightKg: 40,
-      restSeconds: 90,
-      notes: 'Drive through sternum.'
-    },
-    {
-      exerciseId: '0319',
-      exerciseName: 'Cable Fly',
-      targetSets: 3,
-      targetReps: 12,
-      targetWeightKg: 15,
-      restSeconds: 60,
-      notes: 'Peak contraction.'
-    },
-    {
-      exerciseId: '0251',
-      exerciseName: 'Triceps Pushdown',
-      targetSets: 3,
-      targetReps: 12,
-      targetWeightKg: 25,
-      restSeconds: 60,
-      notes: 'Lock elbows.'
-    },
-    {
-      exerciseId: '0314',
-      exerciseName: 'Overhead Triceps Extension',
-      targetSets: 3,
-      targetReps: 10,
-      targetWeightKg: 14,
-      restSeconds: 60,
-      notes: 'Deep stretch.'
-    }
-  ]);
+  const [builderExercises, setBuilderExercises] = useState<Array<{
+    exerciseId: string;
+    exerciseName: string;
+    targetSets: number;
+    targetReps: number;
+    targetWeightKg?: number;
+    restSeconds: number;
+    notes?: string;
+  }>>([]);
 
   // Specification 19: Weight Loss Diet Plan builder state
   const [dietTitle, setDietTitle] = useState('Weight Loss Diet Plan');
@@ -120,6 +84,10 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
   // Exercise picker modal
   const [isAddingExercise, setIsAddingExercise] = useState(false);
   const [exerciseQuery, setExerciseQuery] = useState('');
+  const [exerciseCategory, setExerciseCategory] = useState<string>('All');
+  const [exerciseEquipment, setExerciseEquipment] = useState<string>('All');
+  const [visibleExerciseCount, setVisibleExerciseCount] = useState<number>(36);
+  const [clientFilterMode, setClientFilterMode] = useState<'assigned' | 'all'>('assigned');
   const [tempSets, setTempSets] = useState(3);
   const [tempReps, setTempReps] = useState(10);
   const [tempWeight, setTempWeight] = useState(12);
@@ -132,32 +100,58 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
   const [isAddFoodOpen, setIsAddFoodOpen] = useState(false);
 
   const currentTrainer = syncState.trainers.find((t) => t.id === activeTrainerId) || syncState.trainers[0];
-  const myAssignedClients = currentTrainer
-    ? syncState.clients.filter((c) => c.trainerId === currentTrainer.id)
-    : syncState.clients;
+
+  const trainerMatchSet = useMemo(() => {
+    const set = new Set<string>();
+    if (activeTrainerId) set.add(String(activeTrainerId).toLowerCase().trim());
+    if (currentTrainer) {
+      if (currentTrainer.id) set.add(String(currentTrainer.id).toLowerCase().trim());
+      if (currentTrainer.name) set.add(String(currentTrainer.name).toLowerCase().trim());
+      if ((currentTrainer as any).loginId) set.add(String((currentTrainer as any).loginId).toLowerCase().trim());
+      if ((currentTrainer as any).email) set.add(String((currentTrainer as any).email).toLowerCase().trim());
+    }
+    return set;
+  }, [activeTrainerId, currentTrainer]);
+
+  const assignedClients = useMemo(() => {
+    if (!currentTrainer) return syncState.clients;
+    return syncState.clients.filter((c) => {
+      const tid = String(c.trainerId || '').toLowerCase().trim();
+      const tname = String(c.trainerName || '').toLowerCase().trim();
+      return (tid && trainerMatchSet.has(tid)) || (tname && trainerMatchSet.has(tname));
+    });
+  }, [syncState.clients, trainerMatchSet, currentTrainer]);
+
+  // If clientFilterMode is 'assigned' but assignedClients is empty, auto-fallback to all gym clients so trainer is never locked out
+  const availableClients = useMemo(() => {
+    if (clientFilterMode === 'all') return syncState.clients;
+    return assignedClients.length > 0 ? assignedClients : syncState.clients;
+  }, [clientFilterMode, assignedClients, syncState.clients]);
+
+  const myAssignedClients = availableClients;
 
   // Selected client with scratch fallback
   const defaultClientFallback = {
     id: 'client-none',
-    name: 'No Client Assigned',
-    email: 'Awaiting Admin assignment',
+    name: 'No Client Selected',
+    email: 'Select a client from the roster',
     phone: '',
     heightCm: 0,
     startingWeightKg: 0,
     currentWeightKg: 0,
-    goal: 'None',
+    goal: 'General Fitness',
     goalWeightKg: 0,
     trainerId: currentTrainer?.id || '',
     trainerName: currentTrainer?.name || 'Coach',
-    status: 'Inactive' as const,
-    firstLoginCompleted: false,
+    status: 'Active' as const,
+    firstLoginCompleted: true,
     gymId: '',
     workoutAdherence: 0,
     dietAdherence: 0,
     lastWorkout: 'Never'
   };
 
-  const activeClient = myAssignedClients.find((c) => c.id === selectedClientId) || myAssignedClients[0] || defaultClientFallback;
+  const activeClient = availableClients.find((c) => c.id === selectedClientId) || availableClients[0] || defaultClientFallback;
 
   // Listen to syncedStore
   useEffect(() => {
@@ -167,39 +161,79 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
     return unsub;
   }, []);
 
-  // Live 2-second cloud sync when trainer has chat open
+  // Live cloud sync when trainer has chat open — pauses when tab is hidden
   useEffect(() => {
     if (activeTab === 'chat') {
       syncedStore.syncFromCloud(true);
       const interval = setInterval(() => {
-        syncedStore.syncFromCloud(true);
-      }, 2000);
+        if (!document.hidden) {
+          syncedStore.syncFromCloud(true);
+        }
+      }, 3000);
       return () => clearInterval(interval);
     }
   }, [activeTab]);
+
+  // Synchronize workout & diet builder with the selected client's active prescription
+  useEffect(() => {
+    if (!activeClient || activeClient.id === 'client-none') return;
+    const existingWorkout = syncState.assignedWorkouts[activeClient.id];
+    if (existingWorkout) {
+      setWorkoutTitle(existingWorkout.title || 'Personalized Workout Plan');
+      setWorkoutSplit(existingWorkout.split || 'Custom Split');
+      setEstimatedMinutes(existingWorkout.estimatedMinutes || 45);
+      setBuilderExercises(existingWorkout.exercises || []);
+    } else {
+      setWorkoutTitle(`${activeClient.name}'s Workout Plan`);
+      setWorkoutSplit('Custom Split');
+      setEstimatedMinutes(45);
+      setBuilderExercises([]);
+    }
+
+    const existingDiet = syncState.assignedDietPlans?.[activeClient.id];
+    if (existingDiet) {
+      setDietTitle(existingDiet.title || 'Personalized Nutrition Plan');
+      setDietCalories(existingDiet.dailyCalories || 2200);
+      setDietProtein(existingDiet.dailyProtein || 140);
+      setDietCarbs(existingDiet.dailyCarbs || 220);
+      setDietFat(existingDiet.dailyFat || 65);
+      setDietMeals(existingDiet.meals || []);
+    }
+  }, [activeClient.id]);
 
   // Handle assign workout
   const handleAssignWorkoutToClient = () => {
     hapticTap();
     if (!activeClient || activeClient.id === 'client-none') {
-      setActionNotice('Please wait for the Gym Director to assign clients to your roster before assigning workouts.');
+      setActionNotice('Please select an active client from the roster before assigning workouts.');
       setTimeout(() => setActionNotice(null), 4000);
       return;
     }
 
+    if (builderExercises.length === 0) {
+      setActionNotice('Please add at least 1 exercise movement before assigning.');
+      setTimeout(() => setActionNotice(null), 4000);
+      return;
+    }
+
+    const coachName = currentTrainer ? currentTrainer.name : 'Coach';
     const newAssigned: AssignedWorkout = {
       id: `asg-${Date.now()}`,
-      title: workoutTitle,
+      clientId: activeClient.id,
+      title: workoutTitle.trim() || `${activeClient.name}'s Workout Plan`,
       split: workoutSplit,
-      assignedBy: currentTrainer ? currentTrainer.name : 'Coach',
+      assignedBy: coachName,
       assignedDate: 'Today',
-      estimatedMinutes,
-      exercises: builderExercises
+      estimatedMinutes: Number(estimatedMinutes) || 45,
+      exercises: builderExercises.map((ex) => ({
+        ...ex,
+        notes: ex.notes && !ex.notes.includes('Coach Ravi') ? ex.notes : `Prescribed by ${coachName}`
+      }))
     };
 
     syncedStore.assignWorkout(activeClient.id, newAssigned);
     syncedStore.forcePushToCloud();
-    setActionNotice(`Assigned "${workoutTitle}" (${builderExercises.length} movements) to ${activeClient.name}!`);
+    setActionNotice(`Assigned "${newAssigned.title}" (${builderExercises.length} movements) to ${activeClient.name}!`);
     setTimeout(() => setActionNotice(null), 4000);
   };
 
@@ -207,25 +241,26 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
   const handleAssignDietToClient = () => {
     hapticTap();
     if (!activeClient || activeClient.id === 'client-none') {
-      setActionNotice('Please wait for the Gym Director to assign clients to your roster before assigning diet plans.');
+      setActionNotice('Please select an active client from the roster before assigning diet plans.');
       setTimeout(() => setActionNotice(null), 4000);
       return;
     }
 
+    const coachName = currentTrainer ? currentTrainer.name : 'Coach';
     const newPlan: AssignedMealPlan = {
       id: `plan-${Date.now()}`,
-      title: dietTitle,
-      dailyCalories: dietCalories,
-      dailyProtein: dietProtein,
-      dailyCarbs: dietCarbs,
-      dailyFat: dietFat,
-      assignedBy: currentTrainer ? currentTrainer.name : 'Coach',
+      title: dietTitle.trim() || `${activeClient.name}'s Nutrition Plan`,
+      dailyCalories: Number(dietCalories) || 2200,
+      dailyProtein: Number(dietProtein) || 140,
+      dailyCarbs: Number(dietCarbs) || 220,
+      dailyFat: Number(dietFat) || 65,
+      assignedBy: coachName,
       meals: dietMeals
     };
 
     syncedStore.assignDietPlan(activeClient.id, newPlan);
     syncedStore.forcePushToCloud();
-    setActionNotice(`Assigned "${dietTitle}" (${dietCalories} kcal) to ${activeClient.name}!`);
+    setActionNotice(`Assigned "${newPlan.title}" (${newPlan.dailyCalories} kcal) to ${activeClient.name}!`);
     setTimeout(() => setActionNotice(null), 4000);
   };
 
@@ -242,6 +277,42 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
     );
     setInputMessage('');
   };
+
+  const EXERCISE_CATEGORIES = [
+    'All',
+    'Chest',
+    'Back',
+    'Shoulders',
+    'Biceps',
+    'Triceps',
+    'Legs',
+    'Abs',
+    'Cardio',
+    'Forearms'
+  ];
+
+  const EXERCISE_EQUIPMENT_LIST = [
+    'All',
+    'Barbell',
+    'Dumbbell',
+    'Cable',
+    'Machine',
+    'Bodyweight',
+    'Kettlebell',
+    'Bands'
+  ];
+
+  const filteredPickerExercises = useMemo(() => {
+    return ExerciseService.search(
+      exerciseQuery,
+      exerciseCategory === 'All' ? undefined : (exerciseCategory as any),
+      exerciseEquipment === 'All' ? undefined : exerciseEquipment
+    );
+  }, [exerciseQuery, exerciseCategory, exerciseEquipment]);
+
+  const displayedPickerExercises = useMemo(() => {
+    return filteredPickerExercises.slice(0, visibleExerciseCount);
+  }, [filteredPickerExercises, visibleExerciseCount]);
 
   return (
     <div className="w-full min-h-screen bg-slate-50 dark:bg-[#07090e] text-slate-900 dark:text-slate-100 flex flex-col font-sans text-left overflow-x-hidden">
@@ -317,11 +388,52 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
         </div>
       </header>
 
+      {/* MOBILE CLIENT ROSTER SELECTOR (Phones & tablets < md) */}
+      <div className="md:hidden px-3 py-2 bg-slate-50 dark:bg-[#0c101a] border-b border-slate-200 dark:border-white/10 flex items-center justify-between gap-2">
+        <div className="flex items-center space-x-2 flex-1 min-w-0">
+          <Users className="w-4 h-4 text-amber-500 flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between mb-0.5">
+              <span className="text-[10px] font-tech uppercase text-slate-500 dark:text-slate-400 font-bold">
+                Assigning to Client
+              </span>
+              {assignedClients.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setClientFilterMode((prev) => (prev === 'assigned' ? 'all' : 'assigned'))}
+                  className="text-[10px] text-amber-600 dark:text-amber-400 font-bold hover:underline"
+                >
+                  {clientFilterMode === 'assigned' ? `Show All (${syncState.clients.length})` : `My Clients (${assignedClients.length})`}
+                </button>
+              )}
+            </div>
+            <select
+              value={activeClient.id}
+              onChange={(e) => {
+                hapticTap();
+                setSelectedClientId(e.target.value);
+              }}
+              className="w-full bg-white dark:bg-[#151a24] text-slate-900 dark:text-white font-bold text-xs rounded-xl px-2.5 py-1.5 border border-slate-200 dark:border-white/10 outline-none"
+            >
+              {availableClients.length === 0 ? (
+                <option value="client-none">No Clients in Gym</option>
+              ) : (
+                availableClients.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} ({c.currentWeightKg}kg • {c.goal})
+                  </option>
+                ))
+              )}
+            </select>
+          </div>
+        </div>
+      </div>
+
       {/* MOBILE HORIZONTAL SUB-NAVIGATION TABS (Phones & tablets < md) */}
       <nav className="md:hidden flex space-x-1.5 overflow-x-auto p-2 bg-white dark:bg-[#090d16] border-b border-slate-200 dark:border-white/10 scrollbar-none">
         {[
           { id: 'dashboard', label: 'Dashboard', icon: Activity },
-          { id: 'clients', label: activeClient.name, icon: Users },
+          { id: 'clients', label: activeClient.name.split(' ')[0], icon: Users },
           { id: 'builder_workout', label: '🏋️ Workout', icon: Dumbbell },
           { id: 'builder_diet', label: '🥗 Diet', icon: Apple },
           { id: 'history', label: '📊 Logs & PRs', icon: Eye },
@@ -364,18 +476,29 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
           <div className="space-y-4">
             {/* Active Client Selector Dropdown */}
             <div className="bg-slate-100/80 dark:bg-slate-900/80 p-3 rounded-2xl border border-slate-200 dark:border-white/10 space-y-1.5">
-              <span className="text-[10px] font-tech uppercase text-slate-500 dark:text-slate-400 font-bold block">
-                Selected Client
-              </span>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-tech uppercase text-slate-500 dark:text-slate-400 font-bold">
+                  Selected Client
+                </span>
+                {assignedClients.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setClientFilterMode((prev) => (prev === 'assigned' ? 'all' : 'assigned'))}
+                    className="text-[10px] text-amber-600 dark:text-amber-400 font-bold hover:underline"
+                  >
+                    {clientFilterMode === 'assigned' ? `All (${syncState.clients.length})` : `Mine (${assignedClients.length})`}
+                  </button>
+                )}
+              </div>
               <select
-                value={selectedClientId}
+                value={activeClient.id}
                 onChange={(e) => setSelectedClientId(e.target.value)}
                 className="w-full bg-white dark:bg-[#151a24] text-slate-900 dark:text-white font-bold text-xs rounded-xl p-2 border border-slate-200 dark:border-white/10 outline-none"
               >
-                {myAssignedClients.length === 0 ? (
-                  <option value="">No Clients Assigned</option>
+                {availableClients.length === 0 ? (
+                  <option value="client-none">No Clients in Gym</option>
                 ) : (
-                  myAssignedClients.map((c) => (
+                  availableClients.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name} ({c.currentWeightKg}kg • Goal: {c.goalWeightKg}kg)
                     </option>
@@ -701,37 +824,89 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
                 </div>
 
                 <div className="space-y-2">
-                  {builderExercises.map((ex, idx) => (
-                    <div
-                      key={idx}
-                      className="p-4 bg-white dark:bg-[#0b0f1a] border border-slate-200 dark:border-white/10 rounded-2xl flex items-center justify-between shadow-md"
-                    >
-                      <div>
-                        <div className="flex items-center space-x-2">
-                          <span className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400 font-black text-xs flex items-center justify-center font-tech">
-                            {idx + 1}
-                          </span>
-                          <h4 className="text-sm font-bold text-slate-900 dark:text-white">{ex.exerciseName}</h4>
-                        </div>
-                        <div className="flex items-center space-x-4 text-xs font-tech text-slate-700 dark:text-slate-300 mt-1.5 ml-8">
-                          <span>🎯 {ex.targetSets} sets × {ex.targetReps} reps</span>
-                          <span>•</span>
-                          <span>Weight: <span className="text-amber-600 dark:text-amber-400 font-bold">{ex.targetWeightKg || 12} kg</span></span>
-                          <span>•</span>
-                          <span>Rest: <span className="text-cyan-600 dark:text-cyan-400 font-bold">{ex.restSeconds} sec</span></span>
-                        </div>
-                      </div>
-
+                  {builderExercises.length === 0 ? (
+                    <div className="p-8 text-center bg-white dark:bg-[#0b0f1a] border border-dashed border-slate-300 dark:border-white/10 rounded-2xl space-y-2.5">
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        No movements added yet for <span className="font-bold text-slate-700 dark:text-slate-200">{activeClient.name}</span>.
+                      </p>
                       <button
+                        type="button"
                         onClick={() => {
-                          setBuilderExercises(builderExercises.filter((_, i) => i !== idx));
+                          hapticTap();
+                          setIsAddingExercise(true);
                         }}
-                        className="p-2 text-slate-500 hover:text-red-400 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5"
+                        className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400 font-bold text-xs hover:bg-amber-500/25 transition-colors cursor-pointer"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add First Movement</span>
                       </button>
                     </div>
-                  ))}
+                  ) : (
+                    builderExercises.map((ex, idx) => {
+                      const fullEx = ExerciseService.getById(ex.exerciseId) || ExerciseService.search(ex.exerciseName)[0];
+                      return (
+                        <div
+                          key={idx}
+                          className="p-4 bg-white dark:bg-[#0b0f1a] border border-slate-200 dark:border-white/10 rounded-2xl flex items-center justify-between shadow-md"
+                        >
+                          <div
+                            className="cursor-pointer flex-1"
+                            onClick={() => {
+                              if (fullEx) {
+                                hapticTap();
+                                setSelectedExerciseDetail(fullEx);
+                              }
+                            }}
+                          >
+                            <div className="flex items-center space-x-2">
+                              <span className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400 font-black text-xs flex items-center justify-center font-tech">
+                                {idx + 1}
+                              </span>
+                              <h4 className="text-sm font-bold text-slate-900 dark:text-white hover:text-amber-500 transition-colors">
+                                {ex.exerciseName}
+                              </h4>
+                              {fullEx && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-tech font-semibold">
+                                  View GIF ➔
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center space-x-4 text-xs font-tech text-slate-700 dark:text-slate-300 mt-1.5 ml-8">
+                              <span>🎯 {ex.targetSets} sets × {ex.targetReps} reps</span>
+                              <span>•</span>
+                              <span>Weight: <span className="text-amber-600 dark:text-amber-400 font-bold">{ex.targetWeightKg || 12} kg</span></span>
+                              <span>•</span>
+                              <span>Rest: <span className="text-cyan-600 dark:text-cyan-400 font-bold">{ex.restSeconds} sec</span></span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center space-x-1">
+                            {fullEx && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  hapticTap();
+                                  setSelectedExerciseDetail(fullEx);
+                                }}
+                                className="p-2 text-slate-500 hover:text-amber-400 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5"
+                                title="View 3D GIF & Technique"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => {
+                                setBuilderExercises(builderExercises.filter((_, i) => i !== idx));
+                              }}
+                              className="p-2 text-slate-500 hover:text-red-400 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               </div>
             </div>
@@ -917,14 +1092,24 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
                         {session.exercises.map((ex, exIdx) => (
                           <div key={ex.exercise.id || exIdx} className="bg-slate-100/80 dark:bg-slate-900/80 p-3.5 rounded-xl border border-slate-200/80 dark:border-white/5 space-y-2">
                             <div className="flex items-center justify-between text-xs">
-                              <span className="font-bold text-slate-900 dark:text-white">{exIdx + 1}. {ex.exercise.name}</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  hapticTap();
+                                  setSelectedExerciseDetail(ex.exercise);
+                                }}
+                                className="font-bold text-slate-900 dark:text-white hover:text-amber-500 flex items-center space-x-1.5 transition-colors cursor-pointer text-left"
+                              >
+                                <span>{exIdx + 1}. {ex.exercise.name}</span>
+                                <Eye className="w-3 h-3 text-slate-400 group-hover:text-amber-500" />
+                              </button>
                               <span className="text-amber-600 dark:text-amber-400 font-tech font-bold">{ex.sets.length} Sets</span>
                             </div>
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs font-tech">
                               {ex.sets.map((set, sIdx) => (
-                                <div key={set.id || sIdx} className="bg-black/40 p-2 rounded-lg border border-slate-200/80 dark:border-white/5">
+                                <div key={set.id || sIdx} className="bg-white dark:bg-black/40 p-2 rounded-lg border border-slate-200 dark:border-white/5 shadow-xs">
                                   <span className="text-slate-500 dark:text-slate-400 block text-[10px]">Set {set.setNumber}</span>
-                                  <span className={set.completed ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-slate-700 dark:text-slate-300 font-bold"}>
+                                  <span className={set.completed ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-slate-800 dark:text-slate-200 font-bold"}>
                                     {set.weightKg} kg × {set.reps} reps {set.completed ? '✓' : ''}
                                   </span>
                                 </div>
@@ -1035,108 +1220,287 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
         </main>
       </div>
 
-      {/* 3. EXERCISE PICKER MODAL */}
+      {/* 3. EXERCISE PICKER MODAL (Full 1,300+ Exercise DB with 3D GIF preview & categories) */}
       {isAddingExercise && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#0c101a] border border-amber-500/40 rounded-3xl p-5 w-full max-w-lg shadow-2xl max-h-[85vh] flex flex-col text-left">
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-[#0c101a] border border-amber-500/40 rounded-3xl p-4 sm:p-5 w-full max-w-2xl shadow-2xl max-h-[90vh] flex flex-col text-left">
+            {/* Header */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-white/10">
-              <div className="flex items-center space-x-2">
-                <Dumbbell className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                <h3 className="text-sm font-black text-slate-900 dark:text-white font-display">Exercise Library</h3>
+              <div className="flex items-center space-x-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold">
+                  <Dumbbell className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="text-[10px] font-tech text-amber-600 dark:text-amber-400 font-bold uppercase tracking-wider block">
+                    Exercise Library (1,300+ Movements)
+                  </span>
+                  <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white font-display">
+                    Select Exercise for {activeClient.name}
+                  </h3>
+                </div>
               </div>
-              <button onClick={() => setIsAddingExercise(false)} className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
+              <button
+                type="button"
+                onClick={() => setIsAddingExercise(false)}
+                className="min-h-[36px] min-w-[36px] flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/15 text-slate-600 dark:text-slate-300 hover:text-rose-500 transition-colors"
+                title="Close"
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="my-3 relative">
-              <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-500" />
+            {/* Target Prescriptions Inputs (Sets, Reps, Weight, Rest) */}
+            <div className="grid grid-cols-4 gap-2 my-2.5 bg-slate-100/70 dark:bg-slate-900/60 p-2.5 rounded-2xl text-center text-xs border border-slate-200 dark:border-white/5">
+              <div>
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-tech uppercase font-bold">Sets</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={tempSets}
+                  onChange={(e) => setTempSets(Math.max(1, Number(e.target.value)))}
+                  className="w-full bg-white dark:bg-slate-800 rounded-lg p-1.5 text-center font-bold text-slate-900 dark:text-white border border-slate-200 dark:border-white/10"
+                />
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-tech uppercase font-bold">Reps</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={tempReps}
+                  onChange={(e) => setTempReps(Math.max(1, Number(e.target.value)))}
+                  className="w-full bg-white dark:bg-slate-800 rounded-lg p-1.5 text-center font-bold text-slate-900 dark:text-white border border-slate-200 dark:border-white/10"
+                />
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-tech uppercase font-bold">Weight (kg)</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={500}
+                  value={tempWeight}
+                  onChange={(e) => setTempWeight(Math.max(0, Number(e.target.value)))}
+                  className="w-full bg-white dark:bg-slate-800 rounded-lg p-1.5 text-center font-bold text-amber-600 dark:text-amber-400 border border-slate-200 dark:border-white/10 font-tech"
+                />
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-tech uppercase font-bold">Rest (s)</span>
+                <input
+                  type="number"
+                  min={10}
+                  max={300}
+                  value={tempRest}
+                  onChange={(e) => setTempRest(Math.max(10, Number(e.target.value)))}
+                  className="w-full bg-white dark:bg-slate-800 rounded-lg p-1.5 text-center font-bold text-cyan-600 dark:text-cyan-400 border border-slate-200 dark:border-white/10 font-tech"
+                />
+              </div>
+            </div>
+
+            {/* Search Input Bar */}
+            <div className="relative mb-2">
+              <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400 pointer-events-none" />
               <input
                 type="text"
-                placeholder="Search by movement, muscle, equipment..."
+                placeholder="Search all 1,300+ exercises by name, muscle, equipment..."
                 value={exerciseQuery}
-                onChange={(e) => setExerciseQuery(e.target.value)}
-                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-900 dark:text-white outline-none focus:border-amber-500"
+                onChange={(e) => {
+                  setExerciseQuery(e.target.value);
+                  setVisibleExerciseCount(36);
+                }}
+                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl pl-9 pr-8 py-2 text-xs text-slate-900 dark:text-white outline-none focus:border-amber-500"
               />
+              {exerciseQuery && (
+                <button
+                  type="button"
+                  onClick={() => setExerciseQuery('')}
+                  className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-white"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
 
-            <div className="grid grid-cols-4 gap-2 mb-3 bg-slate-100/70 dark:bg-slate-900/60 p-2 rounded-xl text-center text-xs">
-              <div>
-                <span className="text-[10px] text-slate-500 dark:text-slate-400 block">Sets</span>
-                <input
-                  type="number"
-                  value={tempSets}
-                  onChange={(e) => setTempSets(Number(e.target.value))}
-                  className="w-full bg-slate-100 dark:bg-slate-800 rounded p-1 text-center font-bold text-slate-900 dark:text-white"
-                />
-              </div>
-              <div>
-                <span className="text-[10px] text-slate-500 dark:text-slate-400 block">Reps</span>
-                <input
-                  type="number"
-                  value={tempReps}
-                  onChange={(e) => setTempReps(Number(e.target.value))}
-                  className="w-full bg-slate-100 dark:bg-slate-800 rounded p-1 text-center font-bold text-slate-900 dark:text-white"
-                />
-              </div>
-              <div>
-                <span className="text-[10px] text-slate-500 dark:text-slate-400 block">Weight (kg)</span>
-                <input
-                  type="number"
-                  value={tempWeight}
-                  onChange={(e) => setTempWeight(Number(e.target.value))}
-                  className="w-full bg-slate-100 dark:bg-slate-800 rounded p-1 text-center font-bold text-amber-600 dark:text-amber-400"
-                />
-              </div>
-              <div>
-                <span className="text-[10px] text-slate-500 dark:text-slate-400 block">Rest (s)</span>
-                <input
-                  type="number"
-                  value={tempRest}
-                  onChange={(e) => setTempRest(Number(e.target.value))}
-                  className="w-full bg-slate-100 dark:bg-slate-800 rounded p-1 text-center font-bold text-cyan-600 dark:text-cyan-400"
-                />
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-              {ExerciseService.search(exerciseQuery).slice(0, 30).map((ex) => (
-                <div
-                  key={ex.id}
+            {/* Muscle Group Filter Pills */}
+            <div className="flex space-x-1.5 overflow-x-auto pb-1.5 scrollbar-none mb-1.5">
+              {EXERCISE_CATEGORIES.map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
                   onClick={() => {
                     hapticTap();
-                    setBuilderExercises((prev) => [
-                      ...prev,
-                      {
-                        exerciseId: ex.id,
-                        exerciseName: ex.name,
-                        targetSets: tempSets,
-                        targetReps: tempReps,
-                        targetWeightKg: tempWeight,
-                        restSeconds: tempRest,
-                        notes: 'Prescribed by Coach Ravi'
-                      }
-                    ]);
-                    setIsAddingExercise(false);
+                    setExerciseCategory(cat);
+                    setVisibleExerciseCount(36);
                   }}
-                  className="p-2.5 bg-slate-100/80 dark:bg-slate-900/80 hover:bg-amber-500/10 border border-slate-200/80 dark:border-white/5 hover:border-amber-500/40 rounded-xl flex items-center justify-between cursor-pointer transition-all"
+                  className={`flex-shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-bold font-tech transition-all ${
+                    exerciseCategory === cat
+                      ? 'bg-amber-500 text-black font-black shadow-sm'
+                      : 'bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
                 >
-                  <div className="flex items-center space-x-3">
-                    <img
-                      src={ex.animationUrl || ex.thumbnailUrl}
-                      alt={ex.name}
-                      className="w-10 h-10 rounded-lg object-contain bg-black flex-shrink-0"
-                    />
-                    <div>
-                      <h5 className="text-xs font-bold text-slate-900 dark:text-white capitalize">{ex.name}</h5>
-                      <span className="text-[10px] text-slate-500 dark:text-slate-400 font-tech">
-                        {ex.primaryMuscle} • {ex.equipment}
-                      </span>
+                  {cat}
+                </button>
+              ))}
+            </div>
+
+            {/* Equipment Filter Chips */}
+            <div className="flex space-x-1.5 overflow-x-auto pb-2 scrollbar-none mb-2 border-b border-slate-200/60 dark:border-white/5">
+              {EXERCISE_EQUIPMENT_LIST.map((eq) => (
+                <button
+                  key={eq}
+                  type="button"
+                  onClick={() => {
+                    hapticTap();
+                    setExerciseEquipment(eq);
+                    setVisibleExerciseCount(36);
+                  }}
+                  className={`flex-shrink-0 px-2 py-0.5 rounded-md text-[10px] font-medium transition-all ${
+                    exerciseEquipment === eq
+                      ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/40 font-bold'
+                      : 'bg-slate-100/70 dark:bg-white/5 text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
+                  }`}
+                >
+                  {eq}
+                </button>
+              ))}
+            </div>
+
+            {/* Count Badge */}
+            <div className="flex items-center justify-between text-[11px] font-tech text-slate-500 dark:text-slate-400 mb-2 px-1">
+              <span>
+                Showing <strong className="text-amber-600 dark:text-amber-400">{displayedPickerExercises.length}</strong> of{' '}
+                <strong>{filteredPickerExercises.length}</strong> movements
+              </span>
+              <span className="text-[10px] text-slate-400">Tap card to view 3D GIF • Click + to add</span>
+            </div>
+
+            {/* Exercise List */}
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[220px]">
+              {displayedPickerExercises.length === 0 ? (
+                <div className="py-12 text-center text-slate-500 space-y-2">
+                  <Dumbbell className="w-8 h-8 mx-auto text-slate-400" />
+                  <p className="text-xs font-bold text-slate-700 dark:text-slate-300">No exercises found</p>
+                  <p className="text-[11px] text-slate-400">Try adjusting your search query or filters.</p>
+                  {(exerciseQuery || exerciseCategory !== 'All' || exerciseEquipment !== 'All') && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setExerciseQuery('');
+                        setExerciseCategory('All');
+                        setExerciseEquipment('All');
+                      }}
+                      className="text-xs text-amber-600 dark:text-amber-400 font-bold underline cursor-pointer"
+                    >
+                      Reset Filters
+                    </button>
+                  )}
+                </div>
+              ) : (
+                displayedPickerExercises.map((ex) => (
+                  <div
+                    key={ex.id}
+                    className="p-2.5 bg-slate-50 dark:bg-slate-900/80 hover:bg-amber-500/10 border border-slate-200/80 dark:border-white/5 hover:border-amber-500/40 rounded-2xl flex items-center justify-between transition-all group"
+                  >
+                    {/* Exercise Info & Thumbnail — Click to open 3D GIF Guide */}
+                    <div
+                      onClick={() => {
+                        hapticTap();
+                        setSelectedExerciseDetail(ex);
+                      }}
+                      className="flex items-center space-x-3 flex-1 min-w-0 cursor-pointer"
+                      title="Click to view 3D animated GIF & Technique Guide"
+                    >
+                      <div className="w-12 h-12 rounded-xl object-contain bg-black border border-slate-200 dark:border-white/10 flex-shrink-0 relative overflow-hidden flex items-center justify-center">
+                        <img
+                          src={ex.animationUrl || ex.thumbnailUrl}
+                          alt={ex.name}
+                          loading="lazy"
+                          className="w-full h-full object-contain filter contrast-125"
+                        />
+                        <div className="absolute bottom-0.5 right-0.5 bg-black/80 px-1 py-0.2 rounded text-[7px] font-tech font-bold text-amber-300">
+                          GIF
+                        </div>
+                      </div>
+                      <div className="truncate">
+                        <h5 className="text-xs font-bold text-slate-900 dark:text-white capitalize truncate group-hover:text-amber-500 transition-colors">
+                          {ex.name}
+                        </h5>
+                        <div className="flex items-center space-x-1.5 text-[10px] text-slate-500 dark:text-slate-400 font-tech mt-0.5">
+                          <span className="text-amber-600 dark:text-amber-400 font-semibold">{ex.primaryMuscle}</span>
+                          <span>•</span>
+                          <span>{ex.equipment}</span>
+                          <span>•</span>
+                          <span className="text-emerald-600 dark:text-emerald-400 font-semibold">View Guide ➔</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex items-center space-x-1.5 flex-shrink-0 ml-2">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          hapticTap();
+                          setSelectedExerciseDetail(ex);
+                        }}
+                        className="px-2.5 py-1.5 rounded-xl bg-slate-200/70 dark:bg-white/10 text-slate-700 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-500/10 transition-colors text-[11px] font-tech font-bold flex items-center space-x-1"
+                        title="View 3D GIF & Form Instructions"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Form</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          hapticTap();
+                          const coachName = currentTrainer ? currentTrainer.name : 'Coach';
+                          setBuilderExercises((prev) => [
+                            ...prev,
+                            {
+                              exerciseId: ex.id,
+                              exerciseName: ex.name,
+                              targetSets: tempSets,
+                              targetReps: tempReps,
+                              targetWeightKg: tempWeight,
+                              restSeconds: tempRest,
+                              notes: `Prescribed by ${coachName}`
+                            }
+                          ]);
+                          setActionNotice(`Added "${ex.name}" to routine!`);
+                          setTimeout(() => setActionNotice(null), 3000);
+                          setIsAddingExercise(false);
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-[11px] font-tech font-black flex items-center space-x-1 shadow transition-transform active:scale-95 cursor-pointer"
+                        title="Add to Workout Routine"
+                      >
+                        <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                        <span>+ Add</span>
+                      </button>
                     </div>
                   </div>
-                  <Plus className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                ))
+              )}
+
+              {/* Load More Button for 1,324 exercises */}
+              {visibleExerciseCount < filteredPickerExercises.length && (
+                <div className="pt-3 pb-2 text-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      hapticTap();
+                      setVisibleExerciseCount((prev) => prev + 36);
+                    }}
+                    className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-800 dark:text-slate-200 font-tech font-bold text-xs border border-slate-200 dark:border-white/10 transition-colors flex items-center justify-center space-x-1.5 cursor-pointer"
+                  >
+                    <span>Load 36 More Exercises</span>
+                    <span className="text-amber-600 dark:text-amber-400">
+                      ({filteredPickerExercises.length - visibleExerciseCount} remaining)
+                    </span>
+                  </button>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>
@@ -1268,6 +1632,14 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
           }
         }}
       />
+
+      {/* 6. EXERCISE DETAIL & 3D GIF MODAL */}
+      {selectedExerciseDetail && (
+        <ExerciseDetailModal
+          exercise={selectedExerciseDetail}
+          onClose={() => setSelectedExerciseDetail(null)}
+        />
+      )}
     </div>
   );
 };

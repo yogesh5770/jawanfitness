@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FoodItem, LoggedMealItem, DailyNutritionGoals } from '../../types';
+import { FoodItem, LoggedMealItem, DailyNutritionGoals, AssignedMealPlan } from '../../types';
 import { FoodService, CURATED_INDIAN_FOODS } from '../../data/foodDatabase';
 import { Plus, Trash2, Droplets, Search, X, Check, Flame, Sparkles, Calendar, ChevronLeft, ChevronRight, RotateCcw, Clock } from 'lucide-react';
 import { hapticTap } from '../../utils/audioHaptics';
@@ -11,7 +11,7 @@ interface DietScreenProps {
   loggedMeals: LoggedMealItem[];
   waterMl: number;
   goals: DailyNutritionGoals;
-  assignedMealPlan?: any;
+  assignedMealPlan?: AssignedMealPlan | null;
   onAddMealItem: (item: LoggedMealItem) => void;
   onRemoveMealItem: (id: string) => void;
   onUpdateWater: (deltaMl: number) => void;

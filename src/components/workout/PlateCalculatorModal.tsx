@@ -146,8 +146,8 @@ export const PlateCalculatorModal: React.FC<PlateCalculatorModalProps> = ({
                 }}
                 className={`px-2 py-0.5 rounded-md border transition-all ${
                   barWeight === bar.w
-                    ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/40'
-                    : 'bg-black/30 border-slate-200/80 dark:border-white/5 text-slate-500'
+                    ? 'bg-amber-500 text-black font-bold border-amber-500 shadow-sm'
+                    : 'bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 font-medium'
                 }`}
               >
                 {bar.w}kg
@@ -157,20 +157,20 @@ export const PlateCalculatorModal: React.FC<PlateCalculatorModalProps> = ({
         </div>
 
         {/* Visual Barbell Graphic (Loaded Side View) */}
-        <div className="bg-slate-100 dark:bg-[#080b13] p-4 rounded-2xl border border-slate-200/80 dark:border-white/5 space-y-2">
+        <div className="bg-slate-50 dark:bg-[#080b13] p-4 rounded-2xl border border-slate-200 dark:border-white/10 space-y-2">
           <div className="flex items-center justify-between text-xs">
-            <span className="font-tech text-slate-500 dark:text-slate-400 uppercase text-[10px] font-bold">
+            <span className="font-tech text-slate-600 dark:text-slate-400 uppercase text-[10px] font-bold">
               Load Each Side ({weightPerSide} kg per sleeve)
             </span>
             {remainingRemainder > 0 && (
-              <span className="text-[10px] text-amber-600 dark:text-amber-400 font-tech">
+              <span className="text-[10px] text-amber-600 dark:text-amber-400 font-tech font-bold">
                 ±{remainingRemainder} kg unaccounted
               </span>
             )}
           </div>
 
           {/* SVG/CSS Barbell representation */}
-          <div className="h-28 flex items-center justify-center relative overflow-hidden bg-black/40 rounded-xl p-2 border border-slate-200/80 dark:border-white/5">
+          <div className="h-28 flex items-center justify-center relative overflow-hidden bg-white dark:bg-black/50 rounded-xl p-2 border border-slate-200 dark:border-white/10 shadow-inner">
             {/* Bar sleeve */}
             <div className="absolute w-full h-3 bg-gradient-to-r from-slate-600 via-slate-400 to-slate-700 rounded-full shadow" />
 

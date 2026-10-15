@@ -256,7 +256,7 @@ export const UnifiedAuthGateway: React.FC<UnifiedAuthGatewayProps> = ({
                 type="checkbox"
                 checked={keepSignedIn}
                 onChange={(e) => setKeepSignedIn(e.target.checked)}
-                className="w-4 h-4 rounded bg-black/60 border-slate-300 dark:border-white/20 text-amber-600 dark:text-amber-500 focus:ring-amber-500 accent-amber-500 cursor-pointer"
+                className="w-4 h-4 rounded bg-white dark:bg-black/60 border-slate-300 dark:border-white/20 text-amber-600 dark:text-amber-500 focus:ring-amber-500 accent-amber-500 cursor-pointer"
               />
               <span>Remember session on this device</span>
             </label>
@@ -284,16 +284,6 @@ export const UnifiedAuthGateway: React.FC<UnifiedAuthGatewayProps> = ({
           </button>
         </form>
 
-        {/* Credential Help */}
-        <div className="mt-6 pt-4 border-t border-slate-200/80 dark:border-white/5">
-          <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-start space-x-2.5 text-left">
-            <KeyRound className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-            <div className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
-              <span className="font-bold text-slate-900 dark:text-white block mb-0.5">Need your login ID?</span>
-              Use the slider above to select Member, Trainer, or Owner, enter your credentials, and sign in.
-            </div>
-          </div>
-        </div>
 
         {/* Footer info */}
         <div className="mt-6 pt-3 border-t border-slate-200/80 dark:border-white/5 flex items-center justify-between text-[11px] text-slate-500 font-tech">

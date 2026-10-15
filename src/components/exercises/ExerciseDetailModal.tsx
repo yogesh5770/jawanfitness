@@ -21,18 +21,38 @@ export const ExerciseDetailModal: React.FC<ExerciseDetailModalProps> = ({
   if (!exercise) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg bg-white dark:bg-[#0c101a] border border-slate-200 dark:border-white/10 rounded-t-3xl sm:rounded-3xl h-[90dvh] max-h-[90dvh] sm:h-auto sm:max-h-[88vh] flex flex-col overflow-hidden shadow-2xl overscroll-contain">
-        {/* Top Floating Close Button */}
-        <button
-          onClick={() => {
-            hapticTap();
-            onClose();
-          }}
-          className="absolute top-3 right-3 z-30 w-8 h-8 rounded-full bg-black/70 backdrop-blur border border-white/20 text-white flex items-center justify-center hover:bg-black transition-all"
-        >
-          <X className="w-4 h-4 text-white" />
-        </button>
+    <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="relative w-full max-w-lg bg-white dark:bg-[#0c101a] border border-slate-200 dark:border-white/10 rounded-t-3xl sm:rounded-3xl h-[92dvh] max-h-[92dvh] sm:h-auto sm:max-h-[90vh] flex flex-col overflow-hidden shadow-2xl overscroll-contain">
+        {/* Dedicated Sticky Top Header with Prominent Cross (✕) Button */}
+        <div className="px-4 py-3 bg-white/95 dark:bg-[#0c101a]/95 backdrop-blur border-b border-slate-200 dark:border-white/10 flex items-center justify-between flex-shrink-0 z-30">
+          <div className="flex items-center space-x-2.5 min-w-0 flex-1">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400 flex-shrink-0">
+              <Dumbbell className="w-4 h-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="text-[10px] font-tech uppercase tracking-wider text-amber-600 dark:text-amber-400 font-bold block">
+                Exercise Technique Guide
+              </span>
+              <h3 className="text-sm font-black text-slate-900 dark:text-white font-display truncate">
+                {exercise.name}
+              </h3>
+            </div>
+          </div>
+
+          {/* Prominent Accessible Cross (✕) Close Button */}
+          <button
+            type="button"
+            onClick={() => {
+              hapticTap();
+              onClose();
+            }}
+            aria-label="Close Exercise Guide"
+            className="min-h-[44px] min-w-[44px] rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/15 text-slate-700 dark:text-slate-200 hover:text-rose-500 dark:hover:text-rose-400 flex items-center justify-center transition-all cursor-pointer shadow-sm border border-slate-200 dark:border-white/5 active:scale-95 ml-2 flex-shrink-0"
+            title="Close Guide"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
 
         {/* Biomechanics & 3D Motion Visualizer */}
         <div className="flex-shrink-0">
@@ -169,22 +189,33 @@ export const ExerciseDetailModal: React.FC<ExerciseDetailModalProps> = ({
           )}
         </div>
 
-        {/* Bottom Sticky Action Button */}
-        {onStartExercise && (
-          <div className="p-4 bg-white dark:bg-[#0a0d14] border-t border-slate-200 dark:border-white/10 flex-shrink-0 pb-safe">
+        {/* Bottom Sticky Action Bar */}
+        <div className="p-3.5 bg-white dark:bg-[#0a0d14] border-t border-slate-200 dark:border-white/10 flex-shrink-0 pb-safe flex items-center gap-2">
+          {onStartExercise && (
             <button
+              type="button"
               onClick={() => {
                 hapticTap();
                 onStartExercise(exercise);
                 onClose();
               }}
-              className="w-full py-3.5 px-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-sm rounded-xl font-display uppercase tracking-wider flex items-center justify-center space-x-2 shadow-[0_0_20px_rgba(245,158,11,0.3)] active:scale-[0.98] transition-all cursor-pointer"
+              className="flex-1 py-3 px-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs sm:text-sm rounded-xl font-display uppercase tracking-wider flex items-center justify-center space-x-2 shadow-[0_0_20px_rgba(245,158,11,0.3)] active:scale-[0.98] transition-all cursor-pointer"
             >
               <Flame className="w-4 h-4 fill-slate-950 text-slate-950" />
               <span>Start This Exercise</span>
             </button>
-          </div>
-        )}
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              hapticTap();
+              onClose();
+            }}
+            className="py-3 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-tech font-bold text-xs rounded-xl border border-slate-200 dark:border-white/10 active:scale-95 transition-all cursor-pointer"
+          >
+            Close Guide
+          </button>
+        </div>
       </div>
     </div>
   );

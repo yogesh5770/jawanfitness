@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   WorkoutSession,
   Exercise,
@@ -16,6 +16,7 @@ import { ProgressScreen } from '../progress/ProgressScreen';
 import { BottomNav, TabType } from '../navigation/BottomNav';
 import { ActiveWorkoutModal } from '../workout/ActiveWorkoutModal';
 import { FirstLoginModal } from '../onboarding/FirstLoginModal';
+import { isMemberOnboarded, markMemberOnboarded } from '../../utils/onboardingStorage';
 import { IOSInstallBanner } from '../common/IOSInstallBanner';
 import { hapticTap } from '../../utils/audioHaptics';
 import { LogOut, KeyRound, Loader2 } from 'lucide-react';
@@ -28,6 +29,7 @@ import { ProfileScreen } from '../profile/ProfileScreen';
 import { FloatingCoachButton } from '../common/FloatingCoachButton';
 import { NotificationCenterModal, NotificationItem } from '../common/NotificationCenterModal';
 import { SyncStatusBadge } from '../common/SyncStatusBadge';
+import { notificationService } from '../../services/notificationService';
 
 export interface ClientAppProps {
   currentUser?: AuthUser | null;
@@ -78,10 +80,14 @@ function buildClientNotifications(
 ): NotificationItem[] {
   const items: NotificationItem[] = [];
   const clientId = activeClient?.id;
-
-  // 1. Coach message (latest)
+  // 1. Coach message (latest) - strictly intended for this client
   const coachMsgs = (syncState.messages || []).filter(
-    (m) => m.sender === 'trainer' && (!m.clientId || !clientId || m.clientId === clientId)
+    (m) =>
+      m.sender === 'trainer' &&
+      clientId &&
+      (m.clientId === clientId ||
+        (activeClient?.loginId && m.clientId && m.clientId.toLowerCase() === activeClient.loginId.toLowerCase()) ||
+        (activeClient?.email && m.clientId && m.clientId.toLowerCase() === activeClient.email.toLowerCase()))
   );
   const lastCoachMsg = coachMsgs[coachMsgs.length - 1];
   if (lastCoachMsg) {
@@ -175,6 +181,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({ currentUser: initialUser, 
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [workoutSubTab, setWorkoutSubTab] = useState<'assigned' | 'library'>('assigned');
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [isDismissedOnboarding, setIsDismissedOnboarding] = useState(false);
   // Read-state for real notifications, persisted locally
   const [readNotifIds, setReadNotifIds] = useState<string[]>(() => {
     try {
@@ -216,7 +223,7 @@ export const ClientApp: React.FC<ClientAppProps> = ({ currentUser: initialUser, 
         if (currentUser?.phone && c.phone && c.phone.replace(/\D/g, '').endsWith(currentUser.phone.replace(/\D/g, '').slice(-10))) return true;
         if (persistedClientId && c.id === persistedClientId) return true;
         return false;
-      }) || (syncState.clients.length === 1 ? syncState.clients[0] : null))
+      }) || null)
     : null;
 
   // Fallback: If authenticated but syncState has not yet hydrated (e.g. on fresh APK launch),
@@ -246,6 +253,9 @@ export const ClientApp: React.FC<ClientAppProps> = ({ currentUser: initialUser, 
 
   // Heal stale biometrics and keep coach assignment synchronized with syncState as source of truth
   if (activeClient) {
+    if (isMemberOnboarded(activeClient) || isMemberOnboarded(currentUser)) {
+      activeClient.firstLoginCompleted = true;
+    }
     // 1. Biometrics healing (only if activeClient has missing/0 values)
     if ((!activeClient.startingWeightKg || activeClient.startingWeightKg === 0) && currentUser?.startingWeightKg) {
       activeClient.startingWeightKg = currentUser.startingWeightKg;
@@ -261,28 +271,21 @@ export const ClientApp: React.FC<ClientAppProps> = ({ currentUser: initialUser, 
       activeClient.heightCm = currentUser.heightCm;
     }
 
-    // 2. Coach assignment synchronization:
-    // If activeClient has an assigned coach in syncState, preserve it and update cached currentUser!
-    const clientHasTrainer = Boolean(
-      activeClient.trainerId &&
-      activeClient.trainerId.trim() !== '' &&
-      activeClient.trainerId !== 'Unassigned'
-    );
+    // 2. Coach assignment validation:
+    // Ensure activeClient.trainerId is ONLY valid if it matches an active registered trainer in the gym
+    const assignedTrainerObj = activeClient.trainerId && activeClient.trainerId !== 'Unassigned'
+      ? (syncState.trainers.find((t) => t.id === activeClient.trainerId) ||
+         syncState.trainers.find((t) => t.name.toLowerCase() === (activeClient.trainerName || '').toLowerCase()) ||
+         null)
+      : null;
 
-    if (clientHasTrainer) {
-      if (currentUser && (currentUser.trainerId !== activeClient.trainerId || currentUser.trainerName !== activeClient.trainerName)) {
-        const updatedUser: AuthUser = {
-          ...currentUser,
-          trainerId: activeClient.trainerId,
-          trainerName: activeClient.trainerName || 'Assigned Coach'
-        };
-        authService.saveUser(updatedUser);
-        setCurrentUser(updatedUser);
-      }
-    } else if (currentUser?.trainerId && currentUser.trainerId.trim() !== '' && currentUser.trainerId !== 'Unassigned') {
-      // Fallback: If DB login user has a trainer but syncState client didn't have it set yet
-      activeClient.trainerId = currentUser.trainerId;
-      activeClient.trainerName = currentUser.trainerName || 'Assigned Coach';
+    if (assignedTrainerObj) {
+      activeClient.trainerId = assignedTrainerObj.id;
+      activeClient.trainerName = assignedTrainerObj.name;
+    } else {
+      // If no valid trainer exists in the gym for this client, strictly clear to Unassigned
+      activeClient.trainerId = '';
+      activeClient.trainerName = 'Unassigned';
     }
   }
 
@@ -411,6 +414,47 @@ export const ClientApp: React.FC<ClientAppProps> = ({ currentUser: initialUser, 
       syncedStore.setActiveClient(id);
     }
   }, [activeClient?.id, syncState.activeClientId]);
+
+  // 1. Initialize Native Push & Scheduled Alarms Service
+  useEffect(() => {
+    notificationService.init((targetTab) => {
+      setClientTab(targetTab as TabType);
+    });
+  }, []);
+
+  // 2. Reschedule daily alarms whenever assigned workout changes
+  useEffect(() => {
+    if (assignedWorkout?.title) {
+      notificationService.syncScheduledNotifications(assignedWorkout.title);
+    }
+  }, [assignedWorkout?.id, assignedWorkout?.title]);
+
+  // 3. Real-time Native Alert when Coach sends a message
+  const lastTrainerMsgRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!activeClient) return;
+    const trainerMsgs = (syncState.messages || []).filter(
+      (m) =>
+        m.sender === 'trainer' &&
+        (m.clientId === activeClient.id ||
+          (activeClient.loginId && m.clientId && m.clientId.toLowerCase() === activeClient.loginId.toLowerCase()) ||
+          (activeClient.email && m.clientId && m.clientId.toLowerCase() === activeClient.email.toLowerCase()))
+    );
+    const latest = trainerMsgs[trainerMsgs.length - 1];
+    if (!latest) return;
+
+    if (!lastTrainerMsgRef.current) {
+      lastTrainerMsgRef.current = latest.id;
+      return;
+    }
+
+    if (latest.id !== lastTrainerMsgRef.current) {
+      lastTrainerMsgRef.current = latest.id;
+      if (clientTab !== 'trainer' || (typeof document !== 'undefined' && document.hidden)) {
+        notificationService.notifyCoachMessage(latest.senderName || activeClient.trainerName || 'Coach', latest.text);
+      }
+    }
+  }, [syncState.messages, activeClient?.id, activeClient?.trainerName, clientTab]);
 
   if (!activeClient) {
     return (
@@ -545,27 +589,24 @@ export const ClientApp: React.FC<ClientAppProps> = ({ currentUser: initialUser, 
     });
   };
 
-  const isTrainerIdValid = Boolean(activeClient?.trainerId && activeClient.trainerId.trim() !== '' && activeClient.trainerId !== 'Unassigned');
-  const isTrainerNameValid = Boolean(activeClient?.trainerName && activeClient.trainerName.trim() !== '' && activeClient.trainerName !== 'Unassigned');
+  const isTrainerIdValid = Boolean(
+    activeClient?.trainerId &&
+    activeClient.trainerId.trim() !== '' &&
+    activeClient.trainerId !== 'Unassigned'
+  );
 
-  const assignedTrainer = (isTrainerIdValid ? syncState.trainers.find(t => t.id === activeClient.trainerId) : null) ||
-    (isTrainerNameValid ? syncState.trainers.find(t => t.name.toLowerCase() === (activeClient.trainerName || '').toLowerCase()) : null) ||
-    (syncState.trainers.length === 1 ? syncState.trainers[0] : null);
+  const assignedTrainer = isTrainerIdValid
+    ? (syncState.trainers.find((t) => t.id === activeClient.trainerId) ||
+       syncState.trainers.find((t) => t.name.toLowerCase() === (activeClient.trainerName || '').toLowerCase()) ||
+       null)
+    : null;
 
-  const isCoachAssigned = Boolean(assignedTrainer || isTrainerIdValid || isTrainerNameValid);
+  const isCoachAssigned = Boolean(assignedTrainer);
 
-  const currentTrainerName = isCoachAssigned 
-    ? (assignedTrainer?.name || activeClient.trainerName) 
-    : 'Unassigned';
-  const currentTrainerRole = isCoachAssigned 
-    ? (assignedTrainer?.role || 'Personal Fitness Coach') 
-    : 'No Trainer Assigned';
-  const currentTrainerPhone = isCoachAssigned 
-    ? (assignedTrainer?.phone || '') 
-    : '';
-  const currentTrainerAvatarUrl = isCoachAssigned
-    ? (assignedTrainer?.avatarUrl || '')
-    : '';
+  const currentTrainerName = isCoachAssigned ? assignedTrainer!.name : 'Unassigned';
+  const currentTrainerRole = isCoachAssigned ? (assignedTrainer!.role || 'Personal Fitness Coach') : 'No Trainer Assigned';
+  const currentTrainerPhone = isCoachAssigned ? (assignedTrainer!.phone || '') : '';
+  const currentTrainerAvatarUrl = isCoachAssigned ? (assignedTrainer!.avatarUrl || '') : '';
 
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-[#04060a] text-slate-900 dark:text-slate-100 flex flex-col items-center justify-start p-0 font-sans transition-colors duration-200 md:pl-20 lg:pl-64">
@@ -651,11 +692,10 @@ export const ClientApp: React.FC<ClientAppProps> = ({ currentUser: initialUser, 
               weightHistory={clientWeightHistory}
               workoutHistory={clientWorkoutHistory}
               latestMessage={syncState.messages.filter((m) => {
-                if (!m.clientId) return true;
+                if (!activeClient) return false;
                 if (m.clientId === activeClient.id) return true;
-                if (activeClient.loginId && m.clientId.toLowerCase() === activeClient.loginId.toLowerCase()) return true;
-                if (activeClient.email && m.clientId.toLowerCase() === activeClient.email.toLowerCase()) return true;
-                if (syncState.clients.length <= 1) return true;
+                if (activeClient.loginId && m.clientId && m.clientId.toLowerCase() === activeClient.loginId.toLowerCase()) return true;
+                if (activeClient.email && m.clientId && m.clientId.toLowerCase() === activeClient.email.toLowerCase()) return true;
                 return false;
               }).slice(-1)[0] || null}
               unreadNotificationsCount={notifications.filter((n) => !n.read).length}
@@ -713,9 +753,11 @@ export const ClientApp: React.FC<ClientAppProps> = ({ currentUser: initialUser, 
                 <WorkoutHubScreen
                   workoutHistory={clientWorkoutHistory}
                   assignedWorkout={assignedWorkout}
-                  onStartRoutine={handleStartRoutineTemplate}
                   onStartAssignedWorkout={handleStartAssignedWorkout}
                   onStartCustomWorkout={handleStartCustomWorkout}
+                  onStartSingleExercise={handleStartSingleExercise}
+                  onNavigateToTrainer={() => setClientTab('trainer')}
+                  onExploreExercises={() => setWorkoutSubTab('library')}
                 />
               ) : (
                 <ExercisesScreen
@@ -784,11 +826,15 @@ export const ClientApp: React.FC<ClientAppProps> = ({ currentUser: initialUser, 
           <FloatingCoachButton
             trainerName={currentTrainerName}
             trainerAvatarUrl={currentTrainerAvatarUrl}
-            isOnline={true}
+            isOnline={isCoachAssigned}
             unreadCount={
               syncState.messages.filter(
-                (m) => m.sender === 'trainer' && (!m.clientId || m.clientId === activeClient.id)
-              ).length > 0 ? 1 : 0
+                (m) =>
+                  m.sender === 'trainer' &&
+                  (m.clientId === activeClient.id ||
+                    (activeClient.loginId && m.clientId && m.clientId.toLowerCase() === activeClient.loginId.toLowerCase())) &&
+                  !m.read
+              ).length
             }
             onClick={() => setClientTab('trainer')}
           />
@@ -823,8 +869,8 @@ export const ClientApp: React.FC<ClientAppProps> = ({ currentUser: initialUser, 
           />
         )}
 
-        {/* First Login Onboarding Modal if client hasn't completed setup */}
-        {!activeClient.firstLoginCompleted && (
+        {/* First Login Onboarding Modal — strictly shown ONCE in member lifetime */}
+        {!isDismissedOnboarding && !activeClient.firstLoginCompleted && !isMemberOnboarded(activeClient) && !isMemberOnboarded(currentUser) && (
           <FirstLoginModal
             clientName={activeClient.name}
             initialHeightCm={activeClient.heightCm}
@@ -832,7 +878,33 @@ export const ClientApp: React.FC<ClientAppProps> = ({ currentUser: initialUser, 
             initialGoal={activeClient.goal}
             initialGoalWeightKg={activeClient.goalWeightKg}
             trainerName={activeClient.trainerName}
+            onClose={() => {
+              setIsDismissedOnboarding(true);
+              markMemberOnboarded(activeClient);
+              if (currentUser) markMemberOnboarded(currentUser);
+              activeClient.firstLoginCompleted = true;
+              authService.updateUser({ firstLoginCompleted: true });
+              syncedStore.completeClientOnboarding(
+                activeClient.id,
+                activeClient.heightCm || 170,
+                activeClient.startingWeightKg || 75,
+                activeClient.goal || 'General Fitness',
+                activeClient.goalWeightKg || 70
+              );
+            }}
             onComplete={(data) => {
+              setIsDismissedOnboarding(true);
+              markMemberOnboarded(activeClient);
+              if (currentUser) markMemberOnboarded(currentUser);
+              activeClient.firstLoginCompleted = true;
+              authService.updateUser({
+                firstLoginCompleted: true,
+                startingWeightKg: data.startingWeightKg,
+                currentWeightKg: data.startingWeightKg,
+                goalWeightKg: data.goalWeightKg,
+                heightCm: data.heightCm,
+                goal: data.goal
+              });
               syncedStore.completeClientOnboarding(
                 activeClient.id,
                 data.heightCm,

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Sparkles, CheckCircle2, ArrowRight, X } from 'lucide-react';
 import { hapticTap } from '../../utils/audioHaptics';
 
 interface FirstLoginModalProps {
@@ -9,6 +9,7 @@ interface FirstLoginModalProps {
   initialGoal?: string;
   initialGoalWeightKg?: number;
   trainerName?: string;
+  onClose?: () => void;
   onComplete: (data: {
     heightCm: number;
     startingWeightKg: number;
@@ -23,7 +24,8 @@ export const FirstLoginModal: React.FC<FirstLoginModalProps> = ({
   initialWeightKg = 108,
   initialGoal = 'Weight Loss',
   initialGoalWeightKg = 80,
-  trainerName = 'Coach Ravi',
+  trainerName = 'Unassigned',
+  onClose,
   onComplete
 }) => {
   const [step, setStep] = useState<1 | 2>(1);
@@ -47,6 +49,15 @@ export const FirstLoginModal: React.FC<FirstLoginModalProps> = ({
     });
   };
 
+  const handleDismiss = () => {
+    hapticTap();
+    if (onClose) {
+      onClose();
+    } else {
+      handleFinish();
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl animate-fadeIn">
       <div className="relative w-full max-w-sm bg-white dark:bg-[#0c101a] border border-amber-500/40 rounded-3xl p-6 text-left shadow-[0_20px_60px_rgba(245,158,11,0.25)] max-h-[92dvh] overflow-y-auto overscroll-contain">
@@ -55,9 +66,20 @@ export const FirstLoginModal: React.FC<FirstLoginModalProps> = ({
 
         {step === 1 ? (
           <div className="space-y-4">
-            <div className="flex items-center space-x-2 text-xs font-tech font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
-              <Sparkles className="w-4 h-4" />
-              <span>Member Onboarding</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2 text-xs font-tech font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                <Sparkles className="w-4 h-4" />
+                <span>Member Onboarding</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleDismiss}
+                className="p-1.5 -mr-1 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                title="Skip & close"
+                aria-label="Close onboarding"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
 
             <div>
@@ -136,13 +158,22 @@ export const FirstLoginModal: React.FC<FirstLoginModalProps> = ({
               </div>
             </div>
 
-            <div className="pt-2">
+            <div className="pt-2 space-y-2">
               <button
+                type="button"
                 onClick={handleContinue}
-                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-black font-display font-black text-sm uppercase tracking-wider flex items-center justify-center space-x-2 shadow-[0_0_20px_rgba(245,158,11,0.3)] transition-all active:scale-95"
+                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-black font-display font-black text-sm uppercase tracking-wider flex items-center justify-center space-x-2 shadow-[0_0_20px_rgba(245,158,11,0.3)] transition-all active:scale-95 cursor-pointer"
               >
                 <span>Continue</span>
                 <ArrowRight className="w-4 h-4 stroke-[3]" />
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDismiss}
+                className="w-full py-2 text-center text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 font-tech transition-colors cursor-pointer"
+              >
+                Skip for now & enter dashboard
               </button>
             </div>
           </div>
@@ -157,7 +188,11 @@ export const FirstLoginModal: React.FC<FirstLoginModalProps> = ({
                 You're ready 🎉
               </h3>
               <p className="text-xs text-slate-700 dark:text-slate-300 mt-2 leading-relaxed max-w-xs mx-auto">
-                Your profile has been saved. <span className="font-bold text-slate-900 dark:text-white">{trainerName}</span> will prepare your personalized workout and nutrition plan.
+                {trainerName && trainerName.trim() !== '' && trainerName !== 'Unassigned' ? (
+                  <>Your profile has been saved. <span className="font-bold text-slate-900 dark:text-white">{trainerName}</span> will prepare your personalized workout and nutrition plan.</>
+                ) : (
+                  <>Your profile has been saved. Your Gym Director will assign a personal coach to prepare your workouts and nutrition plan.</>
+                )}
               </p>
             </div>
 
@@ -176,7 +211,9 @@ export const FirstLoginModal: React.FC<FirstLoginModalProps> = ({
               </div>
               <div className="flex justify-between text-slate-500 dark:text-slate-400">
                 <span>Assigned Coach:</span>
-                <span className="font-bold text-slate-800 dark:text-slate-200">{trainerName}</span>
+                <span className="font-bold text-slate-800 dark:text-slate-200">
+                  {trainerName && trainerName.trim() !== '' && trainerName !== 'Unassigned' ? trainerName : 'Unassigned (Director will assign)'}
+                </span>
               </div>
             </div>
 

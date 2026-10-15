@@ -281,7 +281,8 @@ export const onRequest: PagesFunction<Env> = async (context) => {
           heightCm: user.height_cm ?? 170,
           goal: user.goal ?? 'General Fitness',
           trainerId: user.trainer_id ?? '',
-          trainerName: user.trainer_name ?? 'Unassigned'
+          trainerName: user.trainer_name ?? 'Unassigned',
+          firstLoginCompleted: Boolean((user.starting_weight_kg && user.starting_weight_kg > 0) || (user.height_cm && user.height_cm > 0))
         }
       }), {
         status: 200,
@@ -342,7 +343,8 @@ export const onRequest: PagesFunction<Env> = async (context) => {
           heightCm: session.height_cm ?? 170,
           goal: session.goal ?? 'General Fitness',
           trainerId: session.trainer_id ?? '',
-          trainerName: session.trainer_name ?? 'Unassigned'
+          trainerName: session.trainer_name ?? 'Unassigned',
+          firstLoginCompleted: Boolean((session.starting_weight_kg && session.starting_weight_kg > 0) || (session.height_cm && session.height_cm > 0))
         }
       }), {
         status: 200,

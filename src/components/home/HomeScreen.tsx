@@ -194,11 +194,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             }}
             title="Notifications"
             aria-label="Notifications"
-            className="relative p-2.5 rounded-2xl bg-white dark:bg-[#0c101a] border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:text-amber-500 dark:hover:text-amber-400 hover:border-amber-500/30 shadow-sm transition-all active:scale-95"
+            className="relative min-h-[48px] min-w-[48px] flex items-center justify-center rounded-2xl bg-white dark:bg-[#0c101a] border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:text-amber-500 dark:hover:text-amber-400 hover:border-amber-500/30 shadow-sm transition-all active:scale-95"
           >
             <Bell className="w-5 h-5" />
             {unreadNotificationsCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-amber-500 text-black font-tech font-black text-[10px] flex items-center justify-center border-2 border-white dark:border-[#04060a] shadow-sm animate-pulse">
+              <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-amber-500 text-black font-tech font-black text-[10px] flex items-center justify-center border-2 border-white dark:border-[#04060a] shadow-sm">
                 {unreadNotificationsCount}
               </span>
             )}
@@ -212,7 +212,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             }}
             title="My Profile & Settings"
             aria-label="Profile and Settings"
-            className="w-10 h-10 rounded-2xl bg-amber-500/15 border border-amber-500/40 flex items-center justify-center text-amber-600 dark:text-amber-400 font-black text-sm shadow-sm hover:scale-105 active:scale-95 transition-all"
+            className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/40 flex items-center justify-center text-amber-600 dark:text-amber-400 font-black text-sm shadow-sm hover:scale-105 active:scale-95 transition-all"
           >
             {clientInitials}
           </button>
@@ -297,7 +297,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
           {/* 2.5 UNFINISHED WORKOUT RECOVERY BANNER */}
           {activeWorkoutSession && (
-            <div className="rounded-2xl p-4 bg-gradient-to-r from-amber-500/20 via-orange-500/15 to-transparent border border-amber-500/40 shadow-lg space-y-2.5 animate-pulse">
+            <div className="rounded-2xl p-4 bg-gradient-to-r from-amber-500/20 via-orange-500/15 to-transparent border border-amber-500/40 shadow-lg space-y-2.5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-1.5 text-xs text-amber-500 dark:text-amber-400 font-bold font-tech">
                   <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />

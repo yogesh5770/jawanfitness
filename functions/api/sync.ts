@@ -65,15 +65,17 @@ function stripSecrets<T extends Record<string, any>>(list: T[] | undefined): T[]
   });
 }
 
-function sameUser(record: { id?: string; email?: string; loginId?: string; phone?: string } | null | undefined, session: SessionInfo): boolean {
+function sameUser(record: { id?: string; email?: string; loginId?: string; phone?: string; name?: string } | null | undefined, session: SessionInfo): boolean {
   if (!record) return false;
   const uid = (session.user_id || '').toLowerCase();
   const email = (session.email || '').toLowerCase();
   const loginId = (session.login_id || '').toLowerCase();
+  const name = (session.name || '').toLowerCase();
   const phoneDigits = (session.phone || '').replace(/\D/g, '');
   if (record.id && uid && record.id.toLowerCase() === uid) return true;
   if (record.email && email && record.email.toLowerCase() === email) return true;
   if (record.loginId && loginId && record.loginId.toLowerCase() === loginId) return true;
+  if (record.name && name && record.name.toLowerCase() === name) return true;
   if (phoneDigits.length >= 10 && record.phone && record.phone.replace(/\D/g, '').endsWith(phoneDigits.slice(-10))) return true;
   return false;
 }
@@ -144,17 +146,33 @@ function scopeStateForRole(inner: any, session: SessionInfo): any {
   }
 
   if (role === 'TRAINER') {
-    // Trainer blob record (matched by login/email/phone) gives the store-side id
+    // Trainer blob record (matched by login/email/phone/name) gives the store-side id
     const self = trainers.find((t) => sameUser(t, session)) || null;
     const keys = identityKeys(session, self);
     const trainerIds = new Set<string>();
-    if (session.user_id) trainerIds.add(session.user_id);
-    if (self?.id) trainerIds.add(self.id);
+    if (session.user_id) trainerIds.add(String(session.user_id).toLowerCase());
+    if (session.login_id) trainerIds.add(String(session.login_id).toLowerCase());
+    if (session.email) trainerIds.add(String(session.email).toLowerCase());
+    if (session.name) trainerIds.add(String(session.name).toLowerCase());
+    if (self?.id) trainerIds.add(String(self.id).toLowerCase());
+    if (self?.loginId) trainerIds.add(String(self.loginId).toLowerCase());
+    if (self?.email) trainerIds.add(String(self.email).toLowerCase());
+    if (self?.name) trainerIds.add(String(self.name).toLowerCase());
 
-    const myClients = clients.filter((c) => c?.trainerId && trainerIds.has(c.trainerId));
-    const myClientIds = new Set(myClients.map((c) => c.id).filter(Boolean));
+    const isClientForThisTrainer = (c: any) => {
+      if (!c) return false;
+      const tid = String(c.trainerId || '').toLowerCase();
+      const tname = String(c.trainerName || '').toLowerCase();
+      return (tid && trainerIds.has(tid)) || (tname && tname !== 'unassigned' && trainerIds.has(tname));
+    };
+
+    const myClients = clients.filter(isClientForThisTrainer);
+    // If no clients are specifically assigned to this trainer, include active clients so trainer can prescribe workouts
+    const clientsForTrainer = myClients.length > 0 ? myClients : clients;
+
+    const myClientIds = new Set(clientsForTrainer.map((c) => c.id).filter(Boolean));
     const myClientKeys = new Set<string>();
-    for (const c of myClients) {
+    for (const c of clientsForTrainer) {
       if (c.id) myClientKeys.add(String(c.id).toLowerCase());
       if (c.loginId) myClientKeys.add(String(c.loginId).toLowerCase());
       if (c.email) myClientKeys.add(String(c.email).toLowerCase());
@@ -162,16 +180,24 @@ function scopeStateForRole(inner: any, session: SessionInfo): any {
 
     const scopedWorkouts: Record<string, any> = {};
     for (const [k, v] of Object.entries(inner.assignedWorkouts || {})) {
-      if (keyMatches(k, myClientKeys) || keyMatches(k, keys)) scopedWorkouts[k] = v;
+      if (keyMatches(k, myClientKeys) || keyMatches(k, keys)) {
+        scopedWorkouts[k] = v;
+      } else if (v && (v as any).assignedBy && trainerIds.has(String((v as any).assignedBy).toLowerCase())) {
+        scopedWorkouts[k] = v;
+      }
     }
     const scopedDiets: Record<string, any> = {};
     for (const [k, v] of Object.entries(inner.assignedDietPlans || {})) {
-      if (keyMatches(k, myClientKeys) || keyMatches(k, keys)) scopedDiets[k] = v;
+      if (keyMatches(k, myClientKeys) || keyMatches(k, keys)) {
+        scopedDiets[k] = v;
+      } else if (v && (v as any).assignedBy && trainerIds.has(String((v as any).assignedBy).toLowerCase())) {
+        scopedDiets[k] = v;
+      }
     }
 
     return {
       ...inner,
-      clients: myClients,
+      clients: clientsForTrainer,
       trainers: self ? [self] : trainers.filter((t) => sameUser(t, session)),
       assignedWorkouts: scopedWorkouts,
       assignedDietPlans: scopedDiets,
@@ -208,7 +234,6 @@ function mergeNonAdminPost(incoming: any, existingState: any, session: SessionIn
 
     let mergedClients = clients;
     if (own && ownRecord) {
-      // Client may update only their own biometric/goal fields
       mergedClients = clients.map((c) =>
         c.id === own.id
           ? {
@@ -218,7 +243,7 @@ function mergeNonAdminPost(incoming: any, existingState: any, session: SessionIn
               goalWeightKg: ownRecord.goalWeightKg ?? c.goalWeightKg,
               heightCm: ownRecord.heightCm ?? c.heightCm,
               goal: ownRecord.goal ?? c.goal,
-              firstLoginCompleted: ownRecord.firstLoginCompleted ?? c.firstLoginCompleted
+              firstLoginCompleted: Boolean(ownRecord.firstLoginCompleted || c.firstLoginCompleted)
             }
           : c
       );
@@ -247,22 +272,67 @@ function mergeNonAdminPost(incoming: any, existingState: any, session: SessionIn
   // TRAINER
   const self = trainers.find((t) => sameUser(t, session)) || null;
   const trainerIds = new Set<string>();
-  if (session.user_id) trainerIds.add(session.user_id);
-  if (self?.id) trainerIds.add(self.id);
-  const myClients = clients.filter((c) => c?.trainerId && trainerIds.has(c.trainerId));
-  const myClientIds = new Set(myClients.map((c) => c.id).filter(Boolean));
+  if (session.user_id) trainerIds.add(String(session.user_id).toLowerCase());
+  if (session.login_id) trainerIds.add(String(session.login_id).toLowerCase());
+  if (session.email) trainerIds.add(String(session.email).toLowerCase());
+  if (session.name) trainerIds.add(String(session.name).toLowerCase());
+  if (self?.id) trainerIds.add(String(self.id).toLowerCase());
+  if (self?.loginId) trainerIds.add(String(self.loginId).toLowerCase());
+  if (self?.email) trainerIds.add(String(self.email).toLowerCase());
+  if (self?.name) trainerIds.add(String(self.name).toLowerCase());
+
+  const isClientForThisTrainer = (c: any) => {
+    if (!c) return false;
+    const tid = String(c.trainerId || '').toLowerCase();
+    const tname = String(c.trainerName || '').toLowerCase();
+    return (tid && trainerIds.has(tid)) || (tname && tname !== 'unassigned' && trainerIds.has(tname));
+  };
+
+  const myClients = clients.filter(isClientForThisTrainer);
+  const myClientIds = new Set(myClients.map((c) => String(c.id).toLowerCase()).filter(Boolean));
+  for (const c of myClients) {
+    if (c.loginId) myClientIds.add(String(c.loginId).toLowerCase());
+    if (c.email) myClientIds.add(String(c.email).toLowerCase());
+  }
+
+  const allClientKeys = new Set<string>();
+  for (const c of clients) {
+    if (c.id) allClientKeys.add(String(c.id).toLowerCase());
+    if (c.loginId) allClientKeys.add(String(c.loginId).toLowerCase());
+    if (c.email) allClientKeys.add(String(c.email).toLowerCase());
+  }
 
   const scopedWorkouts = { ...(existingState.assignedWorkouts || {}) };
   for (const [k, v] of Object.entries(incoming.assignedWorkouts || {})) {
-    if (v && myClientIds.has(String((v as any).clientId || k)) ) scopedWorkouts[k] = v;
-    else if (v && myClients.some((c) => [c.id, c.loginId, c.email].filter(Boolean).map(String).includes(String(k)))) {
-      scopedWorkouts[k] = v;
+    if (!v) continue;
+    const targetKey = String((v as any).clientId || k).toLowerCase();
+    const assignedBy = String((v as any).assignedBy || '').toLowerCase();
+    const isTargetClient = myClientIds.has(targetKey);
+    const isByTrainer = assignedBy && trainerIds.has(assignedBy);
+    const isValidGymClient = allClientKeys.has(targetKey);
+
+    if (isTargetClient || isByTrainer || isValidGymClient) {
+      scopedWorkouts[k] = {
+        ...(v as any),
+        clientId: (v as any).clientId || k
+      };
     }
   }
+
   const scopedDiets = { ...(existingState.assignedDietPlans || {}) };
   for (const [k, v] of Object.entries(incoming.assignedDietPlans || {})) {
-    if (v && myClients.some((c) => [c.id, c.loginId, c.email].filter(Boolean).map(String).includes(String(k)))) {
-      scopedDiets[k] = v;
+    if (!v) continue;
+    const targetKey = String((v as any).clientId || k).toLowerCase();
+    const assignedBy = String((v as any).assignedBy || '').toLowerCase();
+    const isTargetClient = myClientIds.has(targetKey);
+    const isByTrainer = assignedBy && trainerIds.has(assignedBy);
+    const isValidGymClient = allClientKeys.has(targetKey);
+
+    if (isTargetClient || isByTrainer || isValidGymClient) {
+      scopedDiets[k] = {
+        ...(v as any),
+        clientId: (v as any).clientId || k
+      };
     }
   }
 
@@ -477,7 +547,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
               trainerId: c.trainer_id || '',
               trainerName: c.trainer_name || 'Unassigned',
               status: 'Active',
-              firstLoginCompleted: false,
+              firstLoginCompleted: Boolean((c.starting_weight_kg && c.starting_weight_kg > 0) || (c.height_cm && c.height_cm > 0)),
               gymId: 'JAWAN-SALEM-01',
               workoutAdherence: 0,
               dietAdherence: 0,
@@ -486,18 +556,14 @@ export const onRequest: PagesFunction<Env> = async (context) => {
             inner.clients.push(clientObj);
           } else {
             if (!clientObj.loginId && c.login_id) clientObj.loginId = c.login_id;
-            // Trainer assignment sync: prefer assigned coach from either DB or state
+            // Trainer assignment sync: database is single source of truth for assignments
             if (c.trainer_id && c.trainer_id.trim() !== '' && c.trainer_id !== 'Unassigned') {
               clientObj.trainerId = c.trainer_id;
               clientObj.trainerName = c.trainer_name || 'Assigned Coach';
-            } else if (clientObj.trainerId && clientObj.trainerId.trim() !== '' && clientObj.trainerId !== 'Unassigned') {
-              try {
-                await env.DB.prepare(`
-                  UPDATE gym_users
-                  SET trainer_id = ?, trainer_name = ?, updated_at = datetime('now')
-                  WHERE id = ? OR (login_id IS NOT NULL AND login_id = ?)
-                `).bind(clientObj.trainerId, clientObj.trainerName || 'Assigned Coach', c.id, c.login_id || '').run();
-              } catch {}
+            } else {
+              // Explicitly unassigned in database — never resurrect stale previous coach
+              clientObj.trainerId = '';
+              clientObj.trainerName = 'Unassigned';
             }
 
             if ((!clientObj.startingWeightKg || clientObj.startingWeightKg === 0) && c.starting_weight_kg) {
@@ -514,6 +580,9 @@ export const onRequest: PagesFunction<Env> = async (context) => {
             }
             if ((!clientObj.goal || clientObj.goal === 'General Fitness') && c.goal) {
               clientObj.goal = c.goal;
+            }
+            if (!clientObj.firstLoginCompleted && ((clientObj.startingWeightKg && clientObj.startingWeightKg > 0) || (c.starting_weight_kg && c.starting_weight_kg > 0))) {
+              clientObj.firstLoginCompleted = true;
             }
           }
         }
@@ -771,6 +840,41 @@ export const onRequest: PagesFunction<Env> = async (context) => {
           }
         } catch (userSyncErr) {
           console.error('Failed to sync clients to gym_users:', userSyncErr);
+        }
+      }
+
+      // Synchronize client biometrics to gym_users table in D1 when CLIENT updates profile/onboarding
+      if (session.role === 'CLIENT') {
+        try {
+          const clientList = Array.isArray(mergedPayload.clients) ? mergedPayload.clients : [];
+          const ownId = session.user_id || '';
+          const myClient = clientList.find((c: any) =>
+            (c.id && c.id === ownId) ||
+            (c.loginId && session.login_id && c.loginId.toLowerCase() === session.login_id.toLowerCase()) ||
+            (c.email && session.email && c.email.toLowerCase() === session.email.toLowerCase())
+          );
+          if (myClient) {
+            await env.DB.prepare(`
+              UPDATE gym_users
+              SET starting_weight_kg = COALESCE(?, starting_weight_kg),
+                  current_weight_kg = COALESCE(?, current_weight_kg),
+                  goal_weight_kg = COALESCE(?, goal_weight_kg),
+                  height_cm = COALESCE(?, height_cm),
+                  goal = COALESCE(?, goal),
+                  updated_at = datetime('now')
+              WHERE id = ? OR (login_id IS NOT NULL AND login_id = ?)
+            `).bind(
+              myClient.startingWeightKg || null,
+              myClient.currentWeightKg || null,
+              myClient.goalWeightKg || null,
+              myClient.heightCm || null,
+              myClient.goal || null,
+              ownId,
+              session.login_id || ''
+            ).run();
+          }
+        } catch (clientSyncErr) {
+          console.error('Failed to sync client biometrics to gym_users:', clientSyncErr);
         }
       }
 

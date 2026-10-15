@@ -1,0 +1,37 @@
+{
+  "routes": [
+    {
+      "routePath": "/api/auth",
+      "mountPath": "/api",
+      "method": "OPTIONS",
+      "module": [
+        "api/auth.ts:onRequestOptions"
+      ]
+    },
+    {
+      "routePath": "/api/sync",
+      "mountPath": "/api",
+      "method": "OPTIONS",
+      "module": [
+        "api/sync.ts:onRequestOptions"
+      ]
+    },
+    {
+      "routePath": "/api/auth",
+      "mountPath": "/api",
+      "method": "",
+      "module": [
+        "api/auth.ts:onRequest"
+      ]
+    },
+    {
+      "routePath": "/api/sync",
+      "mountPath": "/api",
+      "method": "",
+      "module": [
+        "api/sync.ts:onRequest"
+      ]
+    }
+  ],
+  "baseURL": "/"
+}

@@ -162,6 +162,7 @@ export interface TrainerNote {
 
 export interface AssignedWorkout {
   id: string;
+  clientId?: string;
   title: string;
   split: string;
   assignedBy: string;
@@ -181,6 +182,7 @@ export interface AssignedWorkout {
 
 export interface AssignedMealPlan {
   id: string;
+  clientId?: string;
   title: string;
   dailyCalories: number;
   dailyProtein: number;

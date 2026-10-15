@@ -1,6 +1,7 @@
-import React from 'react';
-import { X, Bell, Dumbbell, Flame, Droplets, Trophy, MessageSquare, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Bell, Dumbbell, Flame, Droplets, Trophy, MessageSquare, ChevronRight, BellRing } from 'lucide-react';
 import { hapticTap } from '../../utils/audioHaptics';
+import { notificationService } from '../../services/notificationService';
 
 export interface NotificationItem {
   id: string;
@@ -35,6 +36,23 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
   onMarkAllRead,
   onSelectNotificationAction
 }) => {
+  const [hasPermission, setHasPermission] = useState(true);
+
+  useEffect(() => {
+    if (isOpen) {
+      notificationService.isPermissionGranted().then(setHasPermission);
+    }
+  }, [isOpen]);
+
+  const handleRequestPermission = async () => {
+    hapticTap();
+    const granted = await notificationService.requestPermission();
+    setHasPermission(granted);
+    if (granted) {
+      await notificationService.syncScheduledNotifications();
+    }
+  };
+
   if (!isOpen) return null;
 
   const unreadCount = notifications.filter((n) => !n.read).length;
@@ -103,6 +121,24 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
 
         {/* Notifications List */}
         <div className="flex-1 overflow-y-auto p-3 space-y-2.5 scrollbar-none">
+          {/* Permission Prompt Banner */}
+          {!hasPermission && (
+            <div className="p-3 rounded-2xl bg-gradient-to-r from-amber-500/15 via-amber-500/10 to-transparent border border-amber-500/30 flex items-center justify-between gap-2.5 shadow-sm">
+              <div className="flex items-center space-x-2 text-xs">
+                <BellRing className="w-4 h-4 text-amber-500 flex-shrink-0 animate-bounce" />
+                <span className="text-[11px] text-slate-700 dark:text-slate-300 font-medium leading-tight">
+                  Get workout & water alerts when the app is closed
+                </span>
+              </div>
+              <button
+                onClick={handleRequestPermission}
+                className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-[10px] font-display font-black uppercase tracking-wider flex-shrink-0 shadow active:scale-95 transition-all cursor-pointer"
+              >
+                Enable
+              </button>
+            </div>
+          )}
+
           {notifications.length === 0 ? (
             <div className="py-12 text-center text-slate-500 space-y-2">
               <Bell className="w-8 h-8 mx-auto text-slate-400 dark:text-slate-600 opacity-60" />

@@ -8,6 +8,7 @@ import { HomeScreen } from '../home/HomeScreen';
 
 import { ActiveWorkoutModal } from '../workout/ActiveWorkoutModal';
 import { FirstLoginModal } from '../onboarding/FirstLoginModal';
+import { isMemberOnboarded, markMemberOnboarded } from '../../utils/onboardingStorage';
 import { hapticTap } from '../../utils/audioHaptics';
 
 interface Live3SyncViewProps {
@@ -296,13 +297,13 @@ export const Live3SyncView: React.FC<Live3SyncViewProps> = ({ onSelectFullView }
                 <span className="text-[10px] text-slate-500 dark:text-slate-400 font-tech">Monday Split</span>
               </div>
 
-              <div className="p-2.5 rounded-xl bg-black/40 border border-slate-200/80 dark:border-white/5 space-y-1 text-[11px]">
+              <div className="p-2.5 rounded-xl bg-white dark:bg-black/40 border border-slate-200 dark:border-white/5 space-y-1 text-[11px] shadow-xs">
                 <div className="font-bold text-amber-600 dark:text-amber-400">Chest + Triceps (5 Movements)</div>
-                <div className="text-slate-700 dark:text-slate-300">1. Incline DB Press (3 × 10, 12kg, 90s)</div>
-                <div className="text-slate-700 dark:text-slate-300">2. Machine Chest Press (3 × 12, 40kg, 90s)</div>
-                <div className="text-slate-700 dark:text-slate-300">3. Cable Fly (3 × 12, 15kg, 60s)</div>
-                <div className="text-slate-700 dark:text-slate-300">4. Triceps Pushdown (3 × 12, 25kg, 60s)</div>
-                <div className="text-slate-700 dark:text-slate-300">5. Overhead Triceps Extension (3 × 10, 14kg, 60s)</div>
+                <div className="text-slate-800 dark:text-slate-300">1. Incline DB Press (3 × 10, 12kg, 90s)</div>
+                <div className="text-slate-800 dark:text-slate-300">2. Machine Chest Press (3 × 12, 40kg, 90s)</div>
+                <div className="text-slate-800 dark:text-slate-300">3. Cable Fly (3 × 12, 15kg, 60s)</div>
+                <div className="text-slate-800 dark:text-slate-300">4. Triceps Pushdown (3 × 12, 25kg, 60s)</div>
+                <div className="text-slate-800 dark:text-slate-300">5. Overhead Triceps Extension (3 × 10, 14kg, 60s)</div>
               </div>
 
               <div className="flex space-x-2">
@@ -354,12 +355,12 @@ export const Live3SyncView: React.FC<Live3SyncViewProps> = ({ onSelectFullView }
                 <span className="text-[10px] text-slate-500 dark:text-slate-400 font-tech">Macros Locked</span>
               </div>
 
-              <div className="p-2.5 rounded-xl bg-black/40 border border-slate-200/80 dark:border-white/5 space-y-1 text-[11px]">
+              <div className="p-2.5 rounded-xl bg-white dark:bg-black/40 border border-slate-200 dark:border-white/5 space-y-1 text-[11px] shadow-xs">
                 <div className="font-bold text-cyan-600 dark:text-cyan-400">P: 150g • C: 250g • F: 70g</div>
-                <div className="text-slate-700 dark:text-slate-300">Breakfast: 3 Idli, 2 Eggs, Sambar</div>
-                <div className="text-slate-700 dark:text-slate-300">Lunch: Rice, Chicken, Vegetables, Curd</div>
-                <div className="text-slate-700 dark:text-slate-300">Snack: Peanuts, Fruit</div>
-                <div className="text-slate-700 dark:text-slate-300">Dinner: Chapati, Paneer, Vegetables</div>
+                <div className="text-slate-800 dark:text-slate-300">Breakfast: 3 Idli, 2 Eggs, Sambar</div>
+                <div className="text-slate-800 dark:text-slate-300">Lunch: Rice, Chicken, Vegetables, Curd</div>
+                <div className="text-slate-800 dark:text-slate-300">Snack: Peanuts, Fruit</div>
+                <div className="text-slate-800 dark:text-slate-300">Dinner: Chapati, Paneer, Vegetables</div>
               </div>
 
               <div className="flex space-x-2">
@@ -412,7 +413,7 @@ export const Live3SyncView: React.FC<Live3SyncViewProps> = ({ onSelectFullView }
                     (e.target as HTMLInputElement).value = '';
                   }
                 }}
-                className="flex-1 bg-black/40 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-white outline-none"
+                className="flex-1 bg-white dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-white outline-none"
               />
               <span className="text-[10px] text-slate-500 font-tech">Press ↵</span>
             </div>
@@ -517,8 +518,8 @@ export const Live3SyncView: React.FC<Live3SyncViewProps> = ({ onSelectFullView }
               </div>
             )}
 
-            {/* First Login Onboarding Modal if not completed */}
-            {!activeClient.firstLoginCompleted && (
+            {/* First Login Onboarding Modal — strictly shown ONCE */}
+            {!activeClient.firstLoginCompleted && !isMemberOnboarded(activeClient) && (
               <div className="absolute inset-0 z-50">
                 <FirstLoginModal
                   clientName={activeClient.name}
@@ -527,7 +528,20 @@ export const Live3SyncView: React.FC<Live3SyncViewProps> = ({ onSelectFullView }
                   initialGoal={activeClient.goal}
                   initialGoalWeightKg={activeClient.goalWeightKg}
                   trainerName={activeClient.trainerName}
+                  onClose={() => {
+                    markMemberOnboarded(activeClient);
+                    activeClient.firstLoginCompleted = true;
+                    syncedStore.completeClientOnboarding(
+                      activeClient.id,
+                      activeClient.heightCm || 170,
+                      activeClient.startingWeightKg || 75,
+                      activeClient.goal || 'General Fitness',
+                      activeClient.goalWeightKg || 70
+                    );
+                  }}
                   onComplete={(data) => {
+                    markMemberOnboarded(activeClient);
+                    activeClient.firstLoginCompleted = true;
                     syncedStore.completeClientOnboarding(
                       activeClient.id,
                       data.heightCm,
