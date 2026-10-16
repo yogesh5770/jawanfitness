@@ -7,7 +7,7 @@ import { Exercise } from '../types';
  */
 
 // Default or custom Cloudflare R2 bucket public endpoint
-const DEFAULT_R2_ENDPOINT = 'https://pub-jawan-fitness.r2.dev';
+const DEFAULT_R2_ENDPOINT = 'https://pub-585d42eb1aa64a67aedf483ec328d3fe.r2.dev';
 const STORAGE_KEY = 'jawan_r2_endpoint';
 
 export interface R2Config {
@@ -152,7 +152,16 @@ export const R2MediaService = {
    * Resolves the full Cloudflare R2 3D video URL for a given exercise
    */
   getVideoUrl(exercise: Exercise): string | null {
-    // 1. Direct MP4/WebM URL already provided in exercise data
+    // 1. Direct HD MP4 demonstration already provided in exercise data
+    if (exercise.videoUrl && (exercise.videoUrl.endsWith('.mp4') || exercise.videoUrl.endsWith('.webm'))) {
+      return exercise.videoUrl;
+    }
+    if (exercise.videoMaleUrl && (exercise.videoMaleUrl.endsWith('.mp4') || exercise.videoMaleUrl.endsWith('.webm'))) {
+      return exercise.videoMaleUrl;
+    }
+    if (exercise.videoFemaleUrl && (exercise.videoFemaleUrl.endsWith('.mp4') || exercise.videoFemaleUrl.endsWith('.webm'))) {
+      return exercise.videoFemaleUrl;
+    }
     if (
       exercise.animationUrl &&
       (exercise.animationUrl.endsWith('.mp4') ||

@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Exercise, MuscleGroup } from '../../types';
 import { ExerciseService } from '../../services/exerciseService';
-import { AnatomicalExerciseIllustration } from '../anatomy/AnatomicalExerciseIllustration';
 import { ExerciseDetailModal } from './ExerciseDetailModal';
 import { Search, Star, X, Sparkles, Dumbbell } from 'lucide-react';
 import { hapticTap } from '../../utils/audioHaptics';
@@ -293,15 +292,12 @@ export const ExercisesScreen: React.FC<ExercisesScreenProps> = ({ onStartExercis
                     }}
                   />
                 ) : null}
-                <div style={{ display: exercise.thumbnailUrl ? 'none' : 'block' }} className="w-full h-full">
-                  <AnatomicalExerciseIllustration
-                    exerciseId={exercise.id}
-                    category={exercise.category}
-                    className="w-full h-full"
-                  />
+                <div style={{ display: exercise.thumbnailUrl ? 'none' : 'flex' }} className="w-full h-full flex-col items-center justify-center bg-slate-900 text-amber-500 p-1">
+                  <Dumbbell className="w-5 h-5 mb-0.5" />
+                  <span className="text-[9px] font-tech font-bold uppercase">{exercise.primaryMuscle}</span>
                 </div>
-                <div className="absolute bottom-1 right-1 bg-black/80 backdrop-blur border border-amber-500/30 text-[8px] font-tech font-black text-amber-300 px-1 py-0.2 rounded shadow flex items-center space-x-0.5 pointer-events-none">
-                  <span>GIF</span>
+                <div className="absolute bottom-1 right-1 bg-black/80 backdrop-blur border border-emerald-500/40 text-[8px] font-tech font-black text-emerald-300 px-1 py-0.2 rounded shadow flex items-center space-x-0.5 pointer-events-none">
+                  <span>1080P</span>
                 </div>
               </div>
 
@@ -346,7 +342,7 @@ export const ExercisesScreen: React.FC<ExercisesScreenProps> = ({ onStartExercis
           <div className="py-16 text-center text-slate-500 space-y-2">
             <Sparkles className="w-8 h-8 mx-auto text-slate-600" />
             <p className="text-sm font-medium text-slate-700 dark:text-slate-300">No exercises found</p>
-            <p className="text-xs text-slate-500 max-w-xs mx-auto">
+            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
               Try adjusting your search query or selecting a different muscle group.
             </p>
             {(searchQuery || selectedCategory !== 'All' || selectedEquipment !== 'All') && (

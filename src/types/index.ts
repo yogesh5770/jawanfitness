@@ -34,6 +34,14 @@ export interface Exercise {
   difficulty: 'Beginner' | 'Intermediate' | 'Advanced';
   animationUrl: string; // loopable animation / video demonstration
   thumbnailUrl: string;
+  videoUrl?: string; // High-definition 1080p MP4 demonstration
+  videoMaleUrl?: string; // Male model HD demonstration video
+  videoFemaleUrl?: string; // Female model HD demonstration video
+  posterMaleUrl?: string; // High-resolution male poster
+  posterFemaleUrl?: string; // High-resolution female poster
+  highResImages?: string[]; // 750x500 high-resolution multi-frame studio photos (Start / Peak)
+  formCues?: string[]; // Quick tactical form cues
+  breathingCue?: string; // Quick breathing cue text
   trainerVideoUrl?: string;
   instructions: string[];
   instructionsHi?: string[];

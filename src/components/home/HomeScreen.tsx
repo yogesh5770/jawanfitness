@@ -523,12 +523,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               <div className="bg-slate-50 dark:bg-slate-900/90 rounded-xl p-1.5 sm:p-2 border border-slate-200 dark:border-white/5">
                 <span className="text-[9px] font-tech text-slate-500 dark:text-slate-400 uppercase block">Protein</span>
                 <div className="text-[11px] sm:text-xs font-bold text-amber-600 dark:text-amber-400 mt-0.5 truncate">
-                  {totalProtein} <span className="text-[9px] text-slate-500">/ {effectiveDiet ? effectiveDiet.dailyProtein : goals.protein}g</span>
+                  {totalProtein} <span className="text-[9px] text-slate-500 dark:text-slate-400">/ {effectiveDiet ? effectiveDiet.dailyProtein : goals.protein}g</span>
                 </div>
                 <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-1 mt-1 overflow-hidden">
                   <div
                     className="bg-amber-500 dark:bg-amber-400 h-full rounded-full"
-                    style={{ width: `${Math.min(100, (totalProtein / (effectiveDiet ? effectiveDiet.dailyProtein : goals.protein)) * 100)}%` }}
+                    style={{ width: `${Math.min(100, (effectiveDiet?.dailyProtein || goals.protein) > 0 ? (totalProtein / (effectiveDiet ? effectiveDiet.dailyProtein : goals.protein)) * 100 : 0)}%` }}
                   />
                 </div>
               </div>
@@ -536,12 +536,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               <div className="bg-slate-50 dark:bg-slate-900/90 rounded-xl p-1.5 sm:p-2 border border-slate-200 dark:border-white/5">
                 <span className="text-[9px] font-tech text-slate-500 dark:text-slate-400 uppercase block">Carbs</span>
                 <div className="text-[11px] sm:text-xs font-bold text-cyan-600 dark:text-cyan-400 mt-0.5 truncate">
-                  {totalCarbs} <span className="text-[9px] text-slate-500">/ {effectiveDiet ? effectiveDiet.dailyCarbs : goals.carbs}g</span>
+                  {totalCarbs} <span className="text-[9px] text-slate-500 dark:text-slate-400">/ {effectiveDiet ? effectiveDiet.dailyCarbs : goals.carbs}g</span>
                 </div>
                 <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-1 mt-1 overflow-hidden">
                   <div
                     className="bg-cyan-500 dark:bg-cyan-400 h-full rounded-full"
-                    style={{ width: `${Math.min(100, (totalCarbs / (effectiveDiet ? effectiveDiet.dailyCarbs : goals.carbs)) * 100)}%` }}
+                    style={{ width: `${Math.min(100, (effectiveDiet?.dailyCarbs || goals.carbs) > 0 ? (totalCarbs / (effectiveDiet ? effectiveDiet.dailyCarbs : goals.carbs)) * 100 : 0)}%` }}
                   />
                 </div>
               </div>
@@ -549,12 +549,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               <div className="bg-slate-50 dark:bg-slate-900/90 rounded-xl p-1.5 sm:p-2 border border-slate-200 dark:border-white/5">
                 <span className="text-[9px] font-tech text-slate-500 dark:text-slate-400 uppercase block">Fat</span>
                 <div className="text-[11px] sm:text-xs font-bold text-rose-600 dark:text-rose-400 mt-0.5 truncate">
-                  {totalFat} <span className="text-[9px] text-slate-500">/ {effectiveDiet ? effectiveDiet.dailyFat : goals.fat}g</span>
+                  {totalFat} <span className="text-[9px] text-slate-500 dark:text-slate-400">/ {effectiveDiet ? effectiveDiet.dailyFat : goals.fat}g</span>
                 </div>
                 <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-1 mt-1 overflow-hidden">
                   <div
                     className="bg-rose-500 dark:bg-rose-400 h-full rounded-full"
-                    style={{ width: `${Math.min(100, (totalFat / (effectiveDiet ? effectiveDiet.dailyFat : goals.fat)) * 100)}%` }}
+                    style={{ width: `${Math.min(100, (effectiveDiet?.dailyFat || goals.fat) > 0 ? (totalFat / (effectiveDiet ? effectiveDiet.dailyFat : goals.fat)) * 100 : 0)}%` }}
                   />
                 </div>
               </div>
@@ -562,12 +562,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               <div className="bg-slate-50 dark:bg-slate-900/90 rounded-xl p-1.5 sm:p-2 border border-slate-200 dark:border-white/5">
                 <span className="text-[9px] font-tech text-slate-500 dark:text-slate-400 uppercase block">Fiber</span>
                 <div className="text-[11px] sm:text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-0.5 truncate">
-                  {totalFiber} <span className="text-[9px] text-slate-500">/ {goals.fiber}g</span>
+                  {totalFiber} <span className="text-[9px] text-slate-500 dark:text-slate-400">/ {goals.fiber}g</span>
                 </div>
                 <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-1 mt-1 overflow-hidden">
                   <div
                     className="bg-emerald-500 dark:bg-emerald-400 h-full rounded-full"
-                    style={{ width: `${Math.min(100, (totalFiber / goals.fiber) * 100)}%` }}
+                    style={{ width: `${Math.min(100, goals.fiber > 0 ? (totalFiber / goals.fiber) * 100 : 0)}%` }}
                   />
                 </div>
               </div>

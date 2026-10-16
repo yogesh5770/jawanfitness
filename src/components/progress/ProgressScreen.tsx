@@ -313,7 +313,7 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
               <div className="mb-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-white/10 space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[10px] font-tech text-slate-500 block mb-1">Waist (cm)</label>
+                    <label className="text-[10px] font-tech text-slate-500 dark:text-slate-400 block mb-1">Waist (cm)</label>
                     <input
                       type="number"
                       value={measForm.waistCm}
@@ -322,7 +322,7 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-tech text-slate-500 block mb-1">Chest (cm)</label>
+                    <label className="text-[10px] font-tech text-slate-500 dark:text-slate-400 block mb-1">Chest (cm)</label>
                     <input
                       type="number"
                       value={measForm.chestCm}
@@ -331,7 +331,7 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-tech text-slate-500 block mb-1">Arms (cm)</label>
+                    <label className="text-[10px] font-tech text-slate-500 dark:text-slate-400 block mb-1">Arms (cm)</label>
                     <input
                       type="number"
                       value={measForm.armCm}
@@ -340,7 +340,7 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-tech text-slate-500 block mb-1">Thighs (cm)</label>
+                    <label className="text-[10px] font-tech text-slate-500 dark:text-slate-400 block mb-1">Thighs (cm)</label>
                     <input
                       type="number"
                       value={measForm.thighCm}
@@ -374,7 +374,7 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
                 const deltaGood = goodWhenDown ? delta < 0 : delta > 0;
                 return (
                   <div key={key} className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/5 space-y-1">
-                    <span className="text-[10px] font-tech uppercase text-slate-500 block">{label}</span>
+                    <span className="text-[10px] font-tech uppercase text-slate-500 dark:text-slate-400 block">{label}</span>
                     <span className="text-xl font-black text-slate-900 dark:text-white font-tech">
                       {hasValue ? `${value} cm` : '—'}
                     </span>
@@ -409,7 +409,7 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
                     ? `${personalRecords.length} Personal Record${personalRecords.length > 1 ? 's' : ''} Logged`
                     : 'No PRs Yet'}
                 </h4>
-                <p className="text-[11px] text-slate-500 font-tech">Maximum verified strength feats</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-tech">Maximum verified strength feats</p>
               </div>
             </div>
             {personalRecords.length > 0 && (
@@ -433,7 +433,7 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
                 <div key={`${pr.exercise}-${idx}`} className="py-3 flex items-center justify-between">
                   <div>
                     <h5 className="text-xs font-bold text-slate-900 dark:text-white font-display">{pr.exercise}</h5>
-                    <span className="text-[10px] text-slate-500 font-tech block">
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-tech block">
                       {pr.reps} reps • Verified on {pr.date}
                     </span>
                   </div>

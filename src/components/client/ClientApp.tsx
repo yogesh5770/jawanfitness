@@ -272,18 +272,29 @@ export const ClientApp: React.FC<ClientAppProps> = ({ currentUser: initialUser, 
     }
 
     // 2. Coach assignment validation:
-    // Ensure activeClient.trainerId is ONLY valid if it matches an active registered trainer in the gym
-    const assignedTrainerObj = activeClient.trainerId && activeClient.trainerId !== 'Unassigned'
-      ? (syncState.trainers.find((t) => t.id === activeClient.trainerId) ||
-         syncState.trainers.find((t) => t.name.toLowerCase() === (activeClient.trainerName || '').toLowerCase()) ||
-         null)
-      : null;
+    // If gym trainers are loaded, validate activeClient's assignment
+    const hasTrainerAssigned = Boolean(
+      (activeClient.trainerId && activeClient.trainerId.trim() !== '' && activeClient.trainerId !== 'Unassigned') ||
+      (activeClient.trainerName && activeClient.trainerName.trim() !== '' && activeClient.trainerName !== 'Unassigned' && activeClient.trainerName.toLowerCase() !== 'none')
+    );
 
-    if (assignedTrainerObj) {
-      activeClient.trainerId = assignedTrainerObj.id;
-      activeClient.trainerName = assignedTrainerObj.name;
+    if (hasTrainerAssigned) {
+      if (syncState.trainers.length > 0) {
+        const assignedTrainerObj =
+          (activeClient.trainerId ? syncState.trainers.find((t) => t.id === activeClient.trainerId) : null) ||
+          (activeClient.trainerName ? syncState.trainers.find((t) => t.name.toLowerCase() === (activeClient.trainerName || '').toLowerCase()) : null) ||
+          null;
+
+        if (assignedTrainerObj) {
+          activeClient.trainerId = assignedTrainerObj.id;
+          activeClient.trainerName = assignedTrainerObj.name;
+        } else {
+          // Explicitly invalid or deleted trainer
+          activeClient.trainerId = '';
+          activeClient.trainerName = 'Unassigned';
+        }
+      }
     } else {
-      // If no valid trainer exists in the gym for this client, strictly clear to Unassigned
       activeClient.trainerId = '';
       activeClient.trainerName = 'Unassigned';
     }
@@ -595,18 +606,25 @@ export const ClientApp: React.FC<ClientAppProps> = ({ currentUser: initialUser, 
     activeClient.trainerId !== 'Unassigned'
   );
 
-  const assignedTrainer = isTrainerIdValid
-    ? (syncState.trainers.find((t) => t.id === activeClient.trainerId) ||
-       syncState.trainers.find((t) => t.name.toLowerCase() === (activeClient.trainerName || '').toLowerCase()) ||
+  const isTrainerNameValid = Boolean(
+    activeClient?.trainerName &&
+    activeClient.trainerName.trim() !== '' &&
+    activeClient.trainerName !== 'Unassigned' &&
+    activeClient.trainerName.toLowerCase() !== 'none'
+  );
+
+  const assignedTrainer = (isTrainerIdValid || isTrainerNameValid)
+    ? ((isTrainerIdValid ? syncState.trainers.find((t) => t.id === activeClient.trainerId) : null) ||
+       (isTrainerNameValid ? syncState.trainers.find((t) => t.name.toLowerCase() === (activeClient.trainerName || '').toLowerCase()) : null) ||
        null)
     : null;
 
-  const isCoachAssigned = Boolean(assignedTrainer);
+  const isCoachAssigned = Boolean(assignedTrainer) || (isTrainerNameValid && activeClient?.trainerName !== 'Unassigned');
 
-  const currentTrainerName = isCoachAssigned ? assignedTrainer!.name : 'Unassigned';
-  const currentTrainerRole = isCoachAssigned ? (assignedTrainer!.role || 'Personal Fitness Coach') : 'No Trainer Assigned';
-  const currentTrainerPhone = isCoachAssigned ? (assignedTrainer!.phone || '') : '';
-  const currentTrainerAvatarUrl = isCoachAssigned ? (assignedTrainer!.avatarUrl || '') : '';
+  const currentTrainerName = assignedTrainer ? assignedTrainer.name : (isTrainerNameValid ? activeClient!.trainerName : 'Unassigned');
+  const currentTrainerRole = assignedTrainer ? (assignedTrainer.role || 'Personal Fitness Coach') : (isCoachAssigned ? 'Personal Fitness Coach' : 'No Trainer Assigned');
+  const currentTrainerPhone = assignedTrainer ? (assignedTrainer.phone || '') : '';
+  const currentTrainerAvatarUrl = assignedTrainer ? (assignedTrainer.avatarUrl || '') : '';
 
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-[#04060a] text-slate-900 dark:text-slate-100 flex flex-col items-center justify-start p-0 font-sans transition-colors duration-200 md:pl-20 lg:pl-64">

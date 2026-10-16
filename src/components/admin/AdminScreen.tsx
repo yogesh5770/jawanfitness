@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Users, ShieldCheck, Dumbbell, Apple, FileText, Search, Plus, Trash2, X, Activity, Sparkles, Check, Menu, UserPlus, RefreshCw, LogOut, Database, MessageCircle, Key, Camera, Upload } from 'lucide-react';
 import { ExerciseService } from '../../services/exerciseService';
 import { FoodService, FOOD_CATEGORIES } from '../../data/foodDatabase';
@@ -82,10 +82,12 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
   const [exerciseSearch, setExerciseSearch] = useState('');
   const [exerciseCategory, setExerciseCategory] = useState('All');
   const [selectedExerciseForModal, setSelectedExerciseForModal] = useState<Exercise | null>(null);
+  const [adminVisibleExercises, setAdminVisibleExercises] = useState(36);
 
   // Food search in admin
   const [foodSearch, setFoodSearch] = useState('');
   const [foodCategory, setFoodCategory] = useState('All');
+  const [adminVisibleFoods, setAdminVisibleFoods] = useState(36);
 
   // Mobile menu drawer toggle
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -331,14 +333,20 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
     setReassigningClient(null);
   };
 
-  const allExercises = ExerciseService.getAll();
-  const filteredExercises = allExercises.filter((ex) => {
-    const matchesCat = exerciseCategory === 'All' || ex.category === exerciseCategory;
-    const matchesSearch = ex.name.toLowerCase().includes(exerciseSearch.toLowerCase());
-    return matchesCat && matchesSearch;
-  });
+  const filteredExercises = useMemo(() => {
+    return ExerciseService.search(
+      exerciseSearch,
+      exerciseCategory === 'All' ? undefined : (exerciseCategory as any)
+    );
+  }, [exerciseSearch, exerciseCategory]);
 
-  const allFoods = FoodService.searchCurated(foodSearch, foodCategory);
+  const allFilteredFoods = useMemo(() => {
+    return FoodService.searchAll(foodSearch, foodCategory);
+  }, [foodSearch, foodCategory, syncState.customFoods]);
+
+  const displayedFoods = useMemo(() => {
+    return allFilteredFoods.slice(0, adminVisibleFoods);
+  }, [allFilteredFoods, adminVisibleFoods]);
 
   const MODULE_ITEMS = [
     { id: 'dashboard', label: 'Dashboard', icon: Activity },
@@ -1127,7 +1135,10 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                     type="text"
                     placeholder="Search chicken, rice, apple, banana, spinach, oats, egg, whey, paneer..."
                     value={foodSearch}
-                    onChange={(e) => setFoodSearch(e.target.value)}
+                    onChange={(e) => {
+                      setFoodSearch(e.target.value);
+                      setAdminVisibleFoods(36);
+                    }}
                     className="bg-transparent text-xs text-slate-900 dark:text-white outline-none w-full placeholder:text-slate-500 dark:placeholder:text-slate-400"
                   />
                 </div>
@@ -1140,6 +1151,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                       onClick={() => {
                         hapticTap();
                         setFoodCategory(cat);
+                        setAdminVisibleFoods(36);
                       }}
                       className={`px-3 py-1 rounded-lg whitespace-nowrap transition-all ${
                         foodCategory === cat
@@ -1153,9 +1165,20 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                 </div>
               </div>
 
+              {/* Movement / Food Counter Badge */}
+              <div className="flex items-center justify-between text-xs font-tech text-slate-500 dark:text-slate-400 pt-1">
+                <span>
+                  Showing <strong className="text-amber-600 dark:text-amber-400 font-bold">{displayedFoods.length}</strong> of{' '}
+                  <strong className="text-slate-900 dark:text-white">{allFilteredFoods.length}</strong> items
+                </span>
+                {allFilteredFoods.length > 0 && (
+                  <span className="text-[10px] text-slate-400">100% Verified Macro Database</span>
+                )}
+              </div>
+
               {/* Foods List Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3">
-                {allFoods.map((food) => (
+                {displayedFoods.map((food) => (
                   <div
                     key={food.id}
                     className="p-3 bg-white dark:bg-[#0b0f1a] border border-slate-200 dark:border-white/10 rounded-2xl flex items-center justify-between hover:border-amber-500/40 transition-all text-xs"
@@ -1189,7 +1212,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                             hapticTap();
                             syncedStore.deleteCustomFood(food.id, 'ADMIN');
                           }}
-                          className="p-1.5 rounded-lg bg-rose-950/40 border border-rose-500/30 text-rose-600 dark:text-rose-400 hover:text-rose-300 hover:bg-rose-900/60 transition-all"
+                          className="p-1.5 rounded-lg bg-rose-950/40 border border-rose-500/30 text-rose-600 dark:text-rose-400 hover:text-rose-300 hover:bg-rose-900/60 transition-all cursor-pointer"
                           title="Delete Custom Food"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -1199,6 +1222,25 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                   </div>
                 ))}
               </div>
+
+              {/* Load More Button for Foods */}
+              {adminVisibleFoods < allFilteredFoods.length && (
+                <div className="pt-2 pb-4 text-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      hapticTap();
+                      setAdminVisibleFoods((prev) => prev + 36);
+                    }}
+                    className="w-full py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-800 dark:text-slate-200 font-tech font-bold text-xs border border-slate-200 dark:border-white/10 transition-colors flex items-center justify-center space-x-2 cursor-pointer"
+                  >
+                    <span>Load 36 More Food Items</span>
+                    <span className="text-amber-600 dark:text-amber-400">
+                      ({allFilteredFoods.length - adminVisibleFoods} remaining)
+                    </span>
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -1215,7 +1257,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                   </p>
                 </div>
                 <span className="text-xs font-tech font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20 self-start sm:self-auto">
-                  {allExercises.length} Total Exercises
+                  {ExerciseService.getAll().length.toLocaleString()} Total Exercises
                 </span>
               </div>
 
@@ -1252,55 +1294,104 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                 </div>
               </div>
 
+              {/* Exercise Count Header */}
+              <div className="flex items-center justify-between text-xs font-tech text-slate-500 dark:text-slate-400 px-1">
+                <span>
+                  Showing <strong className="text-amber-600 dark:text-amber-400">{Math.min(adminVisibleExercises, filteredExercises.length)}</strong> of{' '}
+                  <strong>{filteredExercises.length}</strong> movements
+                </span>
+                <span className="text-[10px]">Tap card to view GIF guide & biomechanics</span>
+              </div>
+
               {/* Exercises Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {filteredExercises.slice(0, 30).map((exercise) => (
-                  <div
-                    key={exercise.id}
+              {filteredExercises.length === 0 ? (
+                <div className="p-12 text-center text-slate-500 space-y-2 bg-white dark:bg-[#0b0f1a] rounded-2xl border border-slate-200 dark:border-white/10">
+                  <Dumbbell className="w-8 h-8 mx-auto text-slate-400" />
+                  <p className="text-xs font-bold text-slate-700 dark:text-slate-300">No exercises found</p>
+                  <p className="text-[11px] text-slate-400">Try adjusting your search query or selecting a different category.</p>
+                  {(exerciseSearch || exerciseCategory !== 'All') && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setExerciseSearch('');
+                        setExerciseCategory('All');
+                        setAdminVisibleExercises(36);
+                      }}
+                      className="text-xs text-amber-600 dark:text-amber-400 font-bold underline cursor-pointer"
+                    >
+                      Reset Filters
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {filteredExercises.slice(0, adminVisibleExercises).map((exercise) => (
+                    <div
+                      key={exercise.id}
+                      onClick={() => {
+                        hapticTap();
+                        setSelectedExerciseForModal(exercise);
+                      }}
+                      className="p-3.5 bg-white dark:bg-[#0b0f1a] border border-slate-200 dark:border-white/10 rounded-2xl hover:border-amber-500/40 hover:shadow-md transition-all text-xs space-y-2 cursor-pointer group"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className="w-14 h-12 rounded-xl bg-slate-100 dark:bg-black/40 border border-slate-200 dark:border-white/10 overflow-hidden flex-shrink-0 flex items-center justify-center relative">
+                          {exercise.thumbnailUrl ? (
+                            <img
+                              src={exercise.thumbnailUrl}
+                              alt={exercise.name}
+                              loading="lazy"
+                              className="w-full h-full object-contain filter contrast-125"
+                            />
+                          ) : null}
+                          <div className="absolute bottom-0.5 right-0.5 bg-black/85 px-1 py-0.2 rounded text-[7px] font-tech text-amber-300 font-bold">
+                            GIF
+                          </div>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center space-x-1.5 mb-0.5">
+                            <span className="text-[9px] font-tech font-bold px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                              {exercise.category}
+                            </span>
+                            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-tech truncate">
+                              {exercise.equipment}
+                            </span>
+                          </div>
+                          <h4 className="font-bold text-slate-900 dark:text-white text-xs group-hover:text-amber-500 dark:group-hover:text-amber-400 transition-colors truncate">
+                            {exercise.name}
+                          </h4>
+                        </div>
+                      </div>
+                      <p className="text-slate-500 dark:text-slate-400 text-[11px] line-clamp-2">
+                        {exercise.trainerTip || exercise.instructions?.[0] || 'Targeted biomechanics movement'}
+                      </p>
+                      <div className="pt-1.5 flex items-center justify-between text-[10px] font-tech text-amber-600 dark:text-amber-400 font-bold border-t border-slate-100 dark:border-white/5">
+                        <span>View GIF & Technique Guide</span>
+                        <span>➔</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Load More Button */}
+              {adminVisibleExercises < filteredExercises.length && (
+                <div className="pt-2 text-center">
+                  <button
+                    type="button"
                     onClick={() => {
                       hapticTap();
-                      setSelectedExerciseForModal(exercise);
+                      setAdminVisibleExercises((prev) => prev + 36);
                     }}
-                    className="p-3.5 bg-white dark:bg-[#0b0f1a] border border-slate-200 dark:border-white/10 rounded-2xl hover:border-amber-500/40 hover:shadow-md transition-all text-xs space-y-2 cursor-pointer group"
+                    className="w-full py-3 rounded-2xl bg-white hover:bg-slate-100 dark:bg-[#0b0f1a] dark:hover:bg-white/5 text-slate-800 dark:text-slate-200 font-tech font-bold text-xs border border-slate-200 dark:border-white/10 transition-colors flex items-center justify-center space-x-2 shadow-sm cursor-pointer"
                   >
-                    <div className="flex items-center space-x-3">
-                      <div className="w-14 h-12 rounded-xl bg-slate-100 dark:bg-black/40 border border-slate-200 dark:border-white/10 overflow-hidden flex-shrink-0 flex items-center justify-center relative">
-                        {exercise.thumbnailUrl ? (
-                          <img
-                            src={exercise.thumbnailUrl}
-                            alt={exercise.name}
-                            loading="lazy"
-                            className="w-full h-full object-contain filter contrast-125"
-                          />
-                        ) : null}
-                        <div className="absolute bottom-0.5 right-0.5 bg-black/85 px-1 py-0.2 rounded text-[7px] font-tech text-amber-300 font-bold">
-                          GIF
-                        </div>
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center space-x-1.5 mb-0.5">
-                          <span className="text-[9px] font-tech font-bold px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                            {exercise.category}
-                          </span>
-                          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-tech truncate">
-                            {exercise.equipment}
-                          </span>
-                        </div>
-                        <h4 className="font-bold text-slate-900 dark:text-white text-xs group-hover:text-amber-500 dark:group-hover:text-amber-400 transition-colors truncate">
-                          {exercise.name}
-                        </h4>
-                      </div>
-                    </div>
-                    <p className="text-slate-500 dark:text-slate-400 text-[11px] line-clamp-2">
-                      {exercise.trainerTip || exercise.instructions?.[0] || 'Targeted biomechanics movement'}
-                    </p>
-                    <div className="pt-1.5 flex items-center justify-between text-[10px] font-tech text-amber-600 dark:text-amber-400 font-bold border-t border-slate-100 dark:border-white/5">
-                      <span>View 3D GIF & Technique</span>
-                      <span>➔</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                    <span>Load 36 More Movements</span>
+                    <span className="text-amber-600 dark:text-amber-400">
+                      ({filteredExercises.length - adminVisibleExercises} remaining)
+                    </span>
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

@@ -18,7 +18,6 @@ import {
 } from 'lucide-react';
 import { hapticTap } from '../../utils/audioHaptics';
 import { ExerciseDetailModal } from '../exercises/ExerciseDetailModal';
-import { AnatomicalExerciseIllustration } from '../anatomy/AnatomicalExerciseIllustration';
 
 interface WorkoutHubScreenProps {
   workoutHistory: WorkoutSession[];
@@ -174,7 +173,7 @@ export const WorkoutHubScreen: React.FC<WorkoutHubScreenProps> = ({
                 hapticTap();
                 onStartCustomWorkout();
               }}
-              className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-transparent hover:bg-slate-100 dark:hover:bg-white/5 text-slate-500 hover:text-slate-900 dark:hover:text-white font-tech font-bold text-xs flex items-center justify-center space-x-1 transition-all cursor-pointer"
+              className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-transparent hover:bg-slate-100 dark:hover:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-tech font-bold text-xs flex items-center justify-center space-x-1 transition-all cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Empty Session</span>
@@ -231,17 +230,14 @@ export const WorkoutHubScreen: React.FC<WorkoutHubScreenProps> = ({
                         />
                       ) : null}
                       <div
-                        style={{ display: fullEx?.thumbnailUrl ? 'none' : 'block' }}
-                        className="w-full h-full"
+                        style={{ display: fullEx?.thumbnailUrl ? 'none' : 'flex' }}
+                        className="w-full h-full flex-col items-center justify-center bg-slate-900 text-amber-500 p-1"
                       >
-                        <AnatomicalExerciseIllustration
-                          exerciseId={fullEx?.id || '0001'}
-                          category={fullEx?.category || 'Chest'}
-                          className="w-full h-full"
-                        />
+                        <Dumbbell className="w-5 h-5 mb-0.5" />
+                        <span className="text-[8px] font-tech font-bold uppercase">{fullEx?.primaryMuscle || 'Exercise'}</span>
                       </div>
-                      <div className="absolute bottom-1 right-1 bg-black/85 backdrop-blur px-1 py-0.2 rounded text-[7px] font-tech font-black text-amber-300 border border-amber-500/30 flex items-center space-x-0.5">
-                        <span>GIF</span>
+                      <div className="absolute bottom-1 right-1 bg-black/85 backdrop-blur px-1 py-0.2 rounded text-[7px] font-tech font-black text-emerald-300 border border-emerald-500/40 flex items-center space-x-0.5">
+                        <span>1080P</span>
                       </div>
                     </div>
 
@@ -347,7 +343,7 @@ export const WorkoutHubScreen: React.FC<WorkoutHubScreenProps> = ({
                   </h5>
                   <div className="flex items-center space-x-2 text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-tech">
                     <span className="flex items-center space-x-1">
-                      <Calendar className="w-3 h-3 text-slate-500" />
+                      <Calendar className="w-3 h-3 text-slate-500 dark:text-slate-400" />
                       <span>{new Date(historyItem.startTime).toLocaleDateString()}</span>
                     </span>
                     <span>•</span>

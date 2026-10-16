@@ -11,6 +11,14 @@ interface ExerciseDetailModalProps {
   onStartExercise?: (exercise: Exercise) => void;
 }
 
+const hasCleanHindi = (instructions?: string[]): boolean => {
+  if (!instructions || instructions.length === 0) return false;
+  const sample = instructions.join(' ');
+  const hasDevanagari = /[\u0900-\u097F]/.test(sample);
+  const hasCorruptedGlyphs = /[\uFFFD]|\?\?\?|Â|Ã|â€/.test(sample);
+  return hasDevanagari && !hasCorruptedGlyphs;
+};
+
 export const ExerciseDetailModal: React.FC<ExerciseDetailModalProps> = ({
   exercise,
   onClose,
@@ -19,6 +27,8 @@ export const ExerciseDetailModal: React.FC<ExerciseDetailModalProps> = ({
   const [isHindi, setIsHindi] = useState(false);
 
   if (!exercise) return null;
+
+  const showHindiToggle = hasCleanHindi(exercise.instructionsHi);
 
   return (
     <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
@@ -103,7 +113,7 @@ export const ExerciseDetailModal: React.FC<ExerciseDetailModalProps> = ({
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 <span>How To Perform</span>
               </h3>
-              {exercise.instructionsHi && exercise.instructionsHi.length > 0 && (
+              {showHindiToggle && (
                 <div className="flex items-center space-x-1 bg-white dark:bg-slate-900 p-0.5 rounded-lg border border-slate-200 dark:border-white/10 text-[10px] font-tech font-bold">
                   <button
                     onClick={() => setIsHindi(false)}
@@ -122,7 +132,7 @@ export const ExerciseDetailModal: React.FC<ExerciseDetailModalProps> = ({
             </div>
 
             <ol className="space-y-2">
-              {((isHindi && exercise.instructionsHi && exercise.instructionsHi.length > 0)
+              {((isHindi && showHindiToggle && exercise.instructionsHi)
                 ? exercise.instructionsHi
                 : exercise.instructions
               ).map((step, idx) => (
@@ -154,6 +164,14 @@ export const ExerciseDetailModal: React.FC<ExerciseDetailModalProps> = ({
                   {exercise.breathing?.concentric || 'Exhale powerfully at peak'}
                 </span>
               </div>
+              {exercise.breathingCue && (
+                <div className="bg-slate-100/80 dark:bg-slate-900/80 p-2 rounded-lg border border-slate-200/80 dark:border-white/5 col-span-2">
+                  <span className="text-[10px] uppercase font-tech text-slate-500 dark:text-slate-400 block">Breathing Cue</span>
+                  <span className="font-medium text-cyan-800 dark:text-cyan-200">
+                    {exercise.breathingCue}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 

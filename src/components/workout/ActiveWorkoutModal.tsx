@@ -6,7 +6,6 @@ import { PlateCalculatorModal } from './PlateCalculatorModal';
 import { CalorieCalculator } from '../../utils/calorieCalculator';
 import { X, Check, Plus, Minus, ChevronLeft, ChevronRight, Info, Flame, Clock, Dumbbell, Sparkles } from 'lucide-react';
 import { hapticTap } from '../../utils/audioHaptics';
-import { Cinematic3DMotionViewer } from '../exercises/Cinematic3DMotionViewer';
 import { ExerciseDetailModal } from '../exercises/ExerciseDetailModal';
 import { registerBackButtonHandler } from '../../services/nativePlatformService';
 
@@ -354,7 +353,7 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
                 setIsDetailModalOpen(true);
               }}
               className="relative w-24 h-24 rounded-2xl overflow-hidden bg-black/80 border border-amber-500/30 flex-shrink-0 flex items-center justify-center shadow-lg shadow-amber-500/10 cursor-pointer group"
-              title="Tap for 3D Form Breakdown & Biomechanics"
+              title="Tap for 1080p HD Video Form Breakdown & Biomechanics"
             >
               {(() => {
                 const animSrc = currentExercise.animationUrl || currentExercise.thumbnailUrl;
@@ -393,17 +392,15 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
                 }
 
                 return (
-                  <Cinematic3DMotionViewer
-                    exercise={currentExercise}
-                    className="w-full h-full"
-                    showControls={false}
-                    autoPlay={true}
-                  />
+                  <div className="w-full h-full flex flex-col items-center justify-center bg-slate-900 text-amber-500 p-2 text-center">
+                    <Dumbbell className="w-6 h-6 mb-1" />
+                    <span className="text-[9px] font-tech font-bold uppercase">{currentExercise.primaryMuscle}</span>
+                  </div>
                 );
               })()}
-              <div className="absolute top-1 left-1 bg-black/80 px-1.5 py-0.5 rounded text-[8px] font-tech text-amber-300 font-bold border border-amber-500/30 flex items-center space-x-0.5 shadow">
-                <Sparkles className="w-2.5 h-2.5 fill-amber-400" />
-                <span>GIF</span>
+              <div className="absolute top-1 left-1 bg-black/80 px-1.5 py-0.5 rounded text-[8px] font-tech text-emerald-300 font-bold border border-emerald-500/40 flex items-center space-x-0.5 shadow">
+                <Sparkles className="w-2.5 h-2.5 fill-emerald-400" />
+                <span>1080P</span>
               </div>
             </div>
 
@@ -424,7 +421,7 @@ export const ActiveWorkoutModal: React.FC<ActiveWorkoutModalProps> = ({
                   className="flex items-center space-x-1 text-[10px] font-tech font-bold text-amber-600 dark:text-amber-400 hover:text-amber-300 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-lg transition-all"
                 >
                   <Sparkles className="w-2.5 h-2.5" />
-                  <span>3D Form</span>
+                  <span>Form Guide</span>
                 </button>
               </div>
               <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white font-display mt-0.5 truncate">

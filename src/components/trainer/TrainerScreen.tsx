@@ -1146,10 +1146,10 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
 
                   if (clientMessages.length === 0) {
                     return (
-                      <div className="h-full flex flex-col items-center justify-center text-center p-4 text-slate-500">
+                      <div className="h-full flex flex-col items-center justify-center text-center p-4 text-slate-500 dark:text-slate-400">
                         <MessageSquare className="w-8 h-8 text-amber-600 dark:text-amber-500/40 mb-2" />
-                        <p className="text-xs font-bold text-slate-500 dark:text-slate-400">Direct Channel with {activeClient.name}</p>
-                        <p className="text-[11px] text-slate-500 mt-1 max-w-xs">
+                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300">Direct Channel with {activeClient.name}</p>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 max-w-xs">
                           Send direct advice, motivation, or technique feedback to your client.
                         </p>
                       </div>
@@ -1190,7 +1190,7 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
                         >
                           <p>{msg.text}</p>
                         </div>
-                        <span className="text-[8px] text-slate-500 mt-0.5 px-1 font-tech">
+                        <span className="text-[8px] text-slate-500 dark:text-slate-400 mt-0.5 px-1 font-tech">
                           {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </div>
@@ -1408,17 +1408,17 @@ export const TrainerScreen: React.FC<TrainerScreenProps> = ({
                         setSelectedExerciseDetail(ex);
                       }}
                       className="flex items-center space-x-3 flex-1 min-w-0 cursor-pointer"
-                      title="Click to view 3D animated GIF & Technique Guide"
+                      title="Click to view 1080p HD Video & Technique Guide"
                     >
                       <div className="w-12 h-12 rounded-xl object-contain bg-black border border-slate-200 dark:border-white/10 flex-shrink-0 relative overflow-hidden flex items-center justify-center">
                         <img
-                          src={ex.animationUrl || ex.thumbnailUrl}
+                          src={ex.thumbnailUrl || ex.animationUrl}
                           alt={ex.name}
                           loading="lazy"
                           className="w-full h-full object-contain filter contrast-125"
                         />
-                        <div className="absolute bottom-0.5 right-0.5 bg-black/80 px-1 py-0.2 rounded text-[7px] font-tech font-bold text-amber-300">
-                          GIF
+                        <div className="absolute bottom-0.5 right-0.5 bg-emerald-950/90 border border-emerald-500/40 px-1 py-0.2 rounded text-[7px] font-tech font-bold text-emerald-300">
+                          HD
                         </div>
                       </div>
                       <div className="truncate">

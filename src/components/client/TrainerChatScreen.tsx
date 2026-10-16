@@ -41,8 +41,19 @@ export const TrainerChatScreen: React.FC<TrainerChatScreenProps> = ({ client, tr
       )
     : undefined;
 
-  const isAssigned = Boolean(foundTrainer);
-  const trainer: TrainerData | undefined = foundTrainer;
+  const effectiveTrainer: TrainerData | null = foundTrainer || (isTrainerNameValid ? {
+    id: client.trainerId || 'trainer-assigned',
+    name: trainerName,
+    role: 'Personal Fitness Coach',
+    email: '',
+    phone: '',
+    status: 'Active',
+    clientsCount: 1,
+    avgAdherence: 95
+  } : null);
+
+  const isAssigned = Boolean(effectiveTrainer);
+  const trainer: TrainerData | undefined = effectiveTrainer || undefined;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

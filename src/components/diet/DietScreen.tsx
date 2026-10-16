@@ -131,12 +131,12 @@ export const DietScreen: React.FC<DietScreenProps> = ({
     ? waterMl
     : (syncedStore.getState().dailyWaterLog?.[selectedDate] ?? (selectedDate === todayKey ? waterMl : 0));
 
-  // Percentages
-  const caloriePercent = Math.min(100, Math.round((totalCalories / goals.calories) * 100));
-  const proteinPercent = Math.min(100, Math.round((totalProtein / goals.protein) * 100));
-  const carbsPercent = Math.min(100, Math.round((totalCarbs / goals.carbs) * 100));
-  const fatPercent = Math.min(100, Math.round((totalFat / goals.fat) * 100));
-  const waterPercent = Math.min(100, Math.round((effectiveWater / goals.waterMl) * 100));
+  // Percentages with zero-division safety
+  const caloriePercent = goals.calories > 0 ? Math.min(100, Math.max(0, Math.round((totalCalories / goals.calories) * 100))) : 0;
+  const proteinPercent = goals.protein > 0 ? Math.min(100, Math.max(0, Math.round((totalProtein / goals.protein) * 100))) : 0;
+  const carbsPercent = goals.carbs > 0 ? Math.min(100, Math.max(0, Math.round((totalCarbs / goals.carbs) * 100))) : 0;
+  const fatPercent = goals.fat > 0 ? Math.min(100, Math.max(0, Math.round((totalFat / goals.fat) * 100))) : 0;
+  const waterPercent = goals.waterMl > 0 ? Math.min(100, Math.max(0, Math.round((effectiveWater / goals.waterMl) * 100))) : 0;
 
   const mealTypes: { type: 'breakfast' | 'lunch' | 'dinner' | 'snack'; label: string; icon: string }[] = [
     { type: 'breakfast', label: 'Breakfast', icon: '🌅' },
@@ -180,14 +180,15 @@ export const DietScreen: React.FC<DietScreenProps> = ({
             <button
               onClick={() => {
                 hapticTap();
-                const d = new Date(selectedDate);
-                d.setDate(d.getDate() - 1);
-                const prevKey = getTodayDateKey(d);
+                const [y, m, d] = selectedDate.split('-').map(Number);
+                const cur = new Date(y, m - 1, d, 12, 0, 0);
+                cur.setDate(cur.getDate() - 1);
+                const prevKey = getTodayDateKey(cur);
                 setSelectedDate(prevKey);
-                setViewScope('custom' as any);
+                setViewScope(prevKey === yesterdayKey ? 'yesterday' : ('custom' as any));
               }}
               title="Previous Day"
-              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors"
+              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -212,16 +213,17 @@ export const DietScreen: React.FC<DietScreenProps> = ({
               disabled={isViewingToday}
               onClick={() => {
                 hapticTap();
-                const d = new Date(selectedDate);
-                d.setDate(d.getDate() + 1);
-                const nextKey = getTodayDateKey(d);
+                const [y, m, d] = selectedDate.split('-').map(Number);
+                const cur = new Date(y, m - 1, d, 12, 0, 0);
+                cur.setDate(cur.getDate() + 1);
+                const nextKey = getTodayDateKey(cur);
                 if (nextKey <= todayKey) {
                   setSelectedDate(nextKey);
                   setViewScope(nextKey === todayKey ? 'today' : ('custom' as any));
                 }
               }}
               title="Next Day"
-              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
             >
               <ChevronRight className="w-4 h-4" />
             </button>

@@ -68,5 +68,36 @@ export const ExerciseService = {
     const pool = category ? this.getByCategory(category) : ALL_EXERCISES;
     const shuffled = [...pool].sort(() => 0.5 - Math.random());
     return shuffled.slice(0, count);
+  },
+
+  getExercisesWithHdVideo(): Exercise[] {
+    return ALL_EXERCISES.filter((ex) => Boolean(ex.videoUrl || ex.videoMaleUrl || ex.videoFemaleUrl));
+  },
+
+  getExercisesWithHighResPhotos(): Exercise[] {
+    return ALL_EXERCISES.filter((ex) => Boolean(ex.highResImages && ex.highResImages.length > 0));
+  },
+
+  getMediaStats() {
+    let withHdVideo = 0;
+    let withPhotos = 0;
+    let withGif = 0;
+
+    ALL_EXERCISES.forEach((ex) => {
+      if (ex.videoUrl || ex.videoMaleUrl || ex.videoFemaleUrl) {
+        withHdVideo++;
+      } else if (ex.highResImages && ex.highResImages.length > 0) {
+        withPhotos++;
+      } else {
+        withGif++;
+      }
+    });
+
+    return {
+      total: ALL_EXERCISES.length,
+      withHdVideo,
+      withPhotos,
+      withGif
+    };
   }
 };

@@ -45,12 +45,12 @@ export const FoodService = {
     return MASTER_FOOD_DATABASE.find((f) => f.id === id) || MASTER_FOOD_DATABASE[0];
   },
 
-  searchCurated(query: string, category: string = 'All'): FoodItem[] {
+  searchCurated(query: string, category: string = 'All', limit?: number): FoodItem[] {
     const q = query.trim().toLowerCase();
     const customFoods = syncedStore.getCustomFoods();
     const combined = [...customFoods, ...MASTER_FOOD_DATABASE];
 
-    return combined.filter((food) => {
+    const results = combined.filter((food) => {
       if (category !== 'All') {
         const catMatch =
           food.category.toLowerCase().includes(category.toLowerCase()) ||
@@ -63,15 +63,21 @@ export const FoodService = {
         food.category.toLowerCase().includes(q) ||
         food.servingSize.toLowerCase().includes(q)
       );
-    }).slice(0, 100);
+    });
+
+    return typeof limit === 'number' && limit > 0 ? results.slice(0, limit) : results;
+  },
+
+  searchAll(query: string, category: string = 'All'): FoodItem[] {
+    return this.searchCurated(query, category);
   },
 
   search(query: string, category?: string): FoodItem[] {
-    return this.searchCurated(query, category || 'All');
+    return this.searchCurated(query, category || 'All', 100);
   },
 
   async searchFullDatabase(query: string, category?: string): Promise<FoodItem[]> {
-    return this.search(query, category);
+    return this.searchAll(query, category || 'All');
   }
 };
 

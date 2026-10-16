@@ -89,7 +89,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
               <h3 className="text-sm font-black text-slate-900 dark:text-white font-display">
                 Notification Center
               </h3>
-              <span className="text-[10px] text-slate-500 font-tech">
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-tech">
                 {unreadCount > 0 ? `${unreadCount} unread alert${unreadCount > 1 ? 's' : ''}` : 'All caught up'}
               </span>
             </div>

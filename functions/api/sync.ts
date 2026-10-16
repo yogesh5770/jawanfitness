@@ -117,9 +117,11 @@ function scopeStateForRole(inner: any, session: SessionInfo): any {
     const keys = identityKeys(session, own);
     const ownId = own?.id || session.user_id;
 
-    const scopedTrainers = own?.trainerId
-      ? trainers.filter((t) => t.id === own.trainerId || sameUser(t, session))
-      : trainers.filter((t) => sameUser(t, session));
+    const scopedTrainers = own?.trainerId && own.trainerId !== 'Unassigned'
+      ? trainers.filter((t) => t.id === own.trainerId || (own.trainerName && t.name.toLowerCase() === own.trainerName.toLowerCase()) || sameUser(t, session))
+      : (own?.trainerName && own.trainerName !== 'Unassigned'
+          ? trainers.filter((t) => t.name.toLowerCase() === own.trainerName.toLowerCase() || sameUser(t, session))
+          : trainers.filter((t) => sameUser(t, session)));
 
     const scopedWorkouts: Record<string, any> = {};
     for (const [k, v] of Object.entries(inner.assignedWorkouts || {})) {
